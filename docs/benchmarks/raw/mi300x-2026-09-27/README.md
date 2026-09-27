@@ -1,9 +1,13 @@
-# Raw evidence — MI300X run 1, 2026-09-27
+# Raw evidence — MI300X runs 1 and 2, 2026-09-27
 
-Verbatim capture, no interpretation. The analysis lives in
-`docs/benchmarks/mi300x-run1.md`; the arithmetic that reads these files is
-`bench/measured_mi300x_run1.py`; the before-the-fact predictions are
-`docs/benchmarks/runsheets/mi300x-run-1.md`.
+Verbatim capture, no interpretation. Two runs on the same day, on two droplets:
+
+| Directory | Report | Read-out | Runsheet |
+|---|---|---|---|
+| `run1/` | `docs/benchmarks/mi300x-run1.md` | `bench/measured_mi300x_run1.py` | `docs/benchmarks/runsheets/mi300x-run-1.md` |
+| `run2/` | `docs/benchmarks/mi300x-run2.md` | `bench/measured_mi300x_run2.py` | `docs/benchmarks/runsheets/mi300x-run-2.md` |
+
+## Run 1
 
 | Path | What it is |
 |---|---|
@@ -16,7 +20,7 @@ Verbatim capture, no interpretation. The analysis lives in
 | `run1/sweep.sh` | the first launch, the runsheet's §3 line verbatim |
 | `run1/sweep-resume.sh` | the second launch: the same line with `--num-runs 2 --resume` and `tee -a` |
 
-## Two launches, and why the repeat counts differ
+### Two launches, and why the repeat counts differ
 
 The first launch ran three repeats per row. At 10:19 UTC the pace
 (~0.39 s per prompt once saturated) put the end of three repeats past the
@@ -42,7 +46,7 @@ every repeat.
 rerunning it after an interruption would have truncated `sweep.log`, taking
 checkpoint A's startup log with it.
 
-## Provenance, and what is missing
+### Provenance, and what is missing
 
 - AMD Developer Cloud GPU droplet `7.14-gpu-mi300x1-192gb-devcloud-atl1`, ATL1,
   on-demand at $1.990/h, image *Quick Start → ROCm Software*, version **7.14**
@@ -69,3 +73,39 @@ checkpoint A's startup log with it.
   counter in it carries information.
 - **`block_size` is not in the log** on this build: vLLM prints it only when it
   differs from the default 16, and 16 is what `ROCM_ATTN` takes.
+
+## Run 2
+
+| Path | What it is |
+|---|---|
+| `run2/sweep.log` | everything the sweep printed, one launch per serve row: five startup logs, every benchmark's console output, and the engine's 10-second lines. The sweep's own `[BEGIN …]` markers reach the file in late blocks; the server's `non-default args` and each client's `Namespace(...)` line arrive in order and say which row a line belongs to |
+| `run2/metrics-after.log` | the after-bench hook, once after each of the 80 repeats, `--` between reads |
+| `run2/results/mi300x-run-2/SERVE--<serve>-BENCH--<bench>/run=N.json` | one per repeat: 5 serve rows × 8 benchmark rows × 2 |
+| `run2/results/mi300x-run-2/SERVE--<serve>-BENCH--<bench>/summary.json`, `summary.csv` | the sweep's aggregates, from both repeats of every cell: one launch, no `--resume` |
+| `run2/mi300x-run-2-serve.json`, `run2/mi300x-run-2-bench.json` | the parameter files as copied to the droplet, checksums equal to `bench/sweep/` |
+| `run2/sweep.sh` | the launch, the runsheet's §3 line verbatim |
+| `run2/sweep-resume.sh` | the same line with `--resume`, prepared and never run |
+| `run2/host-under-load.txt` | `rocm-smi` clocks, power, temperature and use during `b2048`'s c008, the host CPU, vCPU count, kernel and amdgpu version |
+| `run2/image-digest.txt` | the repo digest of `vllm/vllm-openai-rocm:v0.27.1` as pulled |
+
+**`aiter-fa`'s c008–c256 cells are recorded and are not measurements**: the
+runsheet's *The five serve rows* says why, and `bench/measured_mi300x_run2.py`
+reads only that row's c = 1 cells.
+
+### Provenance, and what is missing
+
+- A second droplet of the same product, `7.14-gpu-mi300x1-192gb-devcloud-atl1`,
+  ATL1, $1.990/h on the console, created ≈ 15:00 UTC; destroyed after the
+  harvest, archive checksum matched on both ends before it was deleted.
+- `rocm-smi`: one *AMD Instinct MI300X VF*, gfx942, 205 822 885 888 B, 0.30 GB in
+  use at idle — the figures run 1 read. The `rocm` Jupyter container and the
+  *Created* metrics exporter were there again; `rocm` was stopped before the run.
+- Image pulled in ~2 min; `Qwen/Qwen3-8B` snapshot `b968826d`, downloaded in
+  15 s, unauthenticated.
+- `/app/versions.txt` in the image gives `AITER_BRANCH: v0.1.19`; `pip list`
+  gives `amd-aiter 0.1.19`, and `import aiter` succeeded.
+- **The same gaps as run 1.** No in-run gauge sampler; the engine's 10-second
+  lines stand in for one, and `metrics-after.log` carries information only in its
+  preemption counter.
+- **What run 1 did not record**, and so cannot be compared: clocks, power, host
+  CPU, kernel, driver. `host-under-load.txt` is the first such record.

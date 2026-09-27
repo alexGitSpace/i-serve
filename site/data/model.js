@@ -46,7 +46,19 @@ window.MODEL_DATA = {
    "name": "AMD Instinct MI300X (run 1 coefficients)",
    "peak_bandwidth": 5300000000000.0,
    "peak_flops": 1307000000000000.0,
-   "provenance": "measured (MI300X run 1, 2026-09-27); not yet faced by a second run"
+   "provenance": "measured (MI300X run 1, 2026-09-27); MI300X run 2, on another droplet, ran 21 % faster decode and 33 % faster prefill at the same server line"
+  },
+  "mi300x-run2": {
+   "achieved_bandwidth": 0.57,
+   "hourly_rate": 1.99,
+   "hourly_rate_provenance": "AMD Developer Cloud console, 2026-09-27, on-demand, 1x MI300X; paid from credits",
+   "measured": true,
+   "memory_bytes": 206158430208,
+   "mfu": 0.247,
+   "name": "AMD Instinct MI300X (run 2 coefficients)",
+   "peak_bandwidth": 5300000000000.0,
+   "peak_flops": 1307000000000000.0,
+   "provenance": "measured (MI300X run 2, 2026-09-27); a second droplet, not yet faced"
   }
  },
  "constants": {
@@ -809,6 +821,12 @@ window.MODEL_DATA = {
    "date": "2026-09-27",
    "label": "MI300X run 1",
    "report": "docs/benchmarks/mi300x-run1.md"
+  },
+  "5": {
+   "card": "AMD Instinct MI300X",
+   "date": "2026-09-27",
+   "label": "MI300X run 2",
+   "report": "docs/benchmarks/mi300x-run2.md"
   }
  },
  "slo_classes": {

@@ -413,8 +413,9 @@ def main(argv: list[str] | None = None) -> int:
                              "and the only fit a later run has faced. l40s is "
                              "the same card on spec-sheet priors, kept so a "
                              "prediction can be printed against either. "
-                             "mi300x-run1 carries the MI300X's run-1 fit; mi300x "
-                             "keeps its priors for contrast. The header prints "
+                             "mi300x-run1 and mi300x-run2 carry the MI300X's fits "
+                             "from two droplets that disagree; mi300x keeps its "
+                             "priors for contrast. The header prints "
                              "which you got")
     parser.add_argument("--slo-ttft-ms", type=float, default=300.0)
     parser.add_argument("--slo-tpot-ms", type=float, default=50.0)

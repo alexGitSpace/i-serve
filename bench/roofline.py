@@ -155,7 +155,21 @@ MI300X_RUN1 = Accelerator(
     peak_flops=1.307e15,
     achieved_bandwidth=0.46,    # measured, decode, median ITL, five levels, 0.41-0.49
     mfu=0.166,                  # measured, prefill, one uncontended 4 000-token request
-    provenance="measured (MI300X run 1, 2026-09-27); not yet faced by a second run",
+    provenance="measured (MI300X run 1, 2026-09-27); MI300X run 2, on another droplet, "
+               "ran 21 % faster decode and 33 % faster prefill at the same server line",
+)
+
+# Same card, same server line, a second droplet: MI300X run 2's b2048 row
+# (docs/benchmarks/mi300x-run2.md section 3). Beside run 1's, not over it: the
+# two droplets disagree, and neither is the card's.
+MI300X_RUN2 = Accelerator(
+    name="AMD Instinct MI300X (run 2 coefficients)",
+    memory_bytes=192 * 2**30,
+    peak_bandwidth=5.3e12,
+    peak_flops=1.307e15,
+    achieved_bandwidth=0.57,    # measured, decode, median ITL, seven levels, 0.52-0.62
+    mfu=0.247,                  # measured, prefill, one uncontended 4 000-token request
+    provenance="measured (MI300X run 2, 2026-09-27); a second droplet, not yet faced",
 )
 
 
@@ -165,6 +179,7 @@ MI300X_RUN1 = Accelerator(
 ACCELERATORS = {
     "l40s-run1": L40S_RUN1,
     "l40s": L40S,
+    "mi300x-run2": MI300X_RUN2,
     "mi300x-run1": MI300X_RUN1,
     "mi300x": MI300X,
 }

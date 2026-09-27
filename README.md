@@ -30,8 +30,9 @@ stub — is [docs/GLOSSARY.md](docs/GLOSSARY.md). §N is a section of
 Numbers come in three kinds, never mixed:
 
 - **measured** — by a run on a rented card, raw evidence in
-  [docs/benchmarks/raw/](docs/benchmarks/raw/). Three L40S runs and one MI300X
-  run so far; two coefficients fitted on L40S run 1 survived runs 2 and 3.
+  [docs/benchmarks/raw/](docs/benchmarks/raw/). Three L40S runs and two MI300X
+  runs so far; two coefficients fitted on L40S run 1 survived runs 2 and 3, and
+  the MI300X's first fit did not survive its second run, on another droplet.
 - **derived** — in [docs/SLO.md](docs/SLO.md); a prediction until measured, and
   outranked by vLLM's own startup log ([§9](docs/SLO.md)).
 - **prior** — spec-sheet coefficients, kept beside a card's fit for contrast.
@@ -110,7 +111,7 @@ the map for the 70 nodes of the tree.
 
 ## The proof
 
-![Measured divided by predicted, for every prediction L40S runs 1-3 and MI300X run 1 made](docs/benchmarks/predicted-vs-measured.svg)
+![Measured divided by predicted, for every prediction L40S runs 1-3 and MI300X runs 1-2 made](docs/benchmarks/predicted-vs-measured.svg)
 
 One row per prediction naming a point or a range, not a bound. What a miss cost
 the drawing cannot show: run 3's seat count under prefix caching came out
@@ -154,7 +155,7 @@ coefficients: eff_mem 0.7, mfu 0.45 -- prior, unvalidated; MI300X run 1 measured
 
 One floor rests on coefficients a card produced and two later runs failed to
 break; the other on spec-sheet assumptions that its first run embarrassed
-(`--accelerator mi300x-run1` prints the fit).
+(`--accelerator mi300x-run1` and `mi300x-run2` print the fits of two droplets).
 `--accelerator` is the cheapest way to see what [§9](docs/SLO.md) is about.
 
 ## An evening: the whole stack on kind

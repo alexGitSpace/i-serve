@@ -282,6 +282,15 @@ virtual machine. A cloud droplet's MI300X is one: `rocm-smi` names it
 the processes holding the GPU through its kernel driver (KFD). The `nvidia-smi`
 of this card.
 
+**sclk** — the GPU's shader (compute) clock as `rocm-smi --showclocks` reports it,
+the current level and its frequency. Beside it, *Performance Level* says whether
+the driver picks the level (`auto`) or it is pinned. A snapshot under load, not a
+rated figure.
+
+**Image digest** — the content hash a container registry gives one exact image
+(`repo@sha256:…`). A tag such as `v0.27.1` can be moved to other contents; the
+digest cannot, so it is what says two runs pulled the same bytes.
+
 **gfx942** — the ISA target name of the MI300 series, which `rocm-smi` prints and
 ROCm kernels are compiled for; gfx950 is the MI350 series'. Both are **CDNA 3** or
 later, CDNA being AMD's data-centre GPU architecture line, and several ROCm code
@@ -616,9 +625,9 @@ stands and every step is a full `max_num_batched_tokens` budget:
 `n = budget × output / (input + output)`, counting only the tokens that are
 prefilled. It binds when it is smaller than both the pool's seat count and
 `max_num_seqs`. Derived after MI300X run 1 to fit its running count
-([benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §5) and not yet faced;
-MI300X run 2's `b4096` serve row faces it
-([benchmarks/runsheets/mi300x-run-2.md](benchmarks/runsheets/mi300x-run-2.md)).
+([benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §5), and faced by
+MI300X run 2 at budgets of 2 048 and 4 096
+([benchmarks/mi300x-run2.md](benchmarks/mi300x-run2.md) §5).
 
 **`long_prefill_token_threshold`** — a cap on how many tokens of a *single* long
 prefill may enter one step, sitting beside `max_num_batched_tokens` rather than

@@ -22,6 +22,7 @@ from dataclasses import replace
 
 import measured
 import measured_mi300x_run1 as mi300x_run1
+import measured_mi300x_run2 as mi300x_run2
 import measured_run2
 import predictions
 
@@ -32,6 +33,7 @@ from roofline import (
     L40S_RUN1,
     MI300X,
     MI300X_RUN1,
+    MI300X_RUN2,
     QWEN3_8B,
     Accelerator,
     aggregate_tokens_per_sec,
@@ -781,7 +783,7 @@ def test_what_if_names_every_card_the_harness_can_be_given():
     import harness
 
     assert harness.ACCELERATORS is ACCELERATORS
-    assert set(ACCELERATORS) == {"l40s-run1", "l40s", "mi300x-run1", "mi300x"}
+    assert set(ACCELERATORS) == {"l40s-run1", "l40s", "mi300x-run2", "mi300x-run1", "mi300x"}
 
 
 # --- MI300X run 1 -------------------------------------------------------------
@@ -914,6 +916,70 @@ def test_run2_serve_rows_move_one_lever_against_b2048():
     for name, row in serve.items():
         moved = {k for k in set(base) | set(row) if base.get(k) != row.get(k)}
         assert len(moved) == (0 if name == "b2048" else 1), (name, moved)
+
+
+# --- MI300X run 2 -------------------------------------------------------------
+# docs/benchmarks/mi300x-run2.md quotes these; bench/measured_mi300x_run2.py reads
+# them from docs/benchmarks/raw/mi300x-2026-09-27/run2/.
+
+def test_mi300x_run2_b2048s_pool_is_run1s_to_the_token():
+    """The replay logged 1 123 065, as run 1's launch 1 did, 0.01 % from table 12's 1 122 983."""
+    launch = mi300x_run2.launches()
+    assert launch["b2048"]["kv_tokens"] == mi300x_run1.LOGGED_KV_TOKENS[0]
+    predicted = kv_cache_tokens(QWEN3_8B, MI300X_RUN1, GMU) * (1 - predictions.POOL_SHORTFALL)
+    assert round(predicted) == 1_122_983, predicted
+    assert not any(x.get("traceback") for x in launch.values())
+
+
+def test_mi300x_run2_the_fitted_coefficients_are_the_raw_files():
+    """0.57 is the mean of b2048's seven decode rows; 0.247 is its uncontended 4 000-token prefill."""
+    data = mi300x_run2.rows()
+    assert close(MI300X_RUN2.achieved_bandwidth, mi300x_run2.fitted_eff_mem(data), 0.005)
+    assert close(MI300X_RUN2.mfu, mi300x_run2.implied_mfu(data["b2048", "c001"]), 0.001)
+
+
+def test_mi300x_run2_run1s_fit_predicted_every_time_too_long():
+    """At 0.46 / 0.166 every decode step and every lone TTFT on b2048 came in shorter."""
+    data = mi300x_run2.rows()
+    for name in mi300x_run2.DECODE_ROWS:
+        row = data["b2048", name]
+        assert mi300x_run2.predicted_step_ms(row) > row["itl_ms"], name
+    for name in mi300x_run2.LENGTH_ROWS:
+        row = data["b2048", name]
+        assert mi300x_run2.predicted_ttft_ms(row) > row["ttft_p50_ms"], name
+
+
+def test_mi300x_run2_the_ceiling_held_at_two_budgets():
+    """Running at c256 is 99 and 196 against 97.5 and 195, and nothing was preempted in 80 repeats."""
+    gauge = mi300x_run2.gauges()
+    for serve, budget in (("b2048", 2048), ("b4096", 4096)):
+        running = sorted(mi300x_run2.saturated_running(gauge, serve))
+        ceiling = token_budget_ceiling(budget, 4000, 200)
+        assert abs(running[len(running) // 2] - ceiling) <= 2, (serve, running)
+    assert max(mi300x_run2.preemptions()) == 0
+    assert len(mi300x_run2.preemptions()) == 80
+
+
+def test_mi300x_run2_chunking_made_the_excess():
+    """b8192's second doubling ratio is under the sheet's 2.33 and b2048's is not."""
+    data = mi300x_run2.rows()
+    ratio = lambda s: data[s, "c001-in8000"]["ttft_p50_ms"] / data[s, "c001"]["ttft_p50_ms"]   # noqa: E731
+    assert ratio("b8192") < 2.33 <= ratio("b2048"), (ratio("b8192"), ratio("b2048"))
+
+
+def test_mi300x_run2_every_row_is_inside_50_ms_at_c032():
+    """TPOT p99 at c032 is under 50 ms on every serve row read at concurrency, over it at c256."""
+    data = mi300x_run2.rows()
+    for serve in mi300x_run2.AT_CONCURRENCY:
+        assert data[serve, "c032"]["tpot_p99_ms"] < 50 < data[serve, "c256"]["tpot_p99_ms"], serve
+
+
+def test_mi300x_run2_every_plateau_beats_the_l40s():
+    """$/1M at c256 on every serve row read at concurrency is below the L40S's $0.873."""
+    data = mi300x_run2.rows()
+    for serve in mi300x_run2.AT_CONCURRENCY:
+        cost = mi300x_run2.dollars_per_1m(data[serve, "c256"]["output_tps"])
+        assert cost < mi300x_run1.L40S_COST["plateau"], (serve, cost)
 
 
 if __name__ == "__main__":

@@ -123,9 +123,10 @@ it. What it would switch, and what it does not on gfx942, is in the glossary's
       `--num-runs 3`; the run's `--num-runs 2` gives 80.
 - [x] `python3 bench/predictions.py`, table 12 open beside the terminal.
 - [x] This sheet reviewed.
-- [ ] This sheet committed.
-- [ ] Price read off the console and written into the header.
-- [ ] Image: *Quick Start → ROCm Software*, version 7.14, the same host as run 1.
+- [x] This sheet committed (`7c13a57`).
+- [x] Price read off the console and written into the header: $1.990/h at
+      creation, as written.
+- [x] Image: *Quick Start → ROCm Software*, version 7.14, the same host as run 1.
 
 ---
 

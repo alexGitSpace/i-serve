@@ -25,6 +25,7 @@ BASELINE = "docs/benchmarks/l40s-baseline.md"
 RUN2 = "docs/benchmarks/l40s-run2.md"
 RUN3 = "docs/benchmarks/l40s-run3.md"
 MI300X_RUN1 = "docs/benchmarks/mi300x-run1.md"
+MI300X_RUN2 = "docs/benchmarks/mi300x-run2.md"
 
 OUT = ROOT / "docs/benchmarks/predicted-vs-measured.svg"
 
@@ -169,6 +170,41 @@ PREDICTIONS: tuple[Prediction, ...] = (
     # Left out: the seats row is the pool row divided by 4 200, not a second
     # test; running at c = 288 was a bound (it held); and the latency limit was
     # measured as a range, 8-32 -- a midpoint would invent a measured value.
+
+    # --- MI300X run 2, 2026-09-27 --------------------------------------------
+    Prediction(5, "KV pool", 1122983, 1123065,
+               "| ~1 123 000 |", "| 1 123 065 |", MI300X_RUN2),
+    Prediction(5, "decode step c=1, eff_mem 0.46", 6.97, 5.22,
+               "| 6.97 ms |", "| 5.22 ms |", MI300X_RUN2),
+    Prediction(5, "decode step c=8, eff_mem 0.46", 8.71, 7.64,
+               "| 8.71 ms |", "| 7.64 ms |", MI300X_RUN2),
+    Prediction(5, "decode step c=32, eff_mem 0.46", 14.66, 12.46,
+               "| 14.66 ms |", "| 12.46 ms |", MI300X_RUN2),
+    Prediction(5, "TTFT c=1, 2 000-token prompt", 128.1, 80.9,
+               "| 128.1 ms |", "| 80.9 ms |", MI300X_RUN2),
+    Prediction(5, "TTFT c=1, 4 000-token prompt", 256.3, 172.0,
+               "| 256.3 ms |", "| 172.0 ms |", MI300X_RUN2),
+    Prediction(5, "TTFT c=1, 8 000-token prompt", 512.5, 410.8,
+               "| 512.5 ms |", "| 410.8 ms |", MI300X_RUN2),
+    Prediction(5, "TPOT p50 c=8, with interference", 17.68, 12.82,
+               "| 17.68 ms |", "| 12.82 ms |", MI300X_RUN2),
+    Prediction(5, "TPOT p50 c=32, with interference", 54.38, 37.37,
+               "| 54.38 ms |", "| 37.37 ms |", MI300X_RUN2),
+    Prediction(5, "running at c=256, budget 2 048", 98, 99,
+               "| 98 |", "| 99 (98–100) |", MI300X_RUN2),
+    Prediction(5, "running at c=256, budget 4 096", 195, 196,
+               "| 195 |", "| 196 (183–200) |", MI300X_RUN2),
+    Prediction(5, "output at c=256, budget 4 096", 531.7, 709.5,
+               "| 531.7 ± 5 % |", "| 709.5 tok/s |", MI300X_RUN2),
+    Prediction(5, "decode step c=1, eff_mem 0.57", 5.63, 5.22,
+               "| 5.63 ms |", "| 5.22 ms |", MI300X_RUN2, fitted=True),
+    Prediction(5, "decode step c=32, eff_mem 0.57", 11.83, 12.46,
+               "| 11.83 ms |", "| 12.46 ms |", MI300X_RUN2, fitted=True),
+    Prediction(5, "TTFT c=1, 4 000 tokens, mfu 0.247", 172.2, 172.0,
+               "| 172.2 ms |", "| 172.0 ms |", MI300X_RUN2, fitted=True),
+    # Left out: the b8192 running row is a tie of two caps, the ratio rows are
+    # tests or ratios, and the p99 crossing and the plateau bound are not
+    # two-sided values.
 )
 
 @dataclass(frozen=True)
@@ -185,6 +221,7 @@ RUNS: dict[int, Run] = {
     2: Run("run 2", "2026-08-23", "NVIDIA L40S"),
     3: Run("run 3", "2026-08-30", "NVIDIA L40S"),
     4: Run("MI300X run 1", "2026-09-27", "AMD Instinct MI300X"),
+    5: Run("MI300X run 2", "2026-09-27", "AMD Instinct MI300X"),
 }
 
 # --- geometry ----------------------------------------------------------------
@@ -288,9 +325,9 @@ def svg() -> str:
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {height:.0f}" '
         f'width="{W}" height="{height:.0f}" font-family="system-ui,-apple-system,'
         f'Segoe UI,Roboto,sans-serif" role="img" '
-        f'aria-label="One row per prediction of L40S runs 1 to 3 and MI300X run 1, '
+        f'aria-label="One row per prediction of L40S runs 1 to 3 and MI300X runs 1 and 2, '
         f'each drawn as measured divided by predicted on a logarithmic axis">',
-        '<title>Predicted vs measured — L40S runs 1–3, MI300X run 1</title>',
+        '<title>Predicted vs measured — L40S runs 1–3, MI300X runs 1–2</title>',
         text(MARGIN, TITLE_Y, "Every prediction the runs made, against what the "
              "card did", size=15.5, fill=INK, weight="600"),
         text(MARGIN, SUBTITLE_Y,

@@ -27,7 +27,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SITE_DATA = ROOT / "site" / "data"
 SYMPTOM_MAP = ROOT / "docs" / "symptom-map.json"
 
-REPORTS = {1: plot.BASELINE, 2: plot.RUN2, 3: plot.RUN3, 4: plot.MI300X_RUN1}
+REPORTS = {1: plot.BASELINE, 2: plot.RUN2, 3: plot.RUN3, 4: plot.MI300X_RUN1,
+           5: plot.MI300X_RUN2}
 
 # The point every one-factor-at-a-time row departs from: this repository's own
 # operating point, 4 000 in, 200 out, at the cached hit rate run 3 measured.
@@ -252,7 +253,7 @@ def golden_grid() -> list[dict]:
             for kv in (2, 1):
                 add(**dict(BASE, model="qwen2.5-7b", prompt_tokens=prompt,
                            tpot_target=tpot, kv_dtype_bytes=kv))
-    for accelerator in ("l40s", "mi300x-run1", "mi300x"):
+    for accelerator in ("l40s", "mi300x-run2", "mi300x-run1", "mi300x"):
         add(**dict(BASE, model="qwen2.5-7b", accelerator=accelerator))
     add(**dict(BASE, model="qwen2.5-7b", hit_rate=0.0))
     add(**dict(BASE, tpot_target=0.020))
