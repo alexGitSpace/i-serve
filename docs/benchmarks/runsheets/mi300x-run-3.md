@@ -53,6 +53,12 @@ it.
 and `mfu` on this card and reads the prefill interference; this sheet spends
 both. Run 2 may move `mfu`, and with it how many seats per engine sit inside
 50 ms, which the status note above says this sheet's seat effect depends on.
+MI300X run 2 was taken on 2026-09-27 (`docs/benchmarks/mi300x-run2.md`), and
+**this sheet is not yet re-derived from it.** Three of its findings bear on the
+sheet: the fit depends on the droplet (0.57 / 0.247 there against run 1's
+0.46 / 0.166); on that droplet TPOT p99 stayed inside 50 ms past 32 seats; and a
+budget that fits the prompt lifts `mfu` by 10 %. Table 11 still prints at
+`MI300X_RUN1`.
 
 **Every predicted figure below comes from `bench/predictions.py` table 11**,
 added 2026-09-19; re-run it if the module has changed since. Where this sheet

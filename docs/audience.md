@@ -65,7 +65,8 @@ against a target, never a rule about GPUs, and it is the distinction
 [SLO.md](SLO.md) §4 and §6 exist to draw. Both lines are floors. Measured, the
 MI300X's latency limit bound as served at 8–32 seats, through prefill
 interference, and the pool and the cap were never reached
-([benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §5–6). `--help` lists the rest:
+([benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §5–6); on a second
+droplet it held past 32 ([benchmarks/mi300x-run2.md](benchmarks/mi300x-run2.md) §6). `--help` lists the rest:
 context length, prompt length, both targets, `gpu_memory_utilization`, the KV
 dtype and the hourly rate.
 
@@ -234,9 +235,11 @@ Three kinds of number live here and they are never mixed:
 - **Measured** — produced by a run, with raw evidence committed under
   `docs/benchmarks/raw/`. On the accelerator side two entries carry measured
   coefficients: `l40s-run1`, `eff_mem = 0.83` from twelve decode levels and
-  `mfu = 0.439` from one uncontended prefill, faced by two later runs; and
+  `mfu = 0.439` from one uncontended prefill, faced by two later runs;
   `mi300x-run1`, `eff_mem = 0.46` from five decode rows and `mfu = 0.166` from one
-  uncontended prefill, faced by none yet.
+  uncontended prefill, faced by run 2 on another droplet and missed there; and
+  `mi300x-run2`, `eff_mem = 0.57` and `mfu = 0.247` from that droplet, faced by
+  none yet.
 - **Derived** — computed from architecture and vendor specifications. Every floor
   and ceiling in [SLO.md](SLO.md) is derived, and each is a prediction until a run
   faces it.
