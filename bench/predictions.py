@@ -1,4 +1,4 @@
-"""Every number bench/roofline.py predicts, printed as eleven numbered tables.
+"""Every number bench/roofline.py predicts, printed as twelve numbered tables.
 
 Split from roofline.py because it changes after every run, and the module only
 when the arithmetic does. A runsheet's step 0 opens these tables beside the card;
@@ -12,6 +12,7 @@ asserts the same figures.
 import argparse
 import json
 import math
+import os
 import textwrap
 from dataclasses import replace
 
@@ -20,6 +21,7 @@ from roofline import (
     L40S,
     L40S_RUN1,
     MI300X,
+    MI300X_RUN1,
     Model,
     QWEN2_5_7B,
     QWEN3_8B,
@@ -32,7 +34,9 @@ from roofline import (
     max_num_seqs_from_slo,
     prefill_bytes,
     seats_under_prefill_interference,
+    token_budget_ceiling,
     tpot_floor,
+    tpot_with_interference,
     ttft_floor,
 )
 
@@ -597,6 +601,123 @@ def fleet_router_table() -> None:
           f"{room:.0f} and affinity past N = {room * replicas:.0f}")
 
 
+RUN2_SWEEP = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          "sweep", "mi300x-run-2-{}.json")
+
+
+def run2_sweep() -> tuple[dict, dict]:
+    """The serve and bench rows runsheet mi300x-run-2 launches, as the sweep reads them."""
+    with open(RUN2_SWEEP.format("serve")) as serve, open(RUN2_SWEEP.format("bench")) as bench:
+        return json.load(serve), json.load(bench)
+
+
+def interference_tpot(accel, batch: int, prompt: int, output: int) -> float:
+    """TPOT in seconds by run 1's interference model, fed floors at the mean context."""
+    step = tpot_floor(QWEN3_8B, accel, batch, prompt + output // 2).seconds
+    alone = ttft_floor(QWEN3_8B, accel, prompt).seconds
+    return tpot_with_interference(step, batch, alone, output)
+
+
+def run2_running(budget: int, limits: dict, prompt: int, output: int) -> tuple[float, str]:
+    """A saturated row's running count, and every limit that sets it: a row cannot split a tie."""
+    limits = {"token budget": token_budget_ceiling(budget, prompt, output), **limits}
+    low = min(limits.values())
+    return low, " = ".join(k for k, v in limits.items() if v == low)
+
+
+def mi300x_run2_table() -> None:
+    """Run 1's coefficients faced, and what each lever should move -- runsheet mi300x-run-2.
+
+    MI300X_RUN1 throughout (docs/SLO.md section 9); rows and caps come from the
+    sweep's JSON, run 1's figures from its read-out.
+    """
+    import measured_mi300x_run1 as run1    # the read-out, not a copy of its numbers
+
+    prompt, out = 4000, 200
+    accel = MI300X_RUN1
+    serve, bench = run2_sweep()
+    budgets = sorted({row["max_num_batched_tokens"] for row in serve.values()})
+    (seq_cap,) = {row["max_num_seqs"] for row in serve.values()}
+    levels = sorted(row["max_concurrency"] for row in bench.values()
+                    if "random_input_len" not in row)
+    lengths = sorted(row["random_input_len"] for row in bench.values()
+                     if "random_input_len" in row)
+    saturated, levels = levels[-1], levels[:-1]
+
+    pool = kv_cache_tokens(QWEN3_8B, accel, GMU) * (1 - POOL_SHORTFALL)
+    seats = int(pool // (prompt + out))
+    alone = ttft_floor(QWEN3_8B, accel, prompt).seconds
+
+    table_header(
+        "TABLE 12: MI300X run 2 -- run 1's coefficients faced, and the levers",
+        f"MI300X at eff_mem {accel.achieved_bandwidth} and mfu {accel.mfu}, both "
+        f"fitted by run 1 and faced here for the first time. The decode step is "
+        f"taken at the mean context, {prompt} + {out // 2}; TPOT p50 adds the "
+        f"other seats' prefills spread over {out} decode steps, the model run 1 "
+        f"wrote after the fact, which carries no budget term. So it predicts the "
+        f"same TPOT p50 at every max_num_batched_tokens for as long as prefill "
+        f"costs the same, and the running count is what the budget moves. "
+        f"docs/benchmarks/mi300x-run1.md sections 5-6.",
+        f"{'row':>14}{'decode step':>14}{'TTFT alone':>13}"
+        f"{'TPOT p50':>11}{'inside 50 ms':>15}",
+    )
+    for batch in levels:
+        step = tpot_floor(QWEN3_8B, accel, batch, prompt + out // 2).seconds
+        tpot = interference_tpot(accel, batch, prompt, out)
+        ttft = f"{alone * 1e3:.1f} ms" if batch == 1 else "-"
+        inside = "yes" if tpot <= TPOT_TARGET else "no"
+        print(f"{f'c{batch:03d}':>14}{step * 1e3:>11.2f} ms{ttft:>13}"
+              f"{tpot * 1e3:>8.2f} ms{inside:>15}")
+    for length in lengths:
+        step = tpot_floor(QWEN3_8B, accel, 1, length + out // 2).seconds
+        ttft = ttft_floor(QWEN3_8B, accel, length).seconds
+        print(f"{f'c001-in{length}':>14}{step * 1e3:>11.2f} ms"
+              f"{f'{ttft * 1e3:.1f} ms':>13}{'-':>11}{'-':>15}")
+    crossing = next(c for c in range(1, seq_cap + 1)
+                    if interference_tpot(accel, c, prompt, out) > TPOT_TARGET)
+    print()
+    print(f"  TPOT p50 crosses 50 ms at c = {crossing}; run 1 placed it near 29 "
+          f"from measured rows. p99 is not modelled: run 1's crossed between "
+          f"8 and 32, near 20 by interpolation")
+
+    print()
+    print(f"{'budget':>10}{'prefill steps':>15}{'ceiling':>10}"
+          f"{f'running at c{saturated}':>18}{'set by':>30}")
+    print("-" * 83)
+    for budget in budgets:
+        steps = "/".join(str(math.ceil(n / budget)) for n in sorted((*lengths, prompt)))
+        running, binds = run2_running(
+            budget, {"max_num_seqs": seq_cap, "concurrency": saturated,
+                     "KV pool": seats}, prompt, out)
+        print(f"{budget:>10}{steps:>15}"
+              f"{token_budget_ceiling(budget, prompt, out):>10.1f}"
+              f"{running:>18.0f}{binds:>30}")
+    print()
+    print(f"  prefill steps for {', '.join(str(n) for n in sorted((*lengths, prompt)))}"
+          f"-token prompts. The pool seats {seats} at {prompt + out} tokens after "
+          f"the {POOL_SHORTFALL:.1%} shortfall at the smallest budget; a larger "
+          f"budget raises the peak activation it pays for, so checkpoint A is "
+          f"read per serve row")
+
+    print()
+    print(f"{'mfu':>10}{'TTFT alone, 4 000':>20}{'seats inside 50 ms, p50':>26}")
+    print("-" * 56)
+    for mfu in (accel.mfu, 0.20, 0.25, 0.30, MI300X.mfu):
+        faster = replace(accel, mfu=mfu)
+        ttft = ttft_floor(QWEN3_8B, faster, prompt).seconds
+        inside = max(c for c in range(1, seq_cap + 1)
+                     if interference_tpot(faster, c, prompt, out) <= TPOT_TARGET)
+        print(f"{mfu:>10.3f}{ttft * 1e3:>17.1f} ms{inside:>26}")
+
+    l40s = run1.L40S_COST["plateau"]
+    plateau = run1.rows()[f"c{saturated:03d}"]["output_tps"]
+    even = MI300X_HOURLY / (l40s * 3600) * 1e6
+    print()
+    print(f"  the plateau breaks even with the L40S's ${l40s}/1M at {even:.0f} "
+          f"output tok/s, {even / plateau - 1:+.1%} on run 1's {plateau:.1f} at "
+          f"c{saturated}, ${MI300X_HOURLY}/h")
+
+
 def _finite(value: float | None) -> float | None:
     """inf -> None: a ratio is inf at zero seats, and JSON has no Infinity."""
     return None if value is None or math.isinf(value) else value
@@ -847,13 +968,13 @@ def what_if(accelerator: str = "l40s-run1",
 
 
 def main(argv=None) -> int:
-    """No arguments prints the eleven tables; --what-if prints one chosen point.
+    """No arguments prints the twelve tables; --what-if prints one chosen point.
 
     The tables take no flags, because docs/SLO.md quotes their rows.
     """
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--what-if", action="store_true",
-                        help="print one operating point instead of the ten "
+                        help="print one operating point instead of the twelve "
                              "tables, from the parameters below")
     parser.add_argument("--accelerator", choices=sorted(ACCELERATORS),
                         help="which card, and which coefficients with it "
@@ -902,7 +1023,7 @@ def main(argv=None) -> int:
                 (["--json"] if args.json else [])
         parser.error(f"{', '.join(flags)} "
                      f"{'mean' if len(flags) > 1 else 'means'} nothing without "
-                     "--what-if: the eleven tables are fixed operating points "
+                     "--what-if: the twelve tables are fixed operating points "
                      "and take no parameters")
 
     if args.what_if:
@@ -929,6 +1050,7 @@ def main(argv=None) -> int:
         table()
     sweep_length_table(MI300X, batch=1, number=10)
     fleet_router_table()
+    mi300x_run2_table()
     print()
     return 0
 

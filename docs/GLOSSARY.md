@@ -1350,7 +1350,7 @@ above assume exactly that (*Architectures that break the standard arithmetic*).
 
 **`--what-if`** (`bench/predictions.py`) — prints one operating point of the
 reader's choosing — card, context length, prompt length, TPOT and TTFT targets,
-`gpu_memory_utilization`, KV dtype, hourly rate — instead of the eleven fixed
+`gpu_memory_utilization`, KV dtype, hourly rate — instead of the twelve fixed
 tables. The tables take no parameters on purpose: `docs/SLO.md` quotes their
 rows, so a flag that moved them would be a flag that edits a derivation. Every
 line it prints is still a floor.

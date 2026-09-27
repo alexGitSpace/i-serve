@@ -1,0 +1,7 @@
+{
+  "b2048": {"max_num_batched_tokens": 2048, "max_num_seqs": 256},
+  "b8192": {"max_num_batched_tokens": 8192, "max_num_seqs": 256},
+  "triton": {"max_num_batched_tokens": 2048, "max_num_seqs": 256, "attention_backend": "TRITON_ATTN"},
+  "aiter-fa": {"max_num_batched_tokens": 2048, "max_num_seqs": 256, "attention_backend": "ROCM_AITER_FA"},
+  "b4096": {"max_num_batched_tokens": 4096, "max_num_seqs": 256}
+}

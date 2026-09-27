@@ -850,6 +850,72 @@ def test_mi300x_run1_interference_needs_no_budget_term():
         assert abs(model - row["tpot_p50_ms"]) / row["tpot_p50_ms"] < 0.03, (name, model)
 
 
+# --- table 12: MI300X run 2 ---------------------------------------------------
+# Run 1's coefficients, faced by docs/benchmarks/runsheets/mi300x-run-2.md.
+
+
+def test_run2_decode_steps_include_run1s_refitted_rows():
+    """Table 12's steps at c001-c032 are 6.97, 8.71, 10.69, 12.68, 14.66 ms; three are run 1's §9 refitted rows."""
+    for batch, ms in ((1, 6.97), (8, 8.71), (16, 10.69), (24, 12.68), (32, 14.66)):
+        step = tpot_floor(QWEN3_8B, MI300X_RUN1, batch, 4100).seconds * 1e3
+        assert round(step, 2) == ms, (batch, step)
+
+
+def test_run2_ttft_alone_at_three_prompt_lengths():
+    """At mfu 0.166 a lone prefill takes 128.1, 256.3 and 512.5 ms at 2 000, 4 000 and 8 000 tokens."""
+    for tokens, ms in ((2000, 128.1), (4000, 256.3), (8000, 512.5)):
+        ttft = ttft_floor(QWEN3_8B, MI300X_RUN1, tokens).seconds * 1e3
+        assert round(ttft, 1) == ms, (tokens, ttft)
+
+
+def test_run2_interference_model_crosses_50_ms_at_30():
+    """TPOT p50 by the budget-free model: 42.15 ms at c024, over 50 ms from c = 30."""
+    tpot = lambda c: predictions.interference_tpot(MI300X_RUN1, c, 4000, 200)
+    assert round(tpot(24) * 1e3, 2) == 42.15, tpot(24)
+    assert tpot(29) <= INTERACTIVE_TPOT < tpot(30), (tpot(29), tpot(30))
+
+
+def test_run2_running_count_and_what_sets_it():
+    """98 and 195 set by the budget; at 8 192 the cap and the client tie at 256, so the row cannot test 390."""
+    serve, bench = predictions.run2_sweep()
+    fixed = {"max_num_seqs": 256, "concurrency": 256, "KV pool": 267}
+    got = [predictions.run2_running(b, fixed, 4000, 200) for b in (2048, 4096, 8192)]
+    assert [round(n) for n, _ in got] == [98, 195, 256], got
+    assert [by for _, by in got] == ["token budget", "token budget",
+                                     "max_num_seqs = concurrency"], got
+    assert {r["max_num_batched_tokens"] for r in serve.values()} == {2048, 4096, 8192}
+    assert max(r["max_concurrency"] for r in bench.values()) == 256
+
+
+def test_run2_seats_inside_50_ms_by_mfu():
+    """At mfu 0.166, 0.20, 0.25, 0.30 and 0.45 the model seats 29, 33, 40, 45 and 60 inside 50 ms."""
+    def inside(mfu):
+        accel = replace(MI300X_RUN1, mfu=mfu)
+        return max(c for c in range(1, 257)
+                   if predictions.interference_tpot(accel, c, 4000, 200) <= INTERACTIVE_TPOT)
+    assert [inside(m) for m in (0.166, 0.20, 0.25, 0.30, 0.45)] == [29, 33, 40, 45, 60]
+
+
+def test_run2_plateau_breaks_even_with_the_l40s_at_633():
+    """$1.99/h against the L40S's $0.873/1M needs 633 output tok/s, 19.1 % over run 1's c256."""
+    even = predictions.MI300X_HOURLY / (mi300x_run1.L40S_COST["plateau"] * 3600) * 1e6
+    plateau = mi300x_run1.rows()["c256"]["output_tps"]
+    assert round(even) == 633, even
+    assert round(even / plateau - 1, 3) == 0.191, plateau
+    assert close(cost_per_1m_tokens(even, predictions.MI300X_HOURLY),
+                 mi300x_run1.L40S_COST["plateau"], 1e-9)
+
+
+def test_run2_serve_rows_move_one_lever_against_b2048():
+    """Every serve row pins max_num_seqs 256 and differs from b2048 in exactly one key."""
+    serve, _ = predictions.run2_sweep()
+    base = serve["b2048"]
+    assert all(r["max_num_seqs"] == 256 for r in serve.values()), serve
+    for name, row in serve.items():
+        moved = {k for k in set(base) | set(row) if base.get(k) != row.get(k)}
+        assert len(moved) == (0 if name == "b2048" else 1), (name, moved)
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
