@@ -139,29 +139,31 @@ different regimes, which is why they get separate tuning knobs.
 
 Everything above assumes MI300X (§3). The first measurements are taken on a rented
 **NVIDIA L40S** — 48 GB GDDR6, 864 GB/s, 362 TFLOP/s BF16 **dense** (the datasheet
-prints "362 / 733", and 733 is the sparsity figure). The MI300X runs come later, on
-credits reserved for them; the reason for two cards, and the requirement that every
+prints "362 / 733", and 733 is the sparsity figure). The MI300X's first run
+followed on 2026-09-27; the reason for two cards, and the requirement that every
 predicted-vs-measured row name the one it used, are in §9.
 
-| | MI300X, derived | L40S, derived | **L40S, run 1** |
-|---|---|---|---|
-| Memory | 192 GiB @ 5.3 TB/s | 48 GB @ 864 GB/s | 44.39 GiB visible |
-| BF16 dense | 1.307 PFLOP/s | 362 TFLOP/s | — |
-| `achieved_bandwidth` | 0.70 assumed | 0.70 assumed | **0.83 measured** |
-| `mfu` | 0.45 assumed | 0.45 assumed | **0.439 measured** |
-| TPOT floor, batch 1, empty context | 4.42 ms | 27.1 ms | **22.9 ms** |
-| TTFT floor, 2 000-token prompt | 47.3 ms | 170.6 ms | 174.8 ms |
-| Queue share of the 300 ms TTFT budget | 84% | 43% | 42% |
-| KV space at `gpu_memory_utilization = 0.9` | 169 GB | 26.8 GB | **24.9 GB** |
-| Sequences at 4 000 context — memory allows | 286 | 45 | **41** |
-| Sequences at 4 000 context — a 50 ms TPOT allows | 286 | 23 | **32** decode step, **12** as served |
-| Which limit binds | a tie, counted as latency | latency, by 2× | latency, by 3.4× |
+| | MI300X, derived | **MI300X, run 1** | L40S, derived | **L40S, run 1** |
+|---|---|---|---|---|
+| Memory | 192 GiB @ 5.3 TB/s | 191.69 GiB visible | 48 GB @ 864 GB/s | 44.39 GiB visible |
+| BF16 dense | 1.307 PFLOP/s | — | 362 TFLOP/s | — |
+| `achieved_bandwidth` | 0.70 assumed | **0.46 measured** | 0.70 assumed | **0.83 measured** |
+| `mfu` | 0.45 assumed | **0.166 measured** | 0.45 assumed | **0.439 measured** |
+| TPOT floor, batch 1, empty context | 4.42 ms | 6.73 ms at the fit | 27.1 ms | **22.9 ms** |
+| TTFT floor, 2 000-token prompt | 47.3 ms | 128.1 ms at the fit; **116.4 ms** measured | 170.6 ms | 174.8 ms |
+| Queue share of the 300 ms TTFT budget | 84% | 61% from the measured | 43% | 42% |
+| KV space at `gpu_memory_utilization = 0.9` | 169 GB | **165.8 GB** | 26.8 GB | **24.9 GB** |
+| Sequences at 4 000 context — memory allows | 286 | 281, from the logged blocks | 45 | **41** |
+| Sequences at 4 000 context — a 50 ms TPOT allows | 286 | **8–32** as served | 23 | **32** decode step, **12** as served |
+| Which limit binds | a tie, counted as latency | **latency, as served**; running saturates at ~100 | latency, by 2× | latency, by 3.4× |
 
-The third column is measurement, not derivation, and it is **L40S only** — the
-MI300X column keeps its uncalibrated coefficients until a run on that card
-faces them (§9). Every figure in it, and the difference between 32 and 12 in the
-second-to-last row, is derived and argued in
-[benchmarks/l40s-baseline.md](benchmarks/l40s-baseline.md).
+The two *run 1* columns are measurement, except the cells marked as a floor at
+the run's fit or as derived from its logged pool; the *derived* columns keep
+their uncalibrated coefficients so a prediction can still be printed against
+them (§9). Every L40S figure, and the difference between 32 and 12, is argued in
+[benchmarks/l40s-baseline.md](benchmarks/l40s-baseline.md); every MI300X one in
+[benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md), including why its
+running count saturated below both limits this section derives.
 
 The last row is why this card was chosen for the first runs rather than a
 cheaper one.
@@ -309,7 +311,7 @@ Two conclusions:
 
 **Memory capacity and the interactive latency budget bind at the same point.**
 A full card lands at 49.9 ms TPOT against a 50 ms target. (Derived at 192e9 B,
-the two sat 8% apart.) Raising
+before MI300X run 1 read the card as 192 GiB, the two sat 8% apart.) Raising
 `gpu_memory_utilization` therefore buys nothing — the SLO breaks at the same
 moment the memory runs out. It buys nothing on the L40S either, for the opposite
 reason: there the latency limit is reached at 23 sequences while 45 already fit,
@@ -322,7 +324,11 @@ and a capacity limit, never trial and error. Which of the two binds is a
 property of the card and the target rather than a general rule: on MI300X
 the two tie (286 fit, 286 the SLO permits, and a tie counts as latency-bound),
 on L40S latency binds (23 permitted against 45 that fit; measured, 12 against
-41). Quoting one of the two
+41). Measured on the MI300X, latency bound as served, between 8 and 32 seats,
+consistent with prefill interference at an `mfu` of 0.166 rather than with the
+decode step; the pool and the cap were never reached, because at 4 000 / 200 tokens and a
+2 048-token step budget the engine held ~100 sequences running — the token-budget
+ceiling ([benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §5–6). Quoting one of the two
 without the other is how a card ends up configured against the constraint it is
 not actually against — and quoting either without saying whether it is derived
 or measured is how a run-1 coefficient ends up in a run-2 decision (§9).
@@ -616,10 +622,14 @@ Three readings, and the order is the order an operator needs them in:
 
 **Not yet priced:**
 
-- **The MI300X row.** Both inputs — the rate and the throughput — arrive with
-  the first run on that card; the formula does not change.
+- **The MI300X at a configuration chosen for it.** MI300X run 1 priced the card
+  at this repository's L40S geometry and AMD's $1.99/h: at the throughput plateau
+  $1.03 per 1M output tokens against the L40S's $0.87, 19 % dearer; inside the SLO
+  the two sit within the gap between measured rows
+  ([benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §7). The geometry was
+  chosen for parity, not for the card; the formula does not change.
 - **Headroom.** `minReplicaCount` above the mean load buys per-request TTFT (§4)
-  and is paid in idle card-hours. Runs 1–3 measured one card, never a fleet, so
+  and is paid in idle card-hours. No run here has measured a fleet, so
   this is a parameter of the scaler's configuration, not a figure.
 - **Reasoning tokens.** A `$/1M` figure that does not separate reasoning from
   answering tokens prices the wrong thing (§8, §10).
@@ -690,8 +700,9 @@ Two things about it that matter more than the value:
 
 - **It belongs to a card and a phase.** 0.83 is L40S × decode × BF16 KV ×
   vLLM 0.27.1 × FlashAttention 2. The MI300X figures in this document keep 0.70
-  and stay unvalidated; transplanting the measurement would produce a table that
-  looks calibrated and is not.
+  as the prior; MI300X run 1 fitted 0.46 against it, and transplanting either
+  card's measurement to the other would produce a table that looks calibrated
+  and is not.
 - **The direction stated in earlier versions of this section was wrong.** It
   expected efficiency to be *worst* at batch 1, where launch and attention
   overhead amortise over nothing. Batch 1 measured 0.867, the best point in the
@@ -729,13 +740,22 @@ measured decode MFU would replace it rather than confirm it.
 ### What run 1 also corrected, which was not a coefficient at all
 
 The concurrency ceiling in §6 subtracts only the weights from
-`memory_bytes × gpu_memory_utilization`. Three further terms are paid before the
-KV pool is carved — non-torch allocations, the peak activation, and the CUDA
-graph pool — and on the L40S they cost 7% of the derived pool. `gpu_memory_utilization` is a
-fraction of the *card*, not of the cache. The measured
-breakdown is in the baseline write-up; the ceiling here is left as the clean
-arithmetic it is, with the caveat that it is an upper bound and the startup log
-is the number to act on.
+`memory_bytes × gpu_memory_utilization`. Further terms are paid before the KV pool
+is carved — non-torch allocations and the peak activation — and on the L40S they
+cost 7% of the derived pool. `gpu_memory_utilization` is a fraction of the
+*card*, not of the cache. The measured breakdown is in the baseline write-up; the
+ceiling here is left as the clean arithmetic it is, with the caveat that it is an
+upper bound and the startup log is the number to act on.
+
+MI300X run 1 corrected two things about that paragraph
+([benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §2). **The shortfall
+transfers as neither a percentage nor a constant**: the terms are a few GiB, and
+they moved between two launches of one configuration — 2.88 GiB, then 0.77 GiB
+with a warm compile cache — so the same card's shortfall was 2.1 % and then
+0.75 %. And **the CUDA graph pool is not among them on vLLM 0.27.1's V2
+model runner**: it is captured after the pool is carved and not set aside for, so
+the engine holds 92.1 % of an MI300X at a 0.90 setting. `bench/predictions.py`
+takes the larger MI300X shortfall for its tables.
 
 ### The rules for the table that scores all of this
 
@@ -761,7 +781,8 @@ within 1.1% of each other, and their mean is 0.01% from the prediction. At 32
 sequences the miss is 1.5%; under a Poisson arrival process it is under 2.2% up to
 the goodput peak; with the KV dtype halved it is under 5% at three concurrencies.
 The coefficient is now a measured property of L40S × decode × vLLM 0.27.1, no
-longer a fit. The MI300X still has none.
+longer a fit. The MI300X has a fit from its first run — `eff_mem` 0.46,
+`mfu` 0.166 — and no run that has faced it.
 
 Two limits on that statement, both from the same run. It degrades to a
 one-directional 8% once the card saturates and the queueing model behind the
@@ -805,7 +826,8 @@ the same three, held to 0.24%.
 - [x] Validate floors against `vllm bench serve` — run 1, 2026-08-18, L40S only
 - [x] Calibrate `eff_mem` and `mfu` from measurement, recording per row which
       coefficient was used and whether it was fitted to that same run (§9) —
-      done for the L40S; **still open for the MI300X**
+      done for the L40S; MI300X run 1 fitted 0.46 / 0.166, a hypothesis until
+      a run that did not produce them faces them
 - [x] Re-face the calibrated 0.83 with a run that did not produce it (§9) —
       run 2, 2026-08-23; it holds to 0.01% at 13 sequences and under 5% wherever
       the median ITL is still a decode step
@@ -866,7 +888,16 @@ the same three, held to 0.24%.
       the pool ends block B's curve: `max_num_seqs` = 256 does, with 65 requests
       queued behind it (run 3 §5). §6 derives the seat count as a `min()` of two
       limits and this is a third, entering exactly where prefix caching sends the
-      other two away
+      other two away. MI300X run 1 found the running count held by a fourth:
+      the token-budget ceiling, ~100 at 4 000 / 200 tokens with the pool and
+      the cap short of binding, while latency bound as served
+      ([benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §5)
+- [ ] **Account for the MI300X's `mfu` of 0.166.** Prefill ran at a third of the
+      prior and TTFT grew faster than the prompt (×2.21, ×2.50 per doubling);
+      the backend, the GEMMs, the chunking of a prompt across steps, the host
+      stack and the virtual function are candidates the run could not tell
+      apart. Until it is accounted for, every MI300X figure that
+      contains prefill is derived from a coefficient nobody can explain
 - [ ] **Price prefix caching against a distribution of prefixes**, not one. Run 3
       shared a single 3 200-token prefix across every request, which measures the
       ceiling of what `h` is worth; a fleet holds several prefixes and evicts
@@ -886,8 +917,8 @@ the same three, held to 0.24%.
       dollars. The figure is the SLO-respecting one; raw cost per output token
       moves the opposite way past the goodput peak. Consolidating it exposed one
       arithmetic error in run 1 §7 (21× was the token-count factor, the real
-      ratio is 7.7×), now corrected in both places. **Still open for the
-      MI300X**, and for headroom — a fleet cost this repository has not measured
+      ratio is 7.7×), now corrected in both places. The MI300X is priced at the
+      L40S's geometry only (§7), and headroom — a fleet cost — is not measured
 - [ ] **`--max-model-len 9000` is undefended, and the origin of the number is
       unrecovered.** It is set in `deploy/manifests/base/deployment.yaml` and
       nothing in this repository derives it. Two things are computed *from* it:

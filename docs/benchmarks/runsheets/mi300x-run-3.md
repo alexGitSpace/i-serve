@@ -7,11 +7,39 @@ prediction written before it (`router/README.md` §8). **This sheet is that
 prediction.** It asks one question — *what does sending a request to the replica
 that already holds its prefix buy, and what does having two replicas cost in the
 first place?* — and it asks it in the regime where the answer is not obviously
-"nothing": a card where capacity binds.
+"nothing": a card where capacity binds — a premise MI300X run 1 has put in question
+(status, below).
 
 **Status: written 2026-09-19, before any card exists and before run 1 has been
 taken. Not reviewed** — `docs/adding-a-run.md` §1 says a sheet is reviewed and
 committed before renting, and neither has happened for this one.
+
+**Re-derived 2026-09-27, after MI300X run 1** (`docs/benchmarks/mi300x-run1.md`):
+the figures below are table 11 at `memory_bytes` = 192 GiB, with run 1's larger
+measured pool shortfall, 2.1 %, in the retained-prefix count, where they were
+192e9 and the L40S's 7 %. Four of run 1's findings bear on this sheet, and the
+review has to weigh them before renting:
+
+- **The capacity limit is no longer ahead of latency by 8 %.** At one context
+  the two derived limits tie. Table 11 prints capacity by the clean arithmetic at
+  a 4 200-token seat, 273 (~267 after the 2.1 %, which it applies only to the
+  retained-prefix count), against 286 by latency at a 4 000-token read — a
+  context mismatch as much as a gap.
+- **Latency as served bound far below both**: at `h` = 0, TPOT p99 crossed 50 ms
+  between 8 and 32 seats, consistent with prefill interference at an `mfu` of
+  0.166 (run 1 §6). At `h` = 0.8 the linear part of each prefill scales by
+  800 / 4 000; the attention part does not, because the 800 new tokens still
+  attend over the whole prompt. Whether 32 seats per engine sit inside the target
+  is the question this sheet's seat effect now depends on.
+- **The token-budget ceiling does not apply here**: at 800 prefilled tokens it is
+  2 048 × 200 / 1 000 ≈ 410 per engine, above the cap and far above block B's 32.
+- **Each engine holds its CUDA graphs outside its share**: vLLM 0.27.1 does not
+  set memory aside for them. Run 1 captured 4.12 GiB at `max_num_seqs` 256; this
+  sheet's serve lines leave it at the card's default of 1024, which captures more
+  decode graphs, so read each engine's `Graph capturing finished … took` line —
+  the pair holds 2 × (86.3 GiB + that), not 172.5 GiB.
+
+Blocks A and B stay as written until the review decides.
 
 **Runs are numbered per card**, so "run 3" is this one and the L40S's third run
 is named with its card wherever both appear below. **There is no
@@ -61,7 +89,7 @@ this run is third in the queue and first to be cut if the window closes.
 | Run 3: the `h` = 0 overhead of prefix caching is +0.027 % | Transfers as a decision, not a number: both arms serve with the cache on, so the arms differ in the routing policy alone |
 | `kind`, 2026-09-19: the router routes, and a stale fleet costs 29 % of requests | Routing behaviour only. It says nothing about TTFT or seats, which is why this sheet exists (`router/README.md` §8) |
 | MI300X `eff_mem`, `mfu`, and the prefill interference | **Run 1's**, fitted on the card this run uses. Quote them with the run that produced them, never the L40S's (`docs/SLO.md` §9) |
-| §6: which limit binds is a property of the card | The MI300X is capacity-bound by 8 %, and a second engine does not change that (asserted in `bench/tests/test_roofline.py`). It is the reason this run is on this card: on the L40S the seats a fleet frees are idle capacity already |
+| §6: which limit binds is a property of the card | Derived, the MI300X's two limits tie at a common context, and a second engine subtracts the same weights from both, so the tie holds (asserted in `bench/tests/test_roofline.py`). Measured by run 1, latency as served binds first at `h` = 0 — see the status note |
 
 ---
 
@@ -165,9 +193,9 @@ grep -E 'GPU KV cache size|Maximum concurrency|prefix_caching|max_num_batched_to
 
 | Log line | Predicted | Source | On a miss |
 |---|---|---|---|
-| `GPU KV cache size`, solo at 0.90 | **1 060 655** tokens derived, **~986 000** with the 7 % shortfall | table 11 | Either figure within 3 % is a pass and the other is the finding — run 1's argument for 3 % over §9's 5 % applies unchanged. Run 1 read this same line and it outranks both |
-| `GPU KV cache size`, each engine of the pair at 0.45 | **474 718** derived, **~441 000** corrected | table 11 | Same rule |
-| The pair's two pools summed | **949 436** against the solo engine's own figure | table 11 | The difference, **111 219 tokens**, *is* the second copy of the weights. A sum that does not show it means the flag was not obeyed and §3 has nothing to measure |
+| `GPU KV cache size`, solo at 0.90 | **1 123 065**, run 1's logged pool; **1 147 072** derived | run 1, table 11 | Within §9's 5 % of run 1's figure is a pass: the same card, flags and image, and run 1's two launches differed by 1.4 %. The two figures are 2.1 % apart, so the two-band rule run 1 used no longer separates them |
+| `GPU KV cache size`, each engine of the pair at 0.45 | **517 926** derived, **~507 000** corrected | table 11 | Within 5 % of the corrected figure |
+| The pair's two pools summed | **1 035 852** derived, against the solo engine's own figure | table 11 | The difference, **111 220 tokens**, *is* the second copy of the weights. A sum that does not show it means the flag was not obeyed and §3 has nothing to measure |
 | `prefix_caching` | **True** everywhere | V1 default | If false, relaunch: every level in §4 asks for a hit rate |
 | `max_num_batched_tokens` | **2 048** everywhere | the launch line | A different value moves the interference and makes run 1's fit inapplicable |
 | attention backend, `block_size`, dtype | whatever run 1 recorded | run 1 | Not gates, except the backend: one that differs from run 1's invalidates the borrowed fit, and that is a stop rather than a note |
@@ -211,12 +239,12 @@ python3 bench/harness.py --scenario fleet-bill-half --accelerator mi300x \
   --out /workspace/run3/results/pair-8001 &
 ```
 
-Predicted (table 11), against the uncalibrated 0.70 until run 1 replaces it:
+Predicted (table 11), against the uncalibrated 0.70; run 1 fitted 0.46, and these rows have not been re-derived at it:
 
 | Quantity | One engine | Two engines | Difference |
 |---|---|---|---|
-| KV pool, tokens | 1 060 655 | 949 436 | **−111 219 (−10.5 %)** |
-| Seats at a 4 200-token seat, capacity | 252 | 226 | **−26** |
+| KV pool, tokens | 1 147 072 | 1 035 852 | **−111 220 (−9.7 %)** |
+| Seats at a 4 200-token seat, capacity | 273 | 246 | **−27** |
 | Seats at 50 ms, latency, 4 000 tokens | 286 | 258 | **−28** |
 | Decode step at 64 seats fleet-wide | 14.60 ms | 19.02 ms | **+4.42 ms (+30 %)** |
 
@@ -242,7 +270,7 @@ Five working sets × two policies, at 64 seats across the fleet, 32 per engine,
 prompts of 4 000 tokens behind a shared prefix of 3 200 — the construction that
 measured `h` = 0.800 on every cached level of run 3.
 
-The model, from table 11: a replica retains about **96** prefixes after the
+The model, from table 11: a replica retains about **116** prefixes after the
 shortfall and the live sequences. Under `round_robin` a replica sees all N
 prefixes; under affinity it sees N/R. So the same pool holds twice the working
 set, and what that is worth depends on where N falls:
@@ -251,9 +279,9 @@ set, and what that is worth depends on where N falls:
 |---|---|---|---|---|
 | 32 | 32 / 16 | 0.800 | 0.800 | 24.4 |
 | 64 | 64 / 32 | 0.800 | 0.800 | 48.8 |
-| 128 | 96 / 64 | 0.600 | 0.800 | 48.7 |
-| 256 | 96 / 96 | 0.300 | 0.600 | 0.0 |
-| 512 | 96 / 96 | 0.150 | 0.300 | 0.0 |
+| 128 | 116 / 64 | 0.728 | 0.800 | 79.9 |
+| 256 | 116 / 116 | 0.364 | 0.728 | 0.0 |
+| 512 | 116 / 116 | 0.182 | 0.364 | 0.0 |
 
 The router goes in front of the pair, and the arm is the flag on it:
 
@@ -280,18 +308,18 @@ therefore one replica chosen by the fallback.
 
 **Two regimes, and locating the boundary is the point.** While both policies
 retain everything, affinity's saving is *space* — it buys seats, at 0.76 each
-per prefix, and it has to clear block A's 26-seat bill before the arrangement is
+per prefix, and it has to clear block A's 27-seat bill before the arrangement is
 worth anything at all: **below N ≈ 35, two engines on one card are a loss no
 routing policy recovers.** Once `round_robin` is evicting, both policies hold the
-same 96 prefixes, there is no space left to differ over, and the whole difference
+same 116 prefixes, there is no space left to differ over, and the whole difference
 moves into `h`.
 
 **The order the prefixes are asked for is a decision, and it is made here.** The
 `h` columns above assume any prefix is as likely to be asked for next as any
 other. The harness draws them in strict rotation, which is LRU's worst case: a
 prefix comes round again only after every other one has evicted it, so the hit
-rate does not fall to a share, it falls to **zero** — `round_robin` past N = 96
-and affinity past N = 192. Both cliffs assume vLLM evicts least-recently-used
+rate does not fall to a share, it falls to **zero** — `round_robin` past N = 116
+and affinity past N = 233. Both cliffs assume vLLM evicts least-recently-used
 blocks, which this repository has *not* read at the pinned tag
 (`vllm/v1/core/block_pool.py`): it is the one input to this block that is
 neither measured nor derived, and reading it costs nothing and no credits. That is the grid this run sends, unchanged, and it
@@ -325,15 +353,17 @@ Read off block B's levels; nothing new is sent.
 of TTFT falls by `(1 − h)` — the one knob that moves TTFT and TPOT the same way
 (`docs/SLO.md` §6). At 4 000 tokens the MI300X prefill floor is **94.5 ms**
 (table 10), so the predicted difference between the arms is `94.5 × (h_prefix −
-h_rr)` ms per request: **28.4 ms** at N = 256 under the uniform model, **75.6 ms**
+h_rr)` ms per request: **34.4 ms** at N = 256 under the uniform model, **75.6 ms**
 at N = 128 under the rotation the run actually sends. Compared arm against arm at
 the same load, never against the floor: queueing sits on top of it and is the
 larger term (`docs/SLO.md` §4).
 
-**Seats: not derivable on this card until run 1 says otherwise.**
+**Seats: not derivable on this card until a fit is registered.**
 `INTERFERENCE_FITS` has no MI300X entry on purpose — lending the L40S's line to a
 different memory system and a different attention backend would print a seat
-count with no run behind any part of it. Once run 1 has fitted it:
+count with no run behind any part of it. Run 1 measured the interference and wrote
+a model from two rows after the fact (`docs/benchmarks/mi300x-run1.md` §6);
+whether that is registered is the review's decision. Once a fit is registered:
 
 ```
 python3 bench/predictions.py --what-if --accelerator mi300x-run1 --hit-rate <measured h>

@@ -270,7 +270,20 @@ alert resolves at the first evaluation after its expression turns empty.
 ## Hardware and performance model
 
 **L40S** — NVIDIA's 48 GB data-centre GPU, the card runs 1–3 rented. **MI300X** —
-AMD's 192 GB accelerator, the card the next runsheet is written for.
+AMD's accelerator with 192 GiB of HBM, the card
+[MI300X run 1](benchmarks/mi300x-run1.md) rented; the byte count and why it is
+GiB are in [SLO.md](SLO.md) §3.
+
+**Virtual function (VF)** — the slice of a physical GPU a hypervisor hands to one
+virtual machine. A cloud droplet's MI300X is one: `rocm-smi` names it
+"MI300X VF".
+
+**`rocm-smi`** — AMD's command-line monitor for ROCm devices: product, memory,
+the processes holding the GPU through its kernel driver (KFD). The `nvidia-smi`
+of this card.
+
+**gfx942** — the ISA target name of the MI300 series, which `rocm-smi` prints and
+ROCm kernels are compiled for.
 
 **Coefficient provenance** — whether an empirical coefficient is *measured* on
 the card it is used for or is a *prior* carried from a spec sheet. A property of
@@ -573,8 +586,9 @@ why the MI300X runs pin it.
 before either limit `max_num_seqs` is derived from: the latency limit or the
 capacity limit ([SLO.md](SLO.md) §6). Run 3 met it at `h` = 0.8 on the L40S, 65
 requests queued behind 256 with the pool and the SLO both idle; on the MI300X at
-4 000 tokens the default 256 is predicted to sit *between* the pool and the
-latency limit (`bench/predictions.py` table 9). The symptom is
+4 000 tokens the pinned 256 was predicted to sit *between* the pool and the
+latency limit, and MI300X run 1 never reached it — the token-budget ceiling
+bound first ([benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §5). The symptom is
 `num_requests_waiting` > 0 with `num_requests_running` pinned at the cap and no
 preemptions. Open item in [SLO.md](SLO.md) §10.
 
@@ -594,6 +608,14 @@ sequences that fit, at an unchanged pool.
 decode together. It is what chunked prefill spends: a prompt longer than the budget
 is consumed over several steps, so this knob decides how much a long prefill delays
 everyone else's decode.
+
+**Token-budget ceiling** — the running count an engine settles at when a queue
+stands and every step is a full `max_num_batched_tokens` budget:
+`n = budget × output / (input + output)`, counting only the tokens that are
+prefilled. It binds when it is smaller than both the pool's seat count and
+`max_num_seqs`. Derived after MI300X run 1 to fit its running count and not yet
+faced; the test that would face it is in
+[benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §5.
 
 **`long_prefill_token_threshold`** — a cap on how many tokens of a *single* long
 prefill may enter one step, sitting beside `max_num_batched_tokens` rather than
@@ -623,7 +645,10 @@ separate question this repo has not measured.
 from what the card, the dtype and the build support, and printed in the startup log.
 On sm89 with a BF16 cache the choice is `FLASH_ATTN` (FlashAttention 2); an FP8 cache
 removes it from the candidate list and `FLASHINFER` is selected instead. On ROCm
-the first candidate is `ROCM_ATTN` (`vllm/platforms/rocm.py`). It matters
+the first candidate is `ROCM_ATTN`, ahead of `ROCM_AITER_FA` (only with
+`VLLM_ROCM_USE_AITER=1`), `ROCM_AITER_UNIFIED_ATTN` (when AMD's `aiter` package is
+installed, on CDNA 3 or later) and `TRITON_ATTN` (`vllm/platforms/rocm.py`). It
+matters
 because a run that changes the cache dtype has silently changed the kernel too —
 measured worth 0.8% of the decode step on the L40S
 ([benchmarks/l40s-run2.md](benchmarks/l40s-run2.md) §5), but measured rather than
@@ -1103,8 +1128,9 @@ the first visible one.
 
 ## Operations
 
-**Run** — one paid session on a rented card, numbered in order (runs 1–3 so
-far); each is preceded by a runsheet and followed by a report.
+**Run** — one paid session on a rented card, numbered in order per card (L40S
+runs 1–3, MI300X run 1 so far); each is preceded by a runsheet and followed by a
+report.
 
 **Sweep** — a series of benchmark runs that steps **one** parameter through a range
 while every other input is held fixed, so the resulting curve is attributable to
@@ -1310,8 +1336,8 @@ server, cluster or card. The floors come from `bench/roofline.py`.
 
 **`--accelerator`** (`bench/harness.py`, `bench/predictions.py`) — which
 `Accelerator` instance the floors and gates are computed against: `l40s-run1`
-carries coefficients fitted to run 1, `l40s` and `mi300x` carry the unvalidated
-priors. Which is which matters more than the value; `docs/SLO.md` §9. The names
+and `mi300x-run1` carry coefficients fitted to each card's run 1, `l40s` and
+`mi300x` carry the unvalidated priors. Which is which matters more than the value; `docs/SLO.md` §9. The names
 come from the `ACCELERATORS` registry in `bench/roofline.py`, which is where a
 card is added.
 
@@ -1420,7 +1446,7 @@ judged rather than taken.
 **Predicted-vs-measured table** (§9 table) — one row per prediction a run faced,
 naming the coefficient that produced it, whether that coefficient was fitted to
 the same run, and the card. Rules in [SLO.md](SLO.md) §9; the front-page chart
-is a drawn selection of the three runs' tables.
+is a drawn selection of the runs' tables.
 
 **Stall guard** — the per-token threshold of the batch class, named for what it
 is: a catch for a pathological stall, not a promise anyone reads. Setting it

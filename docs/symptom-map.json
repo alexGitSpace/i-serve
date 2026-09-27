@@ -579,9 +579,9 @@
    "id": "tpot.cache.max-num-seqs-binds",
    "symptom": "tpot",
    "kind": "branch",
-   "text": "…and once the pool stops binding, the ceiling is `max_num_seqs` = 256: zero preemptions at 13 req/s, 65 queued behind the sequence limit (run 3 §5) — on the MI300X it is predicted to bind *before* the pool at c = 288, `waiting` > 0 with `running` pinned at 256 (MI300X runsheet §3)",
+   "text": "…and once the pool stops binding, the ceiling is `max_num_seqs` = 256: zero preemptions at 13 req/s, 65 queued behind the sequence limit (run 3 §5) — on the MI300X it was predicted to bind *before* the pool at c = 288, and never did: `running` stopped at ~100, the token-budget ceiling below (MI300X run 1 §5)",
    "evidence": null,
-   "source": "benchmarks/runsheets/mi300x-run-1.md#3--the-sweep--twelve-rows-one-server-4585-min",
+   "source": "benchmarks/mi300x-run1.md#5-where-the-running-count-settles-and-where-throughput-does",
    "when": {
     "all": [
      {
@@ -787,7 +787,7 @@
    "id": "oom.gmu.rarely",
    "symptom": "oom",
    "kind": "trap",
-   "text": "`gpu_memory_utilization` is rarely the lever: on the MI300X the SLO breaks at the same point memory runs out — on the L40S the headroom is real and idle, 41 seats against 12 the SLO permits (run 1 §6)",
+   "text": "`gpu_memory_utilization` is rarely the lever: derived, on the MI300X the SLO breaks at the same point memory runs out, and measured it broke first, with the pool under 37 % — on the L40S the headroom is real and idle, 41 seats against 12 the SLO permits (run 1 §6)",
    "evidence": null,
    "source": "benchmarks/l40s-baseline.md#6-what-ships",
    "requires": []
@@ -796,7 +796,7 @@
    "id": "oom.pool.not-budget-minus-weights",
    "symptom": "oom",
    "kind": "trap",
-   "text": "And the pool is not \"budget − weights\": activations and CUDA graphs are paid first, 7 % on the L40S. Read the log, never the derivation (SLO.md §9)",
+   "text": "And the pool is not \"budget − weights\": activations and non-torch memory are paid first — a few GiB that moved from 2.88 to 0.77 between two launches of one config, 7 % of an L40S pool and 0.75–2.1 % of an MI300X one. Read the log, never the derivation (SLO.md §9)",
    "evidence": null,
    "source": "SLO.md#9-assumptions-and-how-they-get-validated",
    "requires": []

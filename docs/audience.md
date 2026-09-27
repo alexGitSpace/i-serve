@@ -17,8 +17,8 @@ link to them.
 
 The calculator and the advisor, on the Pages site: the arithmetic of
 `bench/roofline.py` in vanilla JavaScript, for a card, a target, a prompt length,
-a hit rate and a rate of your own, with the measured points of runs 1–3 drawn
-over it where the sliders sit inside the runs' geometry; and
+a hit rate and a rate of your own, with the measured points of the L40S and
+MI300X runs drawn over it where the sliders sit inside the runs' geometry; and
 [symptom-map.md](symptom-map.md) walked as rules over the readings you type in
 from the dashboard. Its claim to be this repository's arithmetic is a parity
 check — a golden grid Python writes, re-run by the page on every load and by CI
@@ -44,7 +44,7 @@ exists to find out where the arithmetic is wrong.
 Read the coefficients in the header line. They are not interchangeable — see
 *Measured, derived, assumed* below.
 
-Then change something that is not the card. `bench/predictions.py` prints ten
+Then change something that is not the card. `bench/predictions.py` prints eleven
 fixed tables with no arguments — the operating points this repository argues
 about — and one operating point of your own with `--what-if`:
 
@@ -62,7 +62,10 @@ The first card runs out of *time* — it cannot re-read that much KV every token
 and still land inside the TPOT target — and on the second, time and *room* run
 out at the same seat: the gap is 1.00, a tie. That is a property of a card
 against a target, never a rule about GPUs, and it is the distinction
-[SLO.md](SLO.md) §4 and §6 exist to draw. `--help` lists the rest:
+[SLO.md](SLO.md) §4 and §6 exist to draw. Both lines are floors. Measured, the
+MI300X's latency limit bound as served at 8–32 seats, through prefill
+interference, and the pool and the cap were never reached
+([benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §5–6). `--help` lists the rest:
 context length, prompt length, both targets, `gpu_memory_utilization`, the KV
 dtype and the hourly rate.
 
@@ -229,9 +232,11 @@ the model means changing both, and the table above is the checklist.
 Three kinds of number live here and they are never mixed:
 
 - **Measured** — produced by a run, with raw evidence committed under
-  `docs/benchmarks/raw/`. On the accelerator side only `l40s-run1` carries
-  measured coefficients: `eff_mem = 0.83` from twelve decode levels, `mfu = 0.439`
-  from one uncontended prefill.
+  `docs/benchmarks/raw/`. On the accelerator side two entries carry measured
+  coefficients: `l40s-run1`, `eff_mem = 0.83` from twelve decode levels and
+  `mfu = 0.439` from one uncontended prefill, faced by two later runs; and
+  `mi300x-run1`, `eff_mem = 0.46` from five decode rows and `mfu = 0.166` from one
+  uncontended prefill, faced by none yet.
 - **Derived** — computed from architecture and vendor specifications. Every floor
   and ceiling in [SLO.md](SLO.md) is derived, and each is a prediction until a run
   faces it.
