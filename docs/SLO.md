@@ -65,7 +65,7 @@ SLO is as much an engineering decision as the lower one.
 | KV heads `n_kv` | 8 | `num_key_value_heads` (GQA, 32 Q heads) |
 | `head_dim` | 128 | `head_dim` |
 | Accelerator | 1 × AMD Instinct MI300X | — |
-| HBM3 capacity | 192 GB | AMD spec table |
+| HBM3 capacity | 192 GiB (206.2e9 B) | AMD's ROCm spec table lists 192 GiB; the data sheet prints "192 GB"; `rocm-smi`'s 205 822 885 888 B is 192 GiB less 320 MiB |
 | Peak memory bandwidth | 5.3 TB/s | AMD spec table |
 | Peak BF16, **dense** | 1.307 PFLOP/s | AMD spec table — *not* the sparsity row |
 | Assumed achieved bandwidth | 70% of peak | empirical |
@@ -145,17 +145,17 @@ predicted-vs-measured row name the one it used, are in §9.
 
 | | MI300X, derived | L40S, derived | **L40S, run 1** |
 |---|---|---|---|
-| Memory | 192 GB @ 5.3 TB/s | 48 GB @ 864 GB/s | 44.39 GiB visible |
+| Memory | 192 GiB @ 5.3 TB/s | 48 GB @ 864 GB/s | 44.39 GiB visible |
 | BF16 dense | 1.307 PFLOP/s | 362 TFLOP/s | — |
 | `achieved_bandwidth` | 0.70 assumed | 0.70 assumed | **0.83 measured** |
 | `mfu` | 0.45 assumed | 0.45 assumed | **0.439 measured** |
 | TPOT floor, batch 1, empty context | 4.42 ms | 27.1 ms | **22.9 ms** |
 | TTFT floor, 2 000-token prompt | 47.3 ms | 170.6 ms | 174.8 ms |
 | Queue share of the 300 ms TTFT budget | 84% | 43% | 42% |
-| KV space at `gpu_memory_utilization = 0.9` | 156 GB | 26.8 GB | **24.9 GB** |
-| Sequences at 4 000 context — memory allows | 265 | 45 | **41** |
+| KV space at `gpu_memory_utilization = 0.9` | 169 GB | 26.8 GB | **24.9 GB** |
+| Sequences at 4 000 context — memory allows | 286 | 45 | **41** |
 | Sequences at 4 000 context — a 50 ms TPOT allows | 286 | 23 | **32** decode step, **12** as served |
-| Which limit binds | memory, by 8% | latency, by 2× | latency, by 3.4× |
+| Which limit binds | a tie, counted as latency | latency, by 2× | latency, by 3.4× |
 
 The third column is measurement, not derivation, and it is **L40S only** — the
 MI300X column keeps its uncalibrated coefficients until a run on that card
@@ -165,7 +165,7 @@ second-to-last row, is derived and argued in
 
 The last row is why this card was chosen for the first runs rather than a
 cheaper one.
-On MI300X the two limits land within 8% of each other (§6), and a near-coincidence
+On MI300X the two derived limits coincide at 286 (§6), and a coincidence
 teaches nothing about which one is which. On L40S the SLO permits 23 sequences
 while memory holds 45, so `max_num_seqs` has to be *derived* rather than read off
 the capacity — and `min(SLO limit, memory limit)` becomes a decision instead of a
@@ -298,17 +298,18 @@ alone, is what batching actually is.
 ## 6. Concurrency ceiling
 
 ```
-KV space   = 192 GB × 0.9 (gpu_memory_utilization) − 16.4 GB  = 156 GB
-           = 156e9 / 147 456                                  ≈ 1.06 M KV tokens
-             ≈ 265 sequences at 4 000 tokens of context
+KV space   = 192 GiB × 0.9 (gpu_memory_utilization) − 16.4 GB = 169 GB
+           = 169e9 / 147 456                                  ≈ 1.15 M KV tokens
+             ≈ 286 sequences at 4 000 tokens of context
 
-at that fill:  bytes_moved = 172.8 GB  →  32.6 ms  ÷ 0.70  =  46.6 ms TPOT
+at that fill:  bytes_moved = 185.1 GB  →  34.9 ms  ÷ 0.70  =  49.9 ms TPOT
 ```
 
 Two conclusions:
 
-**Memory capacity and the interactive latency budget bind at almost the same
-point.** A full card lands at 46.6 ms TPOT against a 50 ms target. Raising
+**Memory capacity and the interactive latency budget bind at the same point.**
+A full card lands at 49.9 ms TPOT against a 50 ms target. (Derived at 192e9 B,
+the two sat 8% apart.) Raising
 `gpu_memory_utilization` therefore buys nothing — the SLO breaks at the same
 moment the memory runs out. It buys nothing on the L40S either, for the opposite
 reason: there the latency limit is reached at 23 sequences while 45 already fit,
@@ -319,28 +320,30 @@ capacity would buy more of them.
 **`max_num_seqs` is derived, not discovered** — the `min()` of a latency limit
 and a capacity limit, never trial and error. Which of the two binds is a
 property of the card and the target rather than a general rule: on MI300X
-capacity binds (265 fit against 286 the SLO permits), on L40S latency binds (23
-permitted against 45 that fit; measured, 12 against 41). Quoting one of the two
+the two tie (286 fit, 286 the SLO permits, and a tie counts as latency-bound),
+on L40S latency binds (23 permitted against 45 that fit; measured, 12 against
+41). Quoting one of the two
 without the other is how a card ends up configured against the constraint it is
 not actually against — and quoting either without saying whether it is derived
 or measured is how a run-1 coefficient ends up in a run-2 decision (§9).
 
 The batch class cannot exploit its looser 200 ms threshold on a single
-accelerator: memory binds first, at the same 1.06 M KV tokens. Its lever is
+accelerator: memory binds first, at the same 1.15 M KV tokens. Its lever is
 capacity, not scheduling.
 
 ### Highest-leverage knob: FP8 KV cache
 
 Halving KV bytes per token doubles the number of tokens that fit in the same
-156 GB, while `bytes_moved` at full occupancy — and therefore TPOT — stays put.
+169 GB, while `bytes_moved` at full occupancy — and therefore TPOT — stays put.
 
 ```
-FP8 KV:  73 728 B/token  →  2.12 M KV tokens  →  ~530 sequences at 4 k context
-         TPOT unchanged at ~46.6 ms, aggregate throughput ~2×
+FP8 KV:  73 728 B/token  →  2.29 M KV tokens  →  ~573 sequences at 4 k context
+         TPOT unchanged at ~49.9 ms, aggregate throughput ~2×
 ```
 
 TPOT holds because `bytes_moved` at the new ceiling is the one it replaced:
-530 × 4 000 × 73 728 is the same 156 GB of KV as 265 × 4 000 × 147 456.
+2 × 286 × 4 000 × 73 728 is the same 169 GB of KV as 286 × 4 000 × 147 456 (the
+ceiling itself floors to 573).
 
 **What FP8 KV cannot do is change which limit binds.** Both limits have the form
 `n = (X − weights) / (context_len × kv_bytes_per_token)`, differing only in `X`
@@ -352,7 +355,7 @@ halving it doubles both and cancels out of their ratio, as does `context_len`:
 ratio = (X_latency − weights) / (X_memory − weights)
 ```
 
-MI300X therefore stays capacity-bound by the same 8% at FP8, and the L40S stays
+MI300X therefore stays tied at FP8, and the L40S stays
 latency-bound by the same 2×. The terms left in that expression name the knobs
 that *do* move it: the weights (quantise them), the bandwidth (a different
 card), or the target itself.
@@ -409,8 +412,8 @@ card.** It reuses the KV of a shared prompt prefix across requests, so:
    once instead of once per sequence. With a 3 200-token prefix shared by every
    request, the pool's 169 833 logged tokens seat `(169 833 − 3 200) / 900 ≈ 185`
    sequences instead of 41. On the L40S that is worth nothing — latency binds at
-   a third of even the old figure — and on the MI300X, where the two limits sit
-   8% apart (§6), it would be the whole story. The same flag is a capacity knob
+   a third of even the old figure — and on the MI300X, where the two derived
+   limits tie (§6), it would be the whole story. The same flag is a capacity knob
    or a no-op depending on the card.
 3. It removes **prefill work**, which is the term that actually separates 12 from
    31. This is the channel the section was built on, and it is the one that came
@@ -645,8 +648,8 @@ the answering phase in TPOT. The clean one-to-one correspondence is gone.
 
 **Concurrency collapses.** Reasoning tokens enter the KV cache like any others.
 The §6 ceiling assumed 4 000 tokens of context per sequence; a reasoning request
-can reach 32 000. At that length the same 1.06 M KV tokens support roughly
-**33 concurrent sequences instead of 265** — an eightfold reduction, and the neat
+can reach 32 000. At that length the same 1.15 M KV tokens support roughly
+**35 concurrent sequences instead of 286** — an eightfold reduction, and the neat
 coincidence between memory capacity and latency budget no longer holds.
 
 **TPOT is not stationary within a request.** `bytes_moved` grows as the trace

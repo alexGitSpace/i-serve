@@ -29,7 +29,7 @@ window.MODEL_DATA = {
    "hourly_rate": 2.0,
    "hourly_rate_provenance": "assumption: $100 of AMD Developer Cloud credits budgeted as roughly 50 h; re-check before quoting",
    "measured": false,
-   "memory_bytes": 192000000000.0,
+   "memory_bytes": 206158430208,
    "mfu": 0.45,
    "name": "AMD Instinct MI300X",
    "peak_bandwidth": 5300000000000.0,

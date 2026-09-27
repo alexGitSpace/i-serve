@@ -56,12 +56,13 @@ The line worth watching is `max_num_seqs`, because it names which constraint you
 are actually against:
 
       max_num_seqs          31   bound by latency, gap 1.39x
-      max_num_seqs          252  bound by capacity, gap 1.08x
+      max_num_seqs          273  bound by latency, gap 1.00x
 
 The first card runs out of *time* — it cannot re-read that much KV every token
-and still land inside the TPOT target — and the second runs out of *room*. That
-is a property of a card against a target, never a rule about GPUs, and it is the
-distinction [SLO.md](SLO.md) §4 and §6 exist to draw. `--help` lists the rest:
+and still land inside the TPOT target — and on the second, time and *room* run
+out at the same seat: the gap is 1.00, a tie. That is a property of a card
+against a target, never a rule about GPUs, and it is the distinction
+[SLO.md](SLO.md) §4 and §6 exist to draw. `--help` lists the rest:
 context length, prompt length, both targets, `gpu_memory_utilization`, the KV
 dtype and the hourly rate.
 

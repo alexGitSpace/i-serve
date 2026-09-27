@@ -206,21 +206,21 @@ def test_identical_bytes_means_identical_tpot_and_a_64x_cost_gap():
 # --- section 6: the concurrency ceiling -------------------------------------
 
 def test_kv_pool_matches_the_startup_log_prediction():
-    """1.06 M KV tokens on MI300X -- the figure vLLM prints at boot (section 9)."""
-    assert close(kv_cache_tokens(QWEN3_8B, MI300X, GMU), 1.06e6, 0.01e6)
+    """1.15 M KV tokens on MI300X at 192 GiB; the startup log outranks it (section 9)."""
+    assert close(kv_cache_tokens(QWEN3_8B, MI300X, GMU), 1.147e6, 0.001e6)
     assert close(kv_cache_tokens(QWEN3_8B, L40S, GMU), 0.1817e6, 0.001e6)
 
 
 def test_seats_at_four_thousand_context():
-    """265 and 45 -- section 4's table, and the runsheet's checkpoint A."""
-    assert concurrency_ceiling(QWEN3_8B, MI300X, 4000, GMU) == 265
+    """286 and 45 -- section 4's table."""
+    assert concurrency_ceiling(QWEN3_8B, MI300X, 4000, GMU) == 286
     assert concurrency_ceiling(QWEN3_8B, L40S, 4000, GMU) == 45
 
 
 def test_a_full_card_lands_just_inside_the_target():
-    """46.6 ms against 50 -- 6.8% of headroom, which is 'fits exactly', not 'fits'."""
-    floor = tpot_floor(QWEN3_8B, MI300X, batch_size=265, context_len=4000)
-    assert close(floor.seconds, 46.6 * MS, 0.1 * MS)
+    """49.9 ms against 50 -- 0.2% of headroom, which is 'fits exactly', not 'fits'."""
+    floor = tpot_floor(QWEN3_8B, MI300X, batch_size=286, context_len=4000)
+    assert close(floor.seconds, 49.9 * MS, 0.1 * MS)
     assert floor.seconds < INTERACTIVE_TPOT
 
 
@@ -228,11 +228,11 @@ def test_fp8_kv_doubles_the_seats_at_constant_tpot():
     """Section 6's falsifiable prediction, and an FP8 KV run exists to break it."""
     fp8 = replace(QWEN3_8B, kv_dtype_bytes=1)
 
-    assert close(kv_cache_tokens(fp8, MI300X, GMU), 2.12e6, 0.01e6)
-    assert concurrency_ceiling(fp8, MI300X, 4000, GMU) == 530
+    assert close(kv_cache_tokens(fp8, MI300X, GMU), 2.294e6, 0.001e6)
+    assert concurrency_ceiling(fp8, MI300X, 4000, GMU) == 573
 
-    base = tpot_floor(QWEN3_8B, MI300X, 265, 4000).seconds
-    doubled = tpot_floor(fp8, MI300X, 530, 4000).seconds
+    base = tpot_floor(QWEN3_8B, MI300X, 286, 4000).seconds
+    doubled = tpot_floor(fp8, MI300X, 2 * 286, 4000).seconds
     # Not approximately equal -- identical. Twice the sequences at half the bytes
     # each is the same bytes_moved, and TPOT is a function of bytes_moved alone.
     assert close(doubled, base, 1e-9)
@@ -245,7 +245,8 @@ def test_fp8_kv_cannot_change_which_limit_binds():
         before = max_num_seqs(QWEN3_8B, accel, 4000, INTERACTIVE_TPOT, GMU)
         after = max_num_seqs(fp8, accel, 4000, INTERACTIVE_TPOT, GMU)
         assert before.bound_by == after.bound_by
-        assert after.by_capacity == 2 * before.by_capacity
+        # within one seat: each count is floored separately
+        assert abs(after.by_capacity - 2 * before.by_capacity) <= 1
 
 
 # --- the inversions ---------------------------------------------------------
@@ -275,11 +276,12 @@ def test_an_unreachable_target_returns_zero_not_a_negative():
 
 
 def test_which_limit_binds_is_a_property_of_the_card():
-    """Section 4's last row: capacity by 8% on MI300X, latency by 2x on L40S."""
+    """Section 4's last row: a tie on MI300X, which counts as latency; latency by 2x on L40S."""
     mi300x = max_num_seqs(QWEN3_8B, MI300X, 4000, INTERACTIVE_TPOT, GMU)
-    assert mi300x.sequences == 265
-    assert mi300x.bound_by == "capacity"
-    assert close(mi300x.ratio, 1.08, 0.01)
+    assert mi300x.sequences == 286
+    assert mi300x.by_capacity == mi300x.by_latency
+    assert mi300x.bound_by == "latency"
+    assert close(mi300x.ratio, 1.00, 0.001)
 
     l40s = max_num_seqs(QWEN3_8B, L40S, 4000, INTERACTIVE_TPOT, GMU)
     assert l40s.sequences == 23
@@ -288,9 +290,9 @@ def test_which_limit_binds_is_a_property_of_the_card():
 
 
 def test_reasoning_length_context_collapses_concurrency():
-    """Section 8: 33 sequences instead of 265, an eightfold reduction."""
-    assert concurrency_ceiling(QWEN3_8B, MI300X, 32000, GMU) == 33
-    assert max_num_seqs(QWEN3_8B, MI300X, 32000, INTERACTIVE_TPOT, GMU).sequences == 33
+    """Section 8: 35 sequences instead of 286, an eightfold reduction."""
+    assert concurrency_ceiling(QWEN3_8B, MI300X, 32000, GMU) == 35
+    assert max_num_seqs(QWEN3_8B, MI300X, 32000, INTERACTIVE_TPOT, GMU).sequences == 35
 
 
 # --- the runsheet levels ----------------------------------------------------
@@ -372,7 +374,7 @@ def test_cost_is_the_rate_divided_by_tokens_per_hour():
 def test_batching_divides_a_fixed_bill():
     """The same card, the same hour: 26x the cost per token at batch 1."""
     alone = cost_per_1m_tokens(aggregate_tokens_per_sec(QWEN3_8B, MI300X, 1, 4000), 2.00)
-    full = cost_per_1m_tokens(aggregate_tokens_per_sec(QWEN3_8B, MI300X, 265, 4000), 2.00)
+    full = cost_per_1m_tokens(aggregate_tokens_per_sec(QWEN3_8B, MI300X, 286, 4000), 2.00)
     assert close(alone / full, 26, 0.5)
 
 
@@ -841,18 +843,15 @@ def test_a_second_engine_costs_exactly_one_more_copy_of_the_weights():
 
     assert abs(capacity_bill - QWEN3_8B.weights_bytes / seat_capacity) < 1.0, capacity_bill
     assert abs(latency_bill - QWEN3_8B.weights_bytes / seat_latency) < 1.0, latency_bill
-    assert (capacity_bill, latency_bill) == (26, 28), (capacity_bill, latency_bill)
+    assert (capacity_bill, latency_bill) == (27, 28), (capacity_bill, latency_bill)
 
 
-def test_the_fleet_stays_capacity_bound_on_this_card():
-    """A second engine subtracts the same weights from both limits, so the 8 %
-    between them in docs/SLO.md section 6 does not close. If a fleet flipped the
-    MI300X to latency-bound, every sentence that section writes about this card
-    would need re-deriving, and the run would be about something else.
-    """
+def test_the_fleet_keeps_the_tie_on_this_card():
+    """A second engine subtracts the same weights from both limits, so the MI300X's tie holds."""
     fleet = predictions.fleet_model(QWEN3_8B, 2)
     seats = max_num_seqs(fleet, MI300X, 4200, INTERACTIVE_TPOT, 0.90)
-    assert seats.bound_by == "capacity", seats
+    assert seats.by_capacity == seats.by_latency, seats
+    assert seats.bound_by == "latency", seats
 
 
 def test_affinity_repays_the_fleet_bill_only_past_a_working_set():
@@ -860,13 +859,13 @@ def test_affinity_repays_the_fleet_bill_only_past_a_working_set():
 
     Affinity stores each prefix once instead of once per replica, which is
     (R - 1) x N x prefix_tokens of pool -- 0.76 seats per prefix at 3 200
-    tokens in a 4 200-token seat. It has to clear the 26-seat bill above before
+    tokens in a 4 200-token seat. It has to clear the 27-seat bill above before
     the arrangement is worth anything at all, and that is the first number the
     runsheet asks the run to face.
     """
     per_prefix = (2 - 1) * predictions.SHARED_PREFIX_TOKENS / 4200
-    break_even = 26 / per_prefix
-    assert 34.0 < break_even < 35.0, break_even
+    break_even = 27 / per_prefix
+    assert 35.0 < break_even < 36.0, break_even
 
 
 def test_affinity_stops_buying_space_once_both_policies_fill_the_pool():
@@ -902,8 +901,8 @@ def test_what_if_agrees_with_table_3_on_the_same_operating_point():
     in milliseconds where the other passes seconds, say.
     """
     seats = max_num_seqs(QWEN3_8B, MI300X, 4000, INTERACTIVE_TPOT, 0.9)
-    assert seats.bound_by == "capacity", seats
-    assert seats.sequences == 265, f"table 3 row moved: {seats.sequences}"
+    assert seats.bound_by == "latency", seats
+    assert seats.sequences == 286, f"table 3 row moved: {seats.sequences}"
 
 
 def test_what_if_defaults_reserve_room_to_generate():

@@ -116,7 +116,7 @@ QWEN2_5_7B = Model(
 
 MI300X = Accelerator(
     name="AMD Instinct MI300X",
-    memory_bytes=192e9,
+    memory_bytes=192 * 2**30,   # "192 GB" is GiB: rocm-smi shows 191.69 GiB
     peak_bandwidth=5.3e12,
     peak_flops=1.307e15,
     achieved_bandwidth=0.70,    # unvalidated; SLO.md section 9, not measured on this card

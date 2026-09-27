@@ -162,7 +162,7 @@ def decode_table() -> None:
     cases = [
         # accel, batch, context_len
         (MI300X,  64, 4000),   # section 5, the batching table
-        (MI300X, 265, 4000),   # section 6, the full card: 46.6 ms against 50
+        (MI300X, 286, 4000),   # section 6, the full card: 49.9 ms against 50
         (L40S,    45, 4000),   # its capacity limit -- 71 ms, well past the SLO
         (L40S,    23, 4000),   # its latency limit -- 49.55 ms, what ships
         (L40S,     1, 4000),
@@ -198,7 +198,7 @@ def latency_limit_table() -> None:
         # accel, context_len, tpot_target -- the latency half of section 6
         (L40S,   4000, 0.050),   # 23 by latency; 45 fit, so latency binds
         (L40S,   4000, 0.030),   # same card, tighter target: 2 sequences
-        (MI300X, 4000, 0.050),   # 286 by latency; 265 fit, so capacity binds
+        (MI300X, 4000, 0.050),   # 286 by latency; 286 fit, a tie
         (L40S,   4000, 0.020),   # below the batch-1 floor: no batch qualifies
     ]
     table_header(
@@ -231,9 +231,9 @@ def shipping_table() -> None:
     cases = [
         # model, accel, context_len, tpot_target, gpu_memory_utilization
         (QWEN3_8B, L40S,    4000, 0.050, 0.9),   # section 4: latency binds, by 2x
-        (QWEN3_8B, MI300X,  4000, 0.050, 0.9),   # section 4: capacity binds, by 8%
+        (QWEN3_8B, MI300X,  4000, 0.050, 0.9),   # section 4: a tie, counted as latency
         (QWEN3_8B, MI300X, 32000, 0.050, 0.9),   # section 8: reasoning-length context
-        (fp8_kv,   MI300X,  4000, 0.050, 0.9),   # section 6: the falsifiable ~530
+        (fp8_kv,   MI300X,  4000, 0.050, 0.9),   # section 6: the falsifiable ~573
     ]
     table_header(
         "TABLE 3: both limits on max_num_seqs, and which one an operator is against",
@@ -242,7 +242,7 @@ def shipping_table() -> None:
         "latency' how many it can re-read every single token and still land "
         "inside the TPOT target. max_num_seqs is the smaller of the two; 'gap' "
         "is their ratio. On L40S latency binds at half the seats that fit "
-        "(1.96x), on MI300X the two nearly coincide (1.08x) -- a property of "
+        "(1.96x), on MI300X the two coincide (1.00x, and a tie is latency-bound) -- a property of "
         "the card and the target, never a rule about GPUs. The FP8 KV row "
         "doubles both limits and leaves the gap untouched. "
         "docs/SLO.md sections 4 and 6.",
@@ -294,7 +294,7 @@ def cost_table() -> None:
         # accel, batch, context_len, hourly_rate
         (L40S,    23, 4000, L40S_HOURLY),     # what ships on L40S: its latency limit
         (L40S,     1, 4000, L40S_HOURLY),     # one user alone on the card
-        (MI300X, 265, 4000, MI300X_HOURLY),   # what ships on MI300X: its capacity limit
+        (MI300X, 286, 4000, MI300X_HOURLY),   # what ships on MI300X: both limits, tied
         (MI300X,   1, 4000, MI300X_HOURLY),
     ]
     table_header(
