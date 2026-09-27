@@ -1,30 +1,12 @@
 """Every number bench/roofline.py predicts, printed as eleven numbered tables.
 
-Split out of roofline.py because the two change for different reasons: the
-module changes when the physics or the arithmetic does, this file changes after
-every run, as the interesting operating points move. Keeping them together meant
-a diff that touched the model and a diff that touched a print statement looked
-the same.
-
-Run it before spending GPU money -- step 0 of
-`docs/benchmarks/runsheets/l40s-first-run.md` expects these tables open beside
-the pod. Every row names the section of
-docs/SLO.md it holds, and bench/tests/test_roofline.py asserts the same figures, so a
-row that stops matching its comment fails a test rather than being noticed by
-eye.
-
-Not in bench/scenarios/: that directory is for workload definitions the load
-harness sends -- prompts and arrival rates, not predictions about them. Since
-2026-08-29 the harness generates the load itself (bench/harness.py) rather than
-shelling out to `vllm bench serve`, because a controlled prefix cache hit rate
-is not something that tool can be asked for.
+Split from roofline.py because it changes after every run, and the module only
+when the arithmetic does. A runsheet's step 0 opens these tables beside the card;
+each row names the docs/SLO.md section it holds, and bench/tests/test_roofline.py
+asserts the same figures.
 
     python3 bench/predictions.py
     python3 bench/predictions.py --what-if --accelerator mi300x --context-len 32000
-
-The second form is the reader's, not the runsheet's: one operating point of
-their choosing instead of the ten fixed ones. The fixed tables take no
-parameters, because docs/SLO.md quotes their rows.
 """
 
 import argparse
@@ -58,53 +40,33 @@ TTFT_TARGET = 0.300         # section 2, interactive
 TPOT_TARGET = 0.050         # section 2, interactive
 GMU = 0.90                  # the gpu_memory_utilization the runsheet serves at
 
-# The derived KV pool is an over-estimate, and by how much is a measurement:
-# the L40S startup log came in 7.6 % below bench/roofline.py's clean arithmetic
-# (docs/benchmarks/l40s-baseline.md section 2), because non-torch memory, the
-# activation peak and the CUDA graph pool are paid on any card and none of them
-# is modelled. 7 % is the haircut tables 9 and 11 apply before predicting a
-# shelf; the engine's own log still outranks both figures (docs/SLO.md
-# section 9).
+# The L40S startup log came in 7.6 % below the derived pool
+# (docs/benchmarks/l40s-baseline.md section 2); tables 9 and 11 take 7 % off
+# before predicting a shelf, and the engine's log outranks both (docs/SLO.md §9).
 POOL_SHORTFALL = 0.07
 
-# The fleet table's arrangement: two engines on one accelerator, which is the
-# smallest fleet a router can route over and the only one a single-GPU droplet
-# can hold. The prefix length is run 3's -- 3 200 tokens of a 4 000-token
-# prompt, the construction that measured h = 0.800 on every cached level
+# Two engines on one card: the smallest fleet a router can route over, and the
+# only one a single-GPU droplet holds. The prefix is run 3's construction
 # (bench/scenarios/prefix_sweep.py).
 FLEET_REPLICAS = 2
 SHARED_PREFIX_TOKENS = 3_200
 
-# The concurrency table 11's working-set rows are taken at: 64 seats across the
-# fleet, 32 per engine. Fixed rather than swept because the table's variable is
-# the working set, and because both engines are far inside their own latency
-# limits there -- so what the rows show is the pool filling, which is the
-# quantity the routing policy actually moves.
+# Fixed, not swept: table 11's variable is the working set, and at 32 seats per
+# engine both sit far inside their latency limits, so the rows show the pool
+# filling -- the quantity routing moves.
 FLEET_CONCURRENCY = 64
 
-# The two workload classes of docs/SLO.md section 2, verbatim, keyed so that the
-# calculator's preset buttons and bench/export_site_data.py read them from here
-# and nowhere else. Deliberately not a third class: SLO.md *derives* both of
-# these -- 50 ms from reading speed, 200 ms as a guard against stalls nobody is
-# watching -- and a class added to this table without a derivation there would
-# be a target picked by feel, the one thing that document refuses to do. A
-# reader's own target is a --tpot-ms / --ttft-ms argument, not an entry here.
+# docs/SLO.md section 2's two classes, read from here by the calculator and
+# bench/export_site_data.py. No third class without a derivation there; a
+# reader's own target is --tpot-ms / --ttft-ms.
 SLO_CLASSES = {
     "interactive": {"ttft_s": TTFT_TARGET, "tpot_s": TPOT_TARGET},
     "batch": {"ttft_s": 3.000, "tpot_s": 0.200},
 }
 
-# Prefill interference, fitted to run 1's sweep at max_num_batched_tokens 2 048
-# and 4 000-token prompts: TPOT p50 minus median ITL at c = 13 / 23 / 32 is
-# 14.96 / 31.01 / 46.13 ms (docs/benchmarks/l40s-baseline.md section 5), linear
-# in the seat count to within 1% across that range.
-#
-# It is an interpolation over 13..32 seats and not a law: it does not pass
-# through the origin, where interference is zero by construction because there
-# is nobody to interfere. It belongs to this engine, this chunk size and this
-# closed-loop arrival pattern, exactly as eff_mem belongs to one card and one
-# phase -- so it is named for the run that produced it and never reused
-# silently.
+# Prefill interference fitted to run 1 (docs/benchmarks/l40s-baseline.md
+# section 5): an interpolation over 13..32 seats at one chunk size and arrival
+# pattern, not a law -- so it is named for its run and never reused silently.
 L40S_RUN1_INTERFERENCE_SLOPE = 1.640e-3       # seconds of extra step per seat
 L40S_RUN1_INTERFERENCE_INTERCEPT = -6.36e-3   # seconds
 L40S_RUN1_INTERFERENCE_PROVENANCE = (
@@ -112,31 +74,20 @@ L40S_RUN1_INTERFERENCE_PROVENANCE = (
     "4 000-token prompts, max_num_batched_tokens 2 048; its (1 - h) scaling "
     "confirmed by run 3, slope ratio 0.194 against 0.200")
 
-# The fit by accelerator key. TPOT minus median ITL is a scheduler quantity --
-# how much prefill the engine lets into a decode step -- and not a bandwidth
-# one, so the same line serves both L40S entries: they differ only in eff_mem
-# and mfu, and neither enters the interference. There is no MI300X entry on
-# purpose. Lending this line to a card with a different memory system and a
-# different attention backend would print a seat count with no run behind any
-# part of it; what_if_point() says "not derivable" instead, which is true.
-# The models the calculator can be pointed at. Qwen3-8B is the one this stack
-# serves, the one every run measured and the one every figure in docs/ is about;
-# Qwen2.5-7B is a second architecture for comparison only (roofline.py). Adding
-# a third is a Model(...) and a line here -- but only for a dense, GQA,
-# full-attention model, because the formulas are not general (GLOSSARY.md,
-# "Architectures that break the standard arithmetic").
+# Dense, GQA, full-attention models only: the formulas are not general
+# (GLOSSARY.md, "Architectures that break the standard arithmetic"). Qwen2.5-7B
+# is for comparison; Qwen3-8B is the one served and measured.
 MODELS = {
     "qwen3-8b": QWEN3_8B,
     "qwen2.5-7b": QWEN2_5_7B,
 }
 DEFAULT_MODEL = "qwen3-8b"
 
-# The fit below belongs to an engine, a chunk size, a card AND a model: it was
-# measured decoding Qwen3-8B. Lending it to a second architecture would be the
-# same error as lending it to the MI300X, so what_if_point() withholds it and
-# says "not derivable" for any other model.
+# The fit was measured decoding Qwen3-8B; what_if_point() withholds it elsewhere.
 INTERFERENCE_MODEL = "qwen3-8b"
 
+# A scheduler quantity, not a bandwidth one, so both L40S entries share the fit.
+# No MI300X entry on purpose: what_if_point() says "not derivable" instead.
 INTERFERENCE_FITS = {
     "l40s-run1": (L40S_RUN1_INTERFERENCE_SLOPE, L40S_RUN1_INTERFERENCE_INTERCEPT,
                   L40S_RUN1_INTERFERENCE_PROVENANCE),
@@ -144,13 +95,8 @@ INTERFERENCE_FITS = {
              L40S_RUN1_INTERFERENCE_PROVENANCE),
 }
 
-# Hourly rates are contract figures, not physics. The L40S rate is no longer an
-# assumption: read off the RunPod console on 2026-08-15, On-Demand, 1x L40S 48 GB
-# (48 GB VRAM, 62 GB RAM, 16 vCPU). It replaces the 0.89 the plan had guessed --
-# 11% higher, and it moves every $/1M figure in this file by the same 11%,
-# because the rate enters the cost as a plain multiplier. MI300X stays an
-# assumption, implied by $100 of AMD Developer Cloud credits budgeted as roughly
-# 50 h; re-check it before quoting it anywhere.
+# Contract figures, not physics: each provenance string says where its rate came
+# from, and the rate enters every $/1M figure as a plain multiplier.
 L40S_HOURLY = 0.99
 MI300X_HOURLY = 2.00
 L40S_HOURLY_PROVENANCE = ("RunPod console, 2026-08-15, On-Demand, 1x L40S 48 GB "
@@ -158,12 +104,8 @@ L40S_HOURLY_PROVENANCE = ("RunPod console, 2026-08-15, On-Demand, 1x L40S 48 GB 
 MI300X_HOURLY_PROVENANCE = ("assumption: $100 of AMD Developer Cloud credits "
                             "budgeted as roughly 50 h; re-check before quoting")
 
-# The default rate by accelerator key, with the sentence saying where it came
-# from, so that anything naming a card by its --accelerator string -- the
-# --what-if flag, the site export -- gets both together, and so that a test can
-# assert every card in ACCELERATORS has one. Still a default and not a property
-# of the card: roofline.cost_per_1m_tokens takes the rate as a parameter, and
-# --hourly-rate overrides this table for reserved capacity or another provider.
+# A default per --accelerator key, with its provenance; --hourly-rate overrides
+# it, and a test asserts every card in ACCELERATORS has one.
 HOURLY_RATES = {
     "l40s-run1": (L40S_HOURLY, L40S_HOURLY_PROVENANCE),
     "l40s": (L40S_HOURLY, L40S_HOURLY_PROVENANCE),
@@ -176,11 +118,7 @@ PROSE_WIDTH = 88            # comfortable reading width, independent of the tabl
 def table_header(title: str, blurb: str, columns: str = "") -> None:
     """Title, what the table answers, then the column row -- above every table.
 
-    The rules are as wide as the column row itself rather than a fixed 79, so
-    tables that differ by 45 characters of width each get their own underline
-    instead of one arbitrary rule that overshoots half of them. The prose is
-    wrapped narrower than that: a 119-column paragraph is not read, it is
-    skimmed, and these paragraphs exist to be read once beside a running pod.
+    Rules match the column row's width; prose wraps narrower, to be read.
     """
     width = len(columns) if columns else PROSE_WIDTH
     print()
@@ -209,9 +147,8 @@ def sizes() -> None:
     # cleanly into GB. Mixing in GiB is where roofline arithmetic quietly drifts.
     print(f"  KV per token     {QWEN3_8B.kv_bytes_per_token / 1e3:.0f} KB")
 
-    # dataclasses.replace, not a __dict__ copy: it goes through __init__, so a
-    # future validator or __post_init__ runs on the counterfactual too. The
-    # trick only ever worked because nothing validates yet.
+    # replace(), not a __dict__ copy: it goes through __init__, so a future
+    # validator runs on the counterfactual too.
     mha = replace(QWEN3_8B, name="hypothetical MHA", num_kv_heads=32)
     print(f"  KV per token if MHA (n_kv=32)  {mha.kv_bytes_per_token / 1e3:.0f} KB")
 
@@ -219,9 +156,8 @@ def sizes() -> None:
 def decode_table() -> None:
     """TPOT floors at operating points each card can actually hold.
 
-    The L40S batch-64 row this table used to carry was dropped: 37.75 GB of KV
-    against 26.8 GB free is arithmetically fine and operationally meaningless.
-    A floor says what the physics permits, not what the card can seat.
+    A floor says what the physics permits, not what the card can seat, so no row
+    sits past a card's pool.
     """
     cases = [
         # accel, batch, context_len
@@ -253,12 +189,10 @@ def decode_table() -> None:
 
 
 def latency_limit_table() -> None:
-    """max_num_seqs_from_slo with the round trip that checks it.
+    """max_num_seqs_from_slo with the round trip that checks it: n fits, n+1 breaks.
 
-    n must fit the budget and n+1 must break it. Printed rather than asserted
-    here for the same reason roofline() returns bound_by instead of asserting
-    it -- an assert disappears under -O, a column does not. The assert version
-    lives in bench/tests/test_roofline.py, which is where it belongs.
+    Printed, not asserted, because an assert disappears under -O; the assert
+    lives in bench/tests/test_roofline.py.
     """
     cases = [
         # accel, context_len, tpot_target -- the latency half of section 6
@@ -355,12 +289,7 @@ def prefill_table() -> None:
 
 
 def cost_table() -> None:
-    """The same floors as money, which is the only form a customer argues with.
-
-    Every figure here is a floor divided by a rate, so it is the cheapest the
-    card could possibly be -- a real run lands above it, and the gap is the
-    same queueing and overhead the floors leave out.
-    """
+    """The same floors as money: a floor over a rate, so a lower bound."""
     cases = [
         # accel, batch, context_len, hourly_rate
         (L40S,    23, 4000, L40S_HOURLY),     # what ships on L40S: its latency limit
@@ -388,21 +317,12 @@ def cost_table() -> None:
 
 
 def sweep_concurrency_table() -> None:
-    """One floor per level of the concurrency sweep -- runsheet step 4.
+    """One floor per level of the L40S concurrency sweep -- runsheet step 4.
 
-    Tables 1-5 print the operating points the *document* argues about; this one
-    prints the levels a *run* is actually going to send, which is a different
-    list and the reason the runsheet could not be filled from table 1 alone.
-    Every level here has a predicted-vs-measured row waiting for it.
-
-    The last column is the one that is easy to skip: the sweep sends 200 output
-    tokens on top of the 4 000 input, so a seat costs 4 200 tokens of KV, not
-    4 000. The pool seats fewer sequences than the 45 of section 4 as a result,
-    and the top level is therefore predicted to run out of memory rather than
-    merely to be slow -- a falsifiable statement, unlike "watch for preemptions".
-    Which mechanism answers is left to the run: 45 prefills of 4 000 still fit,
-    so the engine may preempt a running sequence or may queue the last requests,
-    and the runsheet's step 4 predicts the pair rather than one of them.
+    Tables 1-5 print the points docs/SLO.md argues about; this prints the levels a
+    run sends. A seat costs 4 200 tokens, input plus output, so the top level is
+    predicted to run out of seats; whether the engine preempts or queues is left
+    to the run.
     """
     ctx, out = 4000, 200
     levels = (1, 4, 8, 16, 23, 24, 32, 45)
@@ -447,20 +367,9 @@ def sweep_concurrency_table() -> None:
 def sweep_length_table(accel=L40S, batch: int = 4, number: int = 7) -> None:
     """Prompt length at a fixed batch -- runsheet step 5, and the MI300X's mfu read.
 
-    Parametric in the card and the batch since 2026-09-04, because the MI300X
-    calibration sweep takes its prefill points at batch 1 -- one request alone
-    on the card is the only level whose TTFT is a prefill and nothing else, and
-    it is the level run 1 fitted mfu to. The defaults reproduce table 7.
-
-    Two floors per level, because the two phases answer differently to the same
-    knob: TTFT doubles with the prompt (prefill is compute-bound and linear in
-    tokens), TPOT creeps (the prompt only enters decode as the KV share of one
-    step's traffic). The 'x prev' columns are the shape the runsheet reads out
-    loud, and reading a ratio is what makes a wrong one visible.
-
-    'max_model_len needed' is the trap this table exists to keep in view: the
-    level sends the prompt *plus* 200 output tokens, and a limit set to the
-    prompt alone rejects every request at the longest level.
+    Batch 1 is the only level whose TTFT is a prefill and nothing else; the
+    defaults reproduce table 7. 'max_model_len needed' adds the 200 output tokens,
+    which a limit set to the prompt alone would reject.
     """
     out = 200
     prompts = (2000, 4000, 8000)
@@ -489,11 +398,8 @@ def sweep_length_table(accel=L40S, batch: int = 4, number: int = 7) -> None:
 def prefix_cache_table() -> None:
     """What a prefix cache hit rate is worth in seats -- docs/SLO.md section 6.
 
-    The only table here whose driving variable is not a property of the card or
-    of the target. h is a property of the traffic: whether customers send the
-    same system prompt. That is why this table has no MI300X row -- the answer
-    would be identical arithmetic on a card where the binding limit is capacity,
-    and the seats it buys would already be gone.
+    h is a property of the traffic, not the card. No MI300X row: capacity binds
+    there, so the seats it would buy are already gone.
     """
     table_header(
         "TABLE 8: prefix cache hit rate against the seat count",
@@ -579,18 +485,8 @@ def mi300x_sweep_table() -> None:
 def fleet_model(model: Model, replicas: int) -> Model:
     """The aggregate a card sees when `replicas` engines serve one model on it.
 
-    Only params_total moves, and that asymmetry is the whole content of this
-    helper. Every engine holds and reads its *own* copy of the weights, so the
-    memory side of every formula is multiplied by the replica count -- both the
-    bytes a decode step reads and the bytes the pool does not get. The compute
-    side is not: a token costs the same FLOPs whichever engine computes it, so
-    params_non_embedding stands, and so does kv_bytes_per_token, which is an
-    architecture fact and knows nothing about processes.
-
-    Valid for engines on ONE accelerator, which is the only arrangement where a
-    single card's bandwidth and a single card's capacity are shared. Two engines
-    on two cards are two instances of `model`, and this helper would say
-    something false about them.
+    Only params_total moves -- each engine reads its own weights, a token's FLOPs
+    and KV bytes do not -- so it holds for engines on ONE accelerator only.
     """
     if replicas < 1:
         raise ValueError("a fleet has at least one engine")
@@ -602,19 +498,9 @@ def fleet_model(model: Model, replicas: int) -> Model:
 def fleet_router_table() -> None:
     """What a second engine costs and what affinity buys back -- runsheet mi300x-run-3.
 
-    The first table here whose subject is an arrangement rather than a card: two
-    engines on one MI300X at half the memory share each, which is the smallest
-    fleet a router has anything to say about. Both halves are capacity
-    arithmetic and neither needs an interference fit, which is why this table
-    can be printed for the MI300X at all -- the seat count at a given h cannot
-    (INTERFERENCE_FITS has no entry for this card, on purpose).
-
-    The two halves answer one question in two regimes, and the regime is set by
-    the working set: how many distinct prompt prefixes the traffic touches.
-    Below the pool's capacity for them, round_robin's cost is *space* -- it
-    stores every prefix on every engine -- and affinity buys seats back. Above
-    it, the pool is full either way and the cost moves into the hit rate, which
-    is what docs/SLO.md section 6 converts into seats and dollars.
+    Capacity arithmetic only, so no interference fit is needed on the MI300X. The
+    working set sets the regime: below the pool's room for prefixes round_robin
+    costs space, above it the cost moves into h (docs/SLO.md section 6).
     """
     ctx, prompt = 4200, 4000
     replicas = FLEET_REPLICAS
@@ -631,11 +517,8 @@ def fleet_router_table() -> None:
     lat_one = max_num_seqs_from_slo(QWEN3_8B, MI300X, prompt, TPOT_TARGET)
     lat_fleet = max_num_seqs_from_slo(fleet, MI300X, prompt, TPOT_TARGET)
 
-    # What one engine's share of the card holds, after the shortfall and after
-    # the live sequences have taken their reservation: the prefixes a replica
-    # can still be holding when the next request arrives. This is the K of the
-    # hit-rate model below, and it is a prediction of the same kind as the pool
-    # -- the startup log and the counters outrank it.
+    # The K of the hit-rate model below: prefixes one engine can still hold once
+    # its live seats have reserved theirs. A prediction; the log outranks it.
     pool_per_engine = kv_cache_tokens(QWEN3_8B, MI300X, GMU / replicas)
     live = per_engine * ctx
     room = (pool_per_engine * (1 - POOL_SHORTFALL) - live) / prefix
@@ -667,19 +550,12 @@ def fleet_router_table() -> None:
     break_even = bill / recovered_per_prefix
 
     print()
-    # The two figures differ only in what a seat costs in each limit: capacity
-    # reserves the whole {ctx}-token seat, the decode step reads the {prompt}
-    # tokens of context that exist while it runs. Same numerator both times --
-    # one more copy of the weights.
     print(f"  the bill: {bill} seats of capacity (a {ctx}-token seat) and "
           f"{lat_one - lat_fleet} of latency ({prompt} tokens of context), "
           f"both of them the second {QWEN3_8B.weights_bytes / 1e9:.1f} GB "
           f"divided by what a seat costs in that limit")
-    # The same bill in the unit block A measures it in. A decode step reads one
-    # copy of the weights per engine, so the pair's step is the single engine's
-    # plus weights / (bandwidth x eff_mem) -- and that difference, unlike the
-    # seat counts above, is what a median ITL at matched total concurrency can
-    # be compared against directly.
+    # The same bill in block A's unit: unlike a seat count, this step difference
+    # compares directly against a median ITL at matched total concurrency.
     step_one = tpot_floor(QWEN3_8B, MI300X, FLEET_CONCURRENCY, prompt)
     step_fleet = tpot_floor(fleet, MI300X, FLEET_CONCURRENCY, prompt)
     print(f"  at {FLEET_CONCURRENCY} seats across the fleet the decode step "
@@ -702,11 +578,7 @@ def fleet_router_table() -> None:
         seen_prefix = min(n / replicas, room)
         h_rr = nominal_h * min(1.0, room / n)
         h_prefix = nominal_h * min(1.0, room * replicas / n)
-        # What affinity leaves free that round_robin does not, counted per
-        # engine and then over the fleet. It goes to zero once both policies
-        # saturate the pool -- there is no space left to differ over, and the
-        # same saving reappears in the two h columns to the left, which is the
-        # regime change this table exists to locate.
+        # Zero once both policies saturate the pool: the saving moves into h.
         recovered = replicas * (seen_rr - seen_prefix) * prefix / ctx
         print(f"{n:>12}{f'{seen_rr:.0f} / {seen_prefix:.0f}':>26}{h_rr:>10.3f}"
               f"{h_prefix:>11.3f}{recovered:>18.1f}")
@@ -724,13 +596,7 @@ def fleet_router_table() -> None:
 
 
 def _finite(value: float | None) -> float | None:
-    """inf -> None, so the dict survives json.dumps(allow_nan=False).
-
-    Roofline.ratio and Concurrency.ratio are math.inf at a batch of zero, and
-    json.dumps writes that as the bare word Infinity, which is not JSON and
-    which JSON.parse in a browser refuses. None is the honest value: at zero
-    seats the gap between two limits is not a question with an answer.
-    """
+    """inf -> None: a ratio is inf at zero seats, and JSON has no Infinity."""
     return None if value is None or math.isinf(value) else value
 
 
@@ -746,36 +612,10 @@ def what_if_point(accelerator: str = "l40s-run1",
                   hit_rate: float = 0.0) -> dict:
     """One operating point, as data. Everything else is a rendering of this.
 
-    The printer below, the --json flag and bench/export_site_data.py all read
-    this dict and compute nothing of their own -- which is what lets the
-    calculator on the Pages site claim its numbers are this repository's: the
-    golden grid it is checked against is rows of this function's output.
-
-    The keys are a contract. bench/tests/test_predictions_json.py freezes the
-    set, because a renamed key breaks the JavaScript silently -- undefined is
-    not an error there, it is a blank cell.
-
-    Three things the dict says that the nine text lines did not:
-
-      * "ttft_floor_uncached" -- the floor at prompt x (1 - h), the tokens the
-        cache leaves to be computed. It is the gate bench/harness.py judges a
-        level against (check_prefill_floor), and the floor a reader with a
-        warm cache should compare their TTFT to. The full-prompt floor stays
-        beside it, because with h = 0 they are the same number.
-      * "service" -- the seats a service can promise once prefill interference
-        is priced in (roofline.seats_under_prefill_interference), for the
-        cards that have a fit. Computed at the same context_len as the rest of
-        the point, prompt + output; table 8 uses the mean occupancy of 4 100,
-        and the 100 tokens are 0.02 ms per seat, a third of a seat at 50 ms.
-        Stated so the ~0.3 seat between this and table 8 reads as a convention
-        and not as a bug.
-      * "error" -- a point with no operating point. Below the weights fitting,
-        or below one sequence, the card cannot serve this configuration, and
-        the dict says so in a sentence instead of raising, because a slider
-        can be dragged there and the page has to be able to say why the cells
-        are blank.
-
-    Every figure is still a floor, so a real run lands above it.
+    The keys are a contract frozen by bench/tests/test_predictions_json.py: the
+    site's JavaScript reads them, and a renamed key there is a blank cell, not an
+    error. "error" is a sentence rather than an exception because a slider can be
+    dragged past any operating point. Every figure is a floor.
     """
     if not 0.0 <= hit_rate <= 1.0:
         raise ValueError("hit_rate is a share of prompt tokens, so 0 <= h <= 1")
@@ -822,6 +662,7 @@ def what_if_point(accelerator: str = "l40s-run1",
     # Prefill first: it needs no KV pool, so it has an answer even where the
     # decode side has none.
     prefill = ttft_floor(model, accel, prompt_tokens)
+    # the floor bench/harness.py's check_prefill_floor gates a level on
     uncached = max(1, round(prompt_tokens * (1.0 - hit_rate)))
     prefill_uncached = ttft_floor(model, accel, uncached)
     point["ttft_floor"] = {
@@ -874,12 +715,10 @@ def what_if_point(accelerator: str = "l40s-run1",
     fit = INTERFERENCE_FITS.get(accelerator) if model_key == INTERFERENCE_MODEL else None
     if fit is not None:
         slope, intercept, provenance = fit
+        # At context_len, not table 8's mean occupancy of 4 100: ~0.3 seat apart
+        # by convention. Floored, never rounded, and the pool must still seat them.
         by_interference = seats_under_prefill_interference(
             model, accel, context_len, tpot_target, slope, intercept, hit_rate)
-        # floor, never round, for the reason max_num_seqs_from_slo gives; and
-        # the pool still has to seat them -- at a long context the capacity
-        # limit binds before the interference does, and a service cannot
-        # promise seats it has no KV for.
         shipped = max(math.floor(by_interference), 0)
         bound_by = "interference"
         if seats.by_capacity < shipped:
@@ -893,10 +732,6 @@ def what_if_point(accelerator: str = "l40s-run1",
             "cost_per_1m_output_tokens": None,
             "fit": {"slope_s_per_seat": slope, "intercept_s": intercept,
                     "provenance": provenance},
-            # Run 3 measured 37.8 seats at h = 0.8 against the 24.3 this line
-            # predicts (docs/SLO.md section 6): the fit is right about the
-            # mechanism and low about the seats once the cache serves most of
-            # the prompt. Said on the number, not in a footnote.
             "note": ("a floor, not an estimate: at h = 0.8 run 3 measured 37.8 "
                      "seats against 24.3 predicted (docs/SLO.md section 6)"
                      if hit_rate > 0.5 else None),
@@ -923,24 +758,9 @@ def what_if(accelerator: str = "l40s-run1",
             hit_rate: float = 0.0) -> None:
     """One operating point, named on the command line, answered three ways.
 
-    The eleven tables above print the operating points *this document* argues
-    about, and docs/SLO.md quotes their rows -- which is exactly why none of
-    them takes a parameter. This one takes nothing else. It answers the question
-    a reader actually arrives with, about their card at their context length,
-    and it is why route 1 of docs/audience.md no longer ends at editing a Python
-    file.
-
-    It is tables 3, 4 and 5 collapsed onto a single point: how many seats the
-    card gives, what one token costs in time, what a million cost in money.
-    Every figure is still a floor, so a real run lands above it -- the gap is
-    the queueing and overhead the arithmetic leaves out, and finding that gap is
-    what docs/benchmarks/ is for.
-
-    A printer and nothing else, since 2026-09-13: every number here is read out
-    of what_if_point(), and the first nine lines are the ones docs/audience.md
-    quotes, so they are kept byte-identical by a test. What follows them is the
-    service view -- the seats once prefill interference is priced in, at the
-    hit rate asked for -- which the hardware view above cannot see.
+    Tables 3, 4 and 5 on the reader's own point (route 1 of docs/audience.md). A
+    printer only: every number comes from what_if_point(), and the first nine
+    lines, which docs/audience.md quotes, are kept byte-identical by a test.
     """
     point = what_if_point(accelerator=accelerator, model=model,
                           context_len=context_len, prompt_tokens=prompt_tokens,
@@ -996,9 +816,7 @@ def what_if(accelerator: str = "l40s-run1",
     print(f"  {'cost':<22}${point['cost_per_1m_output_tokens']:.3f} / 1M "
           f"tokens at ${hourly_rate:.2f}/h")
 
-    # The service view. Everything above is what the hardware permits; this is
-    # what a service can promise once every arriving prompt's prefill lands
-    # inside somebody's decode step -- 31 against 13 on this card at h = 0.
+    # The service view: what can be promised once prefill lands inside decode steps.
     h = f"h={hit_rate:.2f}"
     unc = point["ttft_floor_uncached"]
     print(f"  {f'TTFT floor at {h}':<22}{unc['seconds'] * 1e3:.1f} ms at "
@@ -1029,10 +847,7 @@ def what_if(accelerator: str = "l40s-run1",
 def main(argv=None) -> int:
     """No arguments prints the eleven tables; --what-if prints one chosen point.
 
-    The default is byte-identical to what this file printed before the flags
-    existed, deliberately: step 0 of every runsheet opens these tables beside a
-    pod, and bench/tests/test_roofline.py asserts their figures. A flag that
-    moved them would be a flag that edits docs/SLO.md.
+    The tables take no flags, because docs/SLO.md quotes their rows.
     """
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--what-if", action="store_true",
@@ -1076,10 +891,8 @@ def main(argv=None) -> int:
                              "rows of")
     args = parser.parse_args(argv)
 
-    # A parameter without --what-if would silently print the eleven tables it
-    # cannot touch, which is the one outcome worth an error rather than a shrug.
-    # --json is a store_true, so it is False rather than None when absent and
-    # has to be looked at on its own.
+    # A parameter without --what-if is an error, not a silent print of the fixed
+    # tables; --json is store_true, so it is False, not None, when absent.
     point = {k: v for k, v in vars(args).items()
              if k not in ("what_if", "json") and v is not None}
     if (point or args.json) and not args.what_if:
