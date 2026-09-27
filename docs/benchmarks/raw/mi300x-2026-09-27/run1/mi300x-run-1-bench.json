@@ -1,0 +1,52 @@
+{
+  "c001": {
+    "max_concurrency": 1,
+    "num_prompts": 20
+  },
+  "c008": {
+    "max_concurrency": 8,
+    "num_prompts": 32
+  },
+  "c032": {
+    "max_concurrency": 32,
+    "num_prompts": 128
+  },
+  "c064": {
+    "max_concurrency": 64,
+    "num_prompts": 256
+  },
+  "c128": {
+    "max_concurrency": 128,
+    "num_prompts": 512
+  },
+  "c192": {
+    "max_concurrency": 192,
+    "num_prompts": 768
+  },
+  "c224": {
+    "max_concurrency": 224,
+    "num_prompts": 896
+  },
+  "c240": {
+    "max_concurrency": 240,
+    "num_prompts": 960
+  },
+  "c256": {
+    "max_concurrency": 256,
+    "num_prompts": 1024
+  },
+  "c288": {
+    "max_concurrency": 288,
+    "num_prompts": 1152
+  },
+  "c001-in2000": {
+    "max_concurrency": 1,
+    "num_prompts": 20,
+    "random_input_len": 2000
+  },
+  "c001-in8000": {
+    "max_concurrency": 1,
+    "num_prompts": 20,
+    "random_input_len": 8000
+  }
+}
