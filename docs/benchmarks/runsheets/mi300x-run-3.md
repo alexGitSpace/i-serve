@@ -42,16 +42,17 @@ review has to weigh them before renting:
 Blocks A and B stay as written until the review decides.
 
 **Runs are numbered per card**, so "run 3" is this one and the L40S's third run
-is named with its card wherever both appear below. **There is no
-`mi300x-run-2.md`**: run 2 is the FP8 KV run, named as a destination by run 1's
-sheet and never written. If the credit window closes with only two runs in it,
-this one is taken second and keeps its number — a gap in the numbering is
-cheaper than a sheet whose name stops matching the run that faced it.
+is named with its card wherever both appear below. Run 2 is
+`mi300x-run-2.md`, the card configured for itself: the token budget and the
+attention kernel, written 2026-09-27 after run 1 took FP8 KV off it. If the
+credit window closes before run 2, this one keeps its number — a gap in the
+numbering is cheaper than a sheet whose name stops matching the run that faced
+it.
 
-**Run order: after MI300X run 1, and independent of run 2.** Run 1 fits
-`eff_mem` and `mfu` on this card and reads the prefill interference; this sheet
-spends both. It does not depend on run 2's FP8 KV, and either order works —
-§6 of `docs/SLO.md` shows FP8 cancels out of the ratio this run is about.
+**Run order: after MI300X run 2, and re-derived from it.** Run 1 fits `eff_mem`
+and `mfu` on this card and reads the prefill interference; this sheet spends
+both. Run 2 may move `mfu`, and with it how many seats per engine sit inside
+50 ms, which the status note above says this sheet's seat effect depends on.
 
 **Every predicted figure below comes from `bench/predictions.py` table 11**,
 added 2026-09-19; re-run it if the module has changed since. Where this sheet
@@ -402,8 +403,9 @@ once for a credential before staging, and the file count checked across
 - **Zipf-distributed prefix popularity** — the model between this sheet's two,
   and the one real traffic sits at. A generator change, and worth its own arm
   once the two bounds are measured.
-- **FP8 KV** — run 2. It halves `kv_per_token`, which divides both limits and
-  cancels out of their ratio (`docs/SLO.md` §6), so it moves every number here
+- **FP8 KV** — not scheduled, since MI300X run 1 never filled the pool
+  (`mi300x-run-2.md`, *Not in this run*). It halves `kv_per_token`, which
+  divides both limits and cancels out of their ratio (`docs/SLO.md` §6), so it moves every number here
   and none of the conclusions.
 
 ---

@@ -897,7 +897,9 @@ the same three, held to 0.24%.
       the backend, the GEMMs, the chunking of a prompt across steps, the host
       stack and the virtual function are candidates the run could not tell
       apart. Until it is accounted for, every MI300X figure that
-      contains prefill is derived from a coefficient nobody can explain
+      contains prefill is derived from a coefficient nobody can explain. The
+      sheet that separates the chunking and the attention kernel is written:
+      [benchmarks/runsheets/mi300x-run-2.md](benchmarks/runsheets/mi300x-run-2.md)
 - [ ] **Price prefix caching against a distribution of prefixes**, not one. Run 3
       shared a single 3 200-token prefix across every request, which measures the
       ceiling of what `h` is worth; a fleet holds several prefixes and evicts
