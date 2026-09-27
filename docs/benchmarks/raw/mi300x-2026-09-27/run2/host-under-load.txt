@@ -1,0 +1,11 @@
+Sun Sep 27 15:10:03 UTC 2026
+GPU[0]		: Temperature (Sensor junction) (C): 73.0
+GPU[0]		: Temperature (Sensor memory) (C): 56.0
+GPU[0]		: sclk clock level: 1: (1579Mhz)
+GPU[0]		: Performance Level: auto
+GPU[0]		: Current Socket Graphics Package Power (W): 742.0
+GPU[0]		: GPU use (%): 100
+model name	: INTEL(R) XEON(R) PLATINUM 8568Y+
+20
+6.8.0-138-generic
+6.19.14.31400000

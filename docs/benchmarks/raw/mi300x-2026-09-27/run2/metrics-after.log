@@ -1,0 +1,480 @@
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
+vllm:num_requests_running{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="capacity"} 0.0
+vllm:num_requests_waiting_by_reason{engine="0",model_name="Qwen/Qwen3-8B",reason="deferred"} 0.0
+vllm:num_preemptions_total{engine="0",model_name="Qwen/Qwen3-8B"} 0.0
+--
