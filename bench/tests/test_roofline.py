@@ -717,6 +717,17 @@ def test_the_fleet_keeps_the_tie_on_this_card():
     assert seats.bound_by == "latency", seats
 
 
+def test_the_second_weights_read_costs_each_droplet_its_own_time():
+    """At 64 seats the second engine adds 6.73 ms at run 1's fit and 5.43 ms at run 2's: weights over bandwidth x eff_mem."""
+    fleet = predictions.fleet_model(QWEN3_8B, 2)
+    for accel, ms in ((MI300X_RUN1, 6.73), (MI300X_RUN2, 5.43)):
+        extra = (tpot_floor(fleet, accel, 64, 4000).seconds
+                 - tpot_floor(QWEN3_8B, accel, 64, 4000).seconds) * 1e3
+        assert round(extra, 2) == ms, (accel.name, extra)
+        assert close(extra / 1e3, QWEN3_8B.weights_bytes
+                     / (accel.peak_bandwidth * accel.achieved_bandwidth), 1e-9)
+
+
 def test_affinity_repays_the_fleet_bill_only_past_a_working_set():
     """Below ~35 distinct prefixes, at 0.76 seats each, affinity cannot repay the second engine's bill."""
     per_prefix = (2 - 1) * predictions.SHARED_PREFIX_TOKENS / 4200

@@ -49,16 +49,32 @@ credit window closes before run 2, this one keeps its number — a gap in the
 numbering is cheaper than a sheet whose name stops matching the run that faced
 it.
 
-**Run order: after MI300X run 2, and re-derived from it.** Run 1 fits `eff_mem`
-and `mfu` on this card and reads the prefill interference; this sheet spends
-both. Run 2 may move `mfu`, and with it how many seats per engine sit inside
-50 ms, which the status note above says this sheet's seat effect depends on.
-MI300X run 2 was taken on 2026-09-27 (`docs/benchmarks/mi300x-run2.md`), and
-**this sheet is not yet re-derived from it.** Three of its findings bear on the
-sheet: the fit depends on the droplet (0.57 / 0.247 there against run 1's
-0.46 / 0.166); on that droplet TPOT p99 stayed inside 50 ms past 32 seats; and a
-budget that fits the prompt lifts `mfu` by 10 %. Table 11 still prints at
-`MI300X_RUN1`.
+**Run order: after MI300X run 2. Re-derived from it on 2026-09-27**
+(`docs/benchmarks/mi300x-run2.md`). Five of its findings change this sheet, and
+the review weighs them with run 1's four:
+
+- **Two droplets, two fits.** Run 1's server line ran the decode step 21 %
+  faster and prefill 33 % faster on run 2's droplet, and fitted 0.57 / 0.247
+  there against 0.46 / 0.166. Which droplet this run gets is not known before
+  it is rented. Table 11 now prints every figure that needs a coefficient at
+  both fits, and §3 opens with a c = 1 level that says which one applies.
+  Capacity needs no coefficient, and both droplets logged the same pool,
+  1 123 065 tokens.
+- **Latency as served depends on the droplet too.** At `h` = 0 run 1's droplet
+  crossed 50 ms TPOT p99 between 8 and 32 seats; run 2's was still inside at 32
+  (47.5 ms). Block B holds 32 seats per engine at `h` = 0.8, with less prefill
+  per request. Two engines time-slicing one card is not measured on either
+  droplet.
+- **The budget stays at 2 048.** Run 2 found chunked prefill under `ROCM_ATTN`
+  cost ~10 % of TTFT at 4 000 tokens. At `h` = 0.8 a request prefills 800 new
+  tokens, one chunk at any budget, so block B is untouched. Block A's unique
+  prompts are chunked, as they were when both fits were measured.
+- **The backend stays `ROCM_ATTN`**, the automatic choice. `ROCM_AITER_FA`
+  misreads a mixed batch on the V2 model runner (`mi300x-run-2.md`, *The five
+  serve rows*), and `TRITON_ATTN` was slower.
+- **The interference model was faced once.** Fed each serve row's own median
+  ITL and c = 1 TTFT, it came within 7 % of TPOT p50 at run 1's budget and
+  kernel (run 2 §6). It is still not in `INTERFERENCE_FITS` (§5).
 
 **Every predicted figure below comes from `bench/predictions.py` table 11**,
 added 2026-09-19; re-run it if the module has changed since. Where this sheet
@@ -73,8 +89,7 @@ when it buys nothing (+0.027 % on the decode step, `docs/SLO.md` §6).
 **Cost, flagged up front.** AMD Developer Cloud, 1 × MI300X at **$1.99/h**
 assumed (the console price at droplet creation wins and is written here when
 read). Expected clock **≈ 2 h**, session budget **≤ 3 h ≈ $6**, hard stop. The
-credits expire **2026-10-18** and the window is shared with runs 1 and 2, so
-this run is third in the queue and first to be cut if the window closes.
+credits expire **2026-10-18**; runs 1 and 2 spent ≈ $6.7 of them.
 
 ---
 
@@ -95,8 +110,8 @@ this run is third in the queue and first to be cut if the window closes.
 | Run 3 (L40S): `h` = 0.8 is worth 12.5 → 37.8 seats | One prefix shared by **every** request — the ceiling of what `h` is worth. This run prices a *distribution* of prefixes, which is the open item `docs/SLO.md` §10 holds, and the first thing that can make `h` fall below its nominal value |
 | Run 3: the `h` = 0 overhead of prefix caching is +0.027 % | Transfers as a decision, not a number: both arms serve with the cache on, so the arms differ in the routing policy alone |
 | `kind`, 2026-09-19: the router routes, and a stale fleet costs 29 % of requests | Routing behaviour only. It says nothing about TTFT or seats, which is why this sheet exists (`router/README.md` §8) |
-| MI300X `eff_mem`, `mfu`, and the prefill interference | **Run 1's**, fitted on the card this run uses. Quote them with the run that produced them, never the L40S's (`docs/SLO.md` §9) |
-| §6: which limit binds is a property of the card | Derived, the MI300X's two limits tie at a common context, and a second engine subtracts the same weights from both, so the tie holds (asserted in `bench/tests/test_roofline.py`). Measured by run 1, latency as served binds first at `h` = 0 — see the status note |
+| MI300X `eff_mem`, `mfu`, and the prefill interference | **Two fits from two droplets**: run 1's 0.46 / 0.166 and run 2's 0.57 / 0.247. Quote each with the run that produced it, never the L40S's (`docs/SLO.md` §9). Which one applies here is read in §3 |
+| §6: which limit binds is a property of the card | Derived at the prior, the MI300X's two limits tie at a common context, and a second engine subtracts the same weights from both, so the tie holds (asserted in `bench/tests/test_roofline.py`). At either fit latency binds first. Measured, latency as served binds first at `h` = 0 on both droplets, at a seat count that differs between them — see the status note |
 
 ---
 
@@ -145,13 +160,16 @@ fixed cannot be judged.
       `num_prefixes` 32 / 64 / 128 / 256 / 512, `prompt_tokens` 4 000,
       `prefix_tokens` 3 200, `concurrency` 64, `num_prompts` = 4 × N and never
       below 256; and `fleet-bill` / `fleet-bill-half`, one level each of unique
-      prompts at concurrency 64 and 32 for block A.
+      prompts at concurrency 64 and 32 for block A. `fleet-bill` opens with a
+      level at concurrency 1, 20 unique 4 000-token prompts: the droplet check
+      of §3.
 - [ ] `python3 bench/predictions.py` — table 11 open beside the terminal.
-- [ ] Run 1 taken, its `mi300x-run1` entry in `ACCELERATORS` and its fit in
-      `INTERFERENCE_FITS`. Without them §5's seat line stays *not derivable*, and
-      that is a correct answer rather than a missing one.
-- [ ] `bench/harness.py --dry-run --scenario router-arm --accelerator mi300x`
-      exits 0 off-card.
+- [x] Runs 1 and 2 taken, `mi300x-run1` and `mi300x-run2` in `ACCELERATORS`.
+- [ ] An MI300X entry in `INTERFERENCE_FITS`, or the review's decision not to
+      register one. Without it §5's seat line stays *not derivable*, and that is
+      a correct answer rather than a missing one.
+- [ ] `bench/harness.py --dry-run --scenario router-arm --accelerator mi300x-run1`
+      and the same with `mi300x-run2` exit 0 off-card.
 - [ ] The router image built **on the droplet** (`docker build -t
       prefix-router:dev router`): a Mac builds arm64 and the droplet is amd64.
 - [ ] Read the hourly price off the console and write it into the header above.
@@ -186,6 +204,12 @@ vllm serve Qwen/Qwen3-8B --host 127.0.0.1 --port 8000 --dtype auto \
 No `--enable-prefix-caching`: it is the V1 default, and the log line is the
 proof rather than the flag.
 
+Record the host as run 2 did, into `/workspace/run3/host-under-load.txt`, while
+§3's first level runs: `rocm-smi --showclocks --showpower --showperflevel
+--showuse --showtemp`, the CPU model, `nproc`, `uname -r` and
+`/sys/module/amdgpu/version`. The droplet is a variable (run 2 §3), and this is
+the record that places a third one against the second.
+
 ---
 
 ## 2 · Checkpoint A — three startup logs against the arithmetic
@@ -200,12 +224,12 @@ grep -E 'GPU KV cache size|Maximum concurrency|prefix_caching|max_num_batched_to
 
 | Log line | Predicted | Source | On a miss |
 |---|---|---|---|
-| `GPU KV cache size`, solo at 0.90 | **1 123 065**, run 1's logged pool; **1 147 072** derived | run 1, table 11 | Within §9's 5 % of run 1's figure is a pass: the same card, flags and image, and run 1's two launches differed by 1.4 %. The two figures are 2.1 % apart, so the two-band rule run 1 used no longer separates them |
+| `GPU KV cache size`, solo at 0.90 | **1 123 065**, logged by runs 1 and 2 on two droplets; **1 147 072** derived | runs 1–2, table 11 | Within §9's 5 % of the logged figure is a pass: the same card, flags and image, and run 1's two launches differed by 1.4 %. The two figures are 2.1 % apart, so the two-band rule run 1 used no longer separates them |
 | `GPU KV cache size`, each engine of the pair at 0.45 | **517 926** derived, **~507 000** corrected | table 11 | Within 5 % of the corrected figure |
 | The pair's two pools summed | **1 035 852** derived, against the solo engine's own figure | table 11 | The difference, **111 220 tokens**, *is* the second copy of the weights. A sum that does not show it means the flag was not obeyed and §3 has nothing to measure |
 | `prefix_caching` | **True** everywhere | V1 default | If false, relaunch: every level in §4 asks for a hit rate |
 | `max_num_batched_tokens` | **2 048** everywhere | the launch line | A different value moves the interference and makes run 1's fit inapplicable |
-| attention backend, `block_size`, dtype | whatever run 1 recorded | run 1 | Not gates, except the backend: one that differs from run 1's invalidates the borrowed fit, and that is a stop rather than a note |
+| attention backend, `block_size`, dtype | `Overriding with ROCM_ATTN`, as both runs logged | runs 1–2 | Not gates, except the backend: one that differs invalidates both fits, and that is a stop rather than a note |
 
 ---
 
@@ -214,9 +238,16 @@ grep -E 'GPU KV cache size|Maximum concurrency|prefix_caching|max_num_batched_to
 The one block that needs no router: the same load against **one** engine at
 `0.90` and against **two** at `0.45` each, unique prompts, `h` = 0.
 
+**The droplet check comes first.** `fleet-bill`'s opening level is one request at
+a time. Its median ITL at 4 000 tokens was 6.61 ms on run 1's droplet and
+5.22 ms on run 2's. Set `FIT=mi300x-run1` if it reads nearer the first and
+`FIT=mi300x-run2` if nearer the second, and write the figure down. If it sits
+far from both, the droplet is a third kind: keep `FIT=mi300x-run2`, note it, and
+read block A against both rows of the table below.
+
 ```
 # against the solo engine
-python3 bench/harness.py --scenario fleet-bill --accelerator mi300x \
+python3 bench/harness.py --scenario fleet-bill --accelerator $FIT \
   --host 127.0.0.1 --port 8000 --startup-log /workspace/run3/engine-solo.log \
   --out /workspace/run3/results/solo
 ```
@@ -238,32 +269,34 @@ card. Read both logs rather than assuming the flag was obeyed. Then the same
 level against the pair, half its concurrency to each engine:
 
 ```
-python3 bench/harness.py --scenario fleet-bill-half --accelerator mi300x \
+python3 bench/harness.py --scenario fleet-bill-half --accelerator $FIT \
   --port 8000 --startup-log /workspace/run3/engine-8000.log \
   --out /workspace/run3/results/pair-8000 &
-python3 bench/harness.py --scenario fleet-bill-half --accelerator mi300x \
+python3 bench/harness.py --scenario fleet-bill-half --accelerator $FIT \
   --port 8001 --startup-log /workspace/run3/engine-8001.log \
   --out /workspace/run3/results/pair-8001 &
 ```
 
-Predicted (table 11), against the uncalibrated 0.70; run 1 fitted 0.46, and these rows have not been re-derived at it:
+Predicted (table 11), at both droplets' fits where a row needs one:
 
 | Quantity | One engine | Two engines | Difference |
 |---|---|---|---|
 | KV pool, tokens | 1 147 072 | 1 035 852 | **−111 220 (−9.7 %)** |
 | Seats at a 4 200-token seat, capacity | 273 | 246 | **−27** |
-| Seats at 50 ms, latency, 4 000 tokens | 286 | 258 | **−28** |
-| Decode step at 64 seats fleet-wide | 14.60 ms | 19.02 ms | **+4.42 ms (+30 %)** |
+| Seats at 50 ms, latency floor, 4 000 tokens, run 1 / run 2 fit | 178 / 228 | 151 / 200 | **−27 / −28** |
+| Decode step at 64 seats fleet-wide, `eff_mem` 0.46 | 22.21 ms | 28.94 ms | **+6.73 ms (+30 %)** |
+| Decode step at 64 seats fleet-wide, `eff_mem` 0.57 | 17.92 ms | 23.35 ms | **+5.43 ms (+30 %)** |
 
-One sentence holds all four rows: **both limits have the form
+One sentence holds all five rows: **both limits have the form
 `(X − weights) / (context × kv_per_token)`, so a second copy of the weights costs
 the same seats in each, and a second weights read costs the step
 `weights / (bandwidth × eff_mem)`.**
 
 **What this cannot settle.** Two engines on one card time-slice that card, so the
 measured rise in the decode step is the duplicated read **plus** whatever running
-two processes on one accelerator costs. A rise larger than 4.42 ms is therefore
-not evidence against the arithmetic, and this run cannot split the two. The open
+two processes on one accelerator costs. A rise larger than the fit's own figure,
++6.73 or +5.43 ms by the droplet check, is therefore not evidence against the
+arithmetic, and this run cannot split the two. The open
 item as originally posed — replicas duplicating the weights read — is about two
 *cards* and stays open (`mi300x-run-1.md`, *Not in this run*). What this block
 does settle is what a single-card fleet actually pays, which is the arrangement
@@ -300,7 +333,7 @@ docker run -d --name router --network host prefix-router:dev \
 ```
 
 ```
-python3 bench/harness.py --scenario router-arm --accelerator mi300x \
+python3 bench/harness.py --scenario router-arm --accelerator $FIT \
   --port 8080 --expect-policy prefix \
   --metrics-endpoint 127.0.0.1:8000 --metrics-endpoint 127.0.0.1:8001 \
   --startup-log /workspace/run3/engine-8000.log \
@@ -358,10 +391,12 @@ Read off block B's levels; nothing new is sent.
 
 **TTFT.** Prefix caching removes prefill work outright, so the prefill component
 of TTFT falls by `(1 − h)` — the one knob that moves TTFT and TPOT the same way
-(`docs/SLO.md` §6). At 4 000 tokens the MI300X prefill floor is **94.5 ms**
-(table 10), so the predicted difference between the arms is `94.5 × (h_prefix −
-h_rr)` ms per request: **34.4 ms** at N = 256 under the uniform model, **75.6 ms**
-at N = 128 under the rotation the run actually sends. Compared arm against arm at
+(`docs/SLO.md` §6). At 4 000 tokens a lone prefill takes **256.3 ms** at run 1's
+fit and **172.2 ms** at run 2's (table 11). The predicted difference between the
+arms is that times `(h_prefix − h_rr)` per request: **62.7–93.3 ms** at N = 256
+under the uniform model, **137.8–205.0 ms** at N = 128 under the rotation the run
+actually sends. Both are upper bounds: a hit removes the linear part of a
+prefill, and the 800 new tokens still attend over the whole prompt. Compared arm against arm at
 the same load, never against the floor: queueing sits on top of it and is the
 larger term (`docs/SLO.md` §4).
 
@@ -369,11 +404,12 @@ larger term (`docs/SLO.md` §4).
 `INTERFERENCE_FITS` has no MI300X entry on purpose — lending the L40S's line to a
 different memory system and a different attention backend would print a seat
 count with no run behind any part of it. Run 1 measured the interference and wrote
-a model from two rows after the fact (`docs/benchmarks/mi300x-run1.md` §6);
-whether that is registered is the review's decision. Once a fit is registered:
+a model from two rows after the fact (`docs/benchmarks/mi300x-run1.md` §6), and
+run 2 faced it within 7 % at run 1's budget and kernel (`mi300x-run2.md` §6).
+Whether it is registered is the review's decision. Once a fit is registered:
 
 ```
-python3 bench/predictions.py --what-if --accelerator mi300x-run1 --hit-rate <measured h>
+python3 bench/predictions.py --what-if --accelerator $FIT --hit-rate <measured h>
 ```
 
 once per arm, and the difference between the two is the seat effect of the
@@ -409,8 +445,8 @@ once for a credential before staging, and the file count checked across
 - **Zipf-distributed prefix popularity** — the model between this sheet's two,
   and the one real traffic sits at. A generator change, and worth its own arm
   once the two bounds are measured.
-- **FP8 KV** — not scheduled, since MI300X run 1 never filled the pool
-  (`mi300x-run-2.md`, *Not in this run*). It halves `kv_per_token`, which
+- **FP8 KV** — not scheduled: at a 2 048-token budget neither MI300X run filled
+  the pool (`mi300x-run-2.md`, *Not in this run*). It halves `kv_per_token`, which
   divides both limits and cancels out of their ratio (`docs/SLO.md` §6), so it moves every number here
   and none of the conclusions.
 

@@ -22,6 +22,7 @@ from roofline import (
     L40S_RUN1,
     MI300X,
     MI300X_RUN1,
+    MI300X_RUN2,
     Model,
     QWEN2_5_7B,
     QWEN3_8B,
@@ -503,9 +504,10 @@ def fleet_model(model: Model, replicas: int) -> Model:
 def fleet_router_table() -> None:
     """What a second engine costs and what affinity buys back -- runsheet mi300x-run-3.
 
-    Capacity arithmetic only, so no interference fit is needed on the MI300X. The
-    working set sets the regime: below the pool's room for prefixes round_robin
-    costs space, above it the cost moves into h (docs/SLO.md section 6).
+    Capacity arithmetic, so no interference fit is needed. Below the pool's room
+    for prefixes round_robin costs space, above it h (docs/SLO.md section 6).
+    What needs a coefficient is printed at both droplets' fits, since a run
+    cannot choose its droplet (docs/benchmarks/mi300x-run2.md section 3).
     """
     ctx, prompt = 4200, 4000
     replicas = FLEET_REPLICAS
@@ -514,13 +516,14 @@ def fleet_router_table() -> None:
     per_engine = FLEET_CONCURRENCY // replicas
     working_sets = (32, 64, 128, 256, 512)
 
+    fits = (MI300X_RUN1, MI300X_RUN2)
     fleet = fleet_model(QWEN3_8B, replicas)
     pool_one = kv_cache_tokens(QWEN3_8B, MI300X, GMU)
     pool_fleet = kv_cache_tokens(fleet, MI300X, GMU)
     cap_one = concurrency_ceiling(QWEN3_8B, MI300X, ctx, GMU)
     cap_fleet = concurrency_ceiling(fleet, MI300X, ctx, GMU)
-    lat_one = max_num_seqs_from_slo(QWEN3_8B, MI300X, prompt, TPOT_TARGET)
-    lat_fleet = max_num_seqs_from_slo(fleet, MI300X, prompt, TPOT_TARGET)
+    lat_one = [max_num_seqs_from_slo(QWEN3_8B, a, prompt, TPOT_TARGET) for a in fits]
+    lat_fleet = [max_num_seqs_from_slo(fleet, a, prompt, TPOT_TARGET) for a in fits]
 
     # The K of the hit-rate model below: prefixes one engine can still hold once
     # its live seats have reserved theirs. A prediction; the log outranks it.
@@ -531,45 +534,48 @@ def fleet_router_table() -> None:
     table_header(
         "TABLE 11: a fleet on one card, and what prefix affinity buys back",
         f"{replicas} engines at gpu_memory_utilization {GMU / replicas:.2f} "
-        f"each against one at {GMU:.2f}, MI300X, uncalibrated eff_mem "
-        f"{MI300X.achieved_bandwidth} and mfu {MI300X.mfu}, seats of {ctx} "
-        f"reserved tokens. A second engine reads and stores a second copy of "
+        f"each against one at {GMU:.2f}, MI300X, seats of {ctx} reserved "
+        f"tokens. Latency and time are printed at both droplets' fits, "
+        f"eff_mem {fits[0].achieved_bandwidth} / {fits[1].achieved_bandwidth} "
+        f"and mfu {fits[0].mfu} / {fits[1].mfu} (MI300X runs 1 and 2); "
+        f"capacity needs neither. A second engine reads and stores a second copy of "
         f"the {QWEN3_8B.weights_bytes / 1e9:.1f} GB of weights, so the fleet "
         f"pays for them twice on both limits -- that is the bill below, and it "
         f"is charged whatever the routing policy is. What the policy decides is "
         f"the second half: round_robin puts every prefix on every engine, "
-        f"affinity puts it on one. Capacity arithmetic throughout, so no "
-        f"interference fit is borrowed from another card. Capacity counts a "
-        f"{ctx}-token seat and latency a {prompt}-token read, which is why "
-        f"'binds' says capacity where one context would tie. docs/SLO.md "
-        f"section 6, channel 2.",
-        f"{'arrangement':>14}{'KV pool':>14}{'latency seats':>16}"
-        f"{'capacity seats':>17}{'binds':>12}",
+        f"affinity puts it on one. No interference fit is borrowed from "
+        f"another card. Latency seats are the "
+        f"decode-step floor, and MI300X run 1 measured latency as served "
+        f"binding far below it. docs/SLO.md section 6, channel 2.",
+        f"{'arrangement':>14}{'KV pool':>14}{'capacity seats':>17}"
+        f"{'latency seats, run 1 / run 2 fit':>35}",
     )
-    for label, pool, lat, cap in (
-            ("1 engine", pool_one, lat_one, cap_one),
-            (f"{replicas} engines", pool_fleet, lat_fleet, cap_fleet)):
-        binds = "capacity" if cap <= lat else "latency"
-        print(f"{label:>14}{pool:>14,.0f}{lat:>16}{cap:>17}{binds:>12}")
+    for label, pool, cap, lat in (
+            ("1 engine", pool_one, cap_one, lat_one),
+            (f"{replicas} engines", pool_fleet, cap_fleet, lat_fleet)):
+        print(f"{label:>14}{pool:>14,.0f}{cap:>17}{f'{lat[0]} / {lat[1]}':>35}")
 
     bill = cap_one - cap_fleet
     recovered_per_prefix = (replicas - 1) * prefix / ctx
     break_even = bill / recovered_per_prefix
 
     print()
+    lat_bill = " / ".join(str(one - two) for one, two in zip(lat_one, lat_fleet))
     print(f"  the bill: {bill} seats of capacity (a {ctx}-token seat) and "
-          f"{lat_one - lat_fleet} of latency ({prompt} tokens of context), "
+          f"{lat_bill} of latency ({prompt} tokens of context) at the two fits, "
           f"both of them the second {QWEN3_8B.weights_bytes / 1e9:.1f} GB "
           f"divided by what a seat costs in that limit")
     # The same bill in block A's unit: unlike a seat count, this step difference
     # compares directly against a median ITL at matched total concurrency.
-    step_one = tpot_floor(QWEN3_8B, MI300X, FLEET_CONCURRENCY, prompt)
-    step_fleet = tpot_floor(fleet, MI300X, FLEET_CONCURRENCY, prompt)
-    print(f"  at {FLEET_CONCURRENCY} seats across the fleet the decode step "
-          f"goes {step_one.seconds * 1e3:.2f} -> {step_fleet.seconds * 1e3:.2f} ms "
-          f"(+{(step_fleet.seconds - step_one.seconds) * 1e3:.2f} ms, "
-          f"+{step_fleet.seconds / step_one.seconds - 1:.0%}), the second "
-          f"weights read at eff_mem {MI300X.achieved_bandwidth}")
+    for accel in fits:
+        step_one = tpot_floor(QWEN3_8B, accel, FLEET_CONCURRENCY, prompt)
+        step_fleet = tpot_floor(fleet, accel, FLEET_CONCURRENCY, prompt)
+        print(f"  at {FLEET_CONCURRENCY} seats across the fleet, eff_mem "
+              f"{accel.achieved_bandwidth}: the decode step goes "
+              f"{step_one.seconds * 1e3:.2f} -> {step_fleet.seconds * 1e3:.2f} ms "
+              f"(+{(step_fleet.seconds - step_one.seconds) * 1e3:.2f} ms, "
+              f"+{step_fleet.seconds / step_one.seconds - 1:.0%}), the second "
+              f"weights read")
     print(f"  one engine holds {pool_per_engine:,.0f} tokens derived, "
           f"~{pool_per_engine * (1 - POOL_SHORTFALL):,.0f} after the "
           f"{POOL_SHORTFALL:.1%} shortfall; at {per_engine} live seats that "
@@ -600,6 +606,17 @@ def fleet_router_table() -> None:
           f"(bench/scenarios/__init__.py), which is LRU's worst case: both "
           f"columns fall to 0 rather than to a share, round_robin past N = "
           f"{room:.0f} and affinity past N = {room * replicas:.0f}")
+    # Block C: a hit skips the linear part of its prefill, so an h difference
+    # between the arms is at most this much TTFT; attention does not scale.
+    uniform = nominal_h * (min(1.0, room * replicas / 256) - min(1.0, room / 256))
+    rotation = nominal_h        # N = 128: round_robin past its cliff, affinity not
+    alone = [ttft_floor(QWEN3_8B, a, prompt).seconds * 1e3 for a in fits]
+    print(f"  TTFT alone at {prompt} tokens, the prefill a hit shortens: "
+          f"{alone[0]:.1f} / {alone[1]:.1f} ms at the two fits, so the arms "
+          f"differ by at most {uniform * alone[1]:.1f}-{uniform * alone[0]:.1f} ms "
+          f"at N = 256 under the uniform model (h {uniform:.3f} apart) and "
+          f"{rotation * alone[1]:.1f}-{rotation * alone[0]:.1f} ms at N = 128 "
+          f"under the rotation")
 
 
 RUN2_SWEEP = os.path.join(os.path.dirname(os.path.abspath(__file__)),
