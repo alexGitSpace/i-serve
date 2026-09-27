@@ -525,22 +525,14 @@ def prefix_cache_table() -> None:
 def mi300x_sweep_table() -> None:
     """One floor per level of the MI300X calibration sweep -- runsheet mi300x-run-1.
 
-    Table 6's shape at the other card's scale, and the scale is the point: the
-    L40S crossed 50 ms at 23 seats with 43 seats in the pool, so latency ended
-    its curve. Here the pool ends it. 'KV seat' uses the 7 % the L40S startup
-    log took off the derived pool (docs/benchmarks/l40s-baseline.md section 2)
-    -- non-torch memory, the activation peak and the graph pool are paid on any
-    card, and a shelf predicted from the clean arithmetic would sit a dozen
-    seats too high. The engine's own log still outranks both figures.
-
-    The default max_num_seqs of 256 is the third limit docs/SLO.md section 10
-    names: it sits between the corrected shelf and the latency limit, so a level
-    above it queues before it can preempt. Uncalibrated coefficients on purpose
-    -- section 9 says the first run on a card is reported against them.
+    Table 6's shape at the other card's scale: here the pool, not latency, ends
+    the curve. 'KV seat' applies POOL_SHORTFALL; the coefficients are uncalibrated
+    on purpose (docs/SLO.md section 9). max_num_seqs pinned at 256 -- unpinned,
+    vLLM gives a card of 70 GiB or more 1024 -- is the third limit of section 10.
     """
     ctx, out = 4000, 200
     levels = (1, 8, 32, 64, 128, 192, 224, 240, 256, 288)
-    default_max_num_seqs = 256
+    seq_cap = 256          # pinned in bench/sweep/mi300x-run-1-serve.json
 
     pool = kv_cache_tokens(QWEN3_8B, MI300X, GMU)
     seats_derived = concurrency_ceiling(QWEN3_8B, MI300X, ctx + out, GMU)
@@ -556,8 +548,8 @@ def mi300x_sweep_table() -> None:
         f"{POOL_SHORTFALL:.0%} startup-log shortfall is applied; the latency "
         f"limit at 50 ms is {by_latency}. So the prediction is the inverse of "
         f"the L40S's: every level inside the pool stays inside the SLO, and the "
-        f"first thing to break is capacity, not latency. The default "
-        f"max_num_seqs {default_max_num_seqs} sits between the two, so the "
+        f"first thing to break is capacity, not latency. A pinned "
+        f"max_num_seqs {seq_cap} sits between the two, so the "
         f"top level queues rather than preempts -- unless the log's pool is "
         f"smaller still. docs/SLO.md sections 6 and 10.",
         f"{'concurrency':>12}{'bytes/step':>12}{'TPOT floor':>12}"
@@ -573,7 +565,7 @@ def mi300x_sweep_table() -> None:
             fits = "fits?"       # inside the clean arithmetic, outside the corrected pool
         else:
             fits = "no seat"
-        queue = "queues" if batch > default_max_num_seqs else "runs"
+        queue = "queues" if batch > seq_cap else "runs"
         print(f"{batch:>12}{gb:>9.2f} GB{floor.seconds * 1e3:>9.2f} ms"
               f"{inside:>14}{fits:>17}{queue:>17}")
 

@@ -565,7 +565,9 @@ fits the target) and a capacity limit (the sequences whose KV fits). Both are
 memory limits — one counts bytes the card holds, the other bytes per second it can
 move inside the target — which is why "memory-bound" alone never says which one an
 operator is against. Which binds is a property of the card and the target, not a
-general rule ([SLO.md](SLO.md) §6).
+general rule ([SLO.md](SLO.md) §6). Unset, vLLM picks 256 — or 1024 on a card
+with 70 GiB or more (`get_batch_defaults` in `vllm/engine/arg_utils.py`), which is
+why the MI300X runs pin it.
 
 **Third limit** — `max_num_seqs` itself, when the configured value is reached
 before either limit `max_num_seqs` is derived from: the latency limit or the
@@ -620,7 +622,8 @@ separate question this repo has not measured.
 **Attention backend** — the kernel family vLLM uses for attention, chosen at startup
 from what the card, the dtype and the build support, and printed in the startup log.
 On sm89 with a BF16 cache the choice is `FLASH_ATTN` (FlashAttention 2); an FP8 cache
-removes it from the candidate list and `FLASHINFER` is selected instead. It matters
+removes it from the candidate list and `FLASHINFER` is selected instead. On ROCm
+the first candidate is `ROCM_ATTN` (`vllm/platforms/rocm.py`). It matters
 because a run that changes the cache dtype has silently changed the kernel too —
 measured worth 0.8% of the decode step on the L40S
 ([benchmarks/l40s-run2.md](benchmarks/l40s-run2.md) §5), but measured rather than

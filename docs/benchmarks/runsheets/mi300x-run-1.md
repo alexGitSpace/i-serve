@@ -13,8 +13,14 @@ numbers against `bench/predictions.py` tables 9–10 (all reproduced), and every
 external claim against the `v0.27.1` sweep source, Docker Hub, DigitalOcean's
 billing rules and AMD's getting-started guide. Twelve edits came out of it, one
 to the launch line (`--server-ready-timeout`) and one to a formula (the `eff_mem`
-read). Still open until the day: the console price, whether `hf` is on the ROCm
-image, the attention backend, and how long a cold launch takes on ROCm.
+read). **Re-checked 2026-09-27** against the `v0.27.1` source: `max_num_seqs`
+defaults to **1024**, not 256, on any card of 70 GiB or more
+(`vllm/engine/arg_utils.py`, `get_batch_defaults`), so it is now pinned in the
+serve params; `hf` and `curl` are on the ROCm image (`docker/Dockerfile.rocm`);
+the attention backend should be `ROCM_ATTN` with block size 16
+(`vllm/platforms/rocm.py`), which the log confirms. Still open until the day:
+the console price, whether Vanilla ROCm ships Docker and tmux, and how long a
+cold launch takes on ROCm.
 
 Written 2026-09-04, before the credits were activated and therefore before any
 card exists — which is the point. **Every predicted figure below comes from
@@ -106,14 +112,23 @@ On the droplet, in this order, each a gate for the next:
 
 ```
 rocm-smi --showproductname --showmeminfo vram      # one MI300X, 192 GB visible
-docker --version                                    # gate: both AMD image types ship Docker
+docker --version                                    # gate: Docker on Vanilla ROCm is not documented
+which tmux || apt-get install -y tmux               # the sweep outlives an SSH drop only inside tmux
 mkdir -p /workspace/hf /workspace/run1
 docker pull vllm/vllm-openai-rocm:v0.27.1           # 11.3 GB
 ```
 
+From the laptop, while the image pulls:
+
+```
+scp bench/sweep/mi300x-run-1-*.json root@<ip>:/workspace/run1/
+```
+
 Then the container. **vLLM is not PID 1**: the sweep launches the server itself
 (mechanic 1), so the container runs a shell and everything happens inside it.
-The device and IPC flags are vLLM's own ROCm instructions for `v0.27.1`:
+The device and IPC flags are vLLM's own ROCm instructions for `v0.27.1`,
+and the whole thing runs inside `tmux new -s run1` (reattach with
+`tmux attach -t run1`):
 
 ```
 docker run -it --rm --name run1 \
@@ -129,8 +144,7 @@ Inside it, before anything else — **the help wins over the instrument note**:
 vllm --version                                      # 0.27.1 + the ROCm suffix
 vllm bench sweep serve --help=all | grep -E 'show-stdout|after-bench|link-vars|num-runs|resume'
 hf download Qwen/Qwen3-8B                           # 16.4 GB, once; the cache is on the host
-                                                    # no `hf` on this image → huggingface-cli download Qwen/Qwen3-8B
-which curl                                          # the after-bench hook needs it; present in the CPU image
+which curl                                          # the after-bench hook needs it; Dockerfile.rocm installs it
 ```
 
 **No published HTTP port and no API key**: the server binds `127.0.0.1` and the
@@ -158,9 +172,9 @@ grep -E 'KV cache size|kv cache memory in use|Maximum concurrency|max_num_batche
 | `Maximum concurrency … at max_model_len 9000` | **117.9 ×** derived, **~109.6 ×** corrected | table 9 | Same rule; it is the pool divided by 9 000 |
 | dtype | BF16 from `config.json` | `docs/SLO.md` §3 | Anything else invalidates every byte count |
 | `max_num_batched_tokens` | **2 048**, set explicitly | runs 1–3 geometry | The flag is in the serve command; a different value means the override did not apply |
-| attention backend | **unknown on ROCm** — record the name | — | Not a gate. Whatever it is, it is the backend `eff_mem` gets fitted against, and the write-up names it the way run 1 named FlashAttention 2 |
-| `block_size` | 16 on CUDA; ROCm may differ | — | Not a gate: nothing in tables 9–10 depends on it. Record it |
-| `max_num_seqs` | **256**, the default | launch command | Not a log fact on this build (run 3 §3); read it from the command, never from the log |
+| attention backend | **`ROCM_ATTN`** by the source's priority order | `vllm/platforms/rocm.py` | Not a gate. Whatever it is, it is the backend `eff_mem` gets fitted against, and the write-up names it the way run 1 named FlashAttention 2 |
+| `block_size` | **16** | `CacheConfig`, `ROCM_ATTN` | Not a gate: nothing in tables 9–10 depends on it. Record it |
+| `max_num_seqs` | **256**, set explicitly — the default on a card this size is 1024 | serve params | Not a log fact on this build (run 3 §3); read it from the command, never from the log |
 
 ---
 
@@ -186,7 +200,8 @@ vllm bench sweep serve \
 ```
 
 The two JSON files are `bench/sweep/mi300x-run-1-*.json`, copied over by `scp`
-before the container starts; `dry-run.sh` printed exactly these commands
+before the container starts; `dry-run.sh` printed exactly these commands,
+with `--max-num-seqs 256` appended to the server line from the serve params
 (`--server-ready-timeout` is a sweep-level flag and does not appear in them).
 Four things about the line that are not cosmetic:
 
@@ -199,8 +214,9 @@ Four things about the line that are not cosmetic:
 
 - **`--after-bench-cmd` replaces the cache reset** (mechanic 4), and that is
   wanted: prefix caching is off, there is nothing to reset, and the hook is the
-  only place a per-level `/metrics` read fits. `num_preemptions_total` is
-  cumulative, so the *difference* between consecutive reads is one level's
+  only place a per-level `/metrics` read fits. It runs after **every repeat**,
+  so the log gets 36 reads, three per row. `num_preemptions_total` is
+  cumulative, so the *difference* between consecutive reads is one repeat's
   preemptions; the first read is against zero. **The hook runs under
   `subprocess.run(check=True)`** — a non-zero exit aborts the sweep — so its
   last command must be one that cannot fail; here that is the `echo`, and
