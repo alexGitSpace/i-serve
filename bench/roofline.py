@@ -116,12 +116,12 @@ QWEN2_5_7B = Model(
 
 MI300X = Accelerator(
     name="AMD Instinct MI300X",
-    memory_bytes=192 * 2**30,   # "192 GB" is GiB: rocm-smi shows 191.69 GiB
+    memory_bytes=192 * 2**30,   # "192 GB" is GiB: rocm-smi shows 191.69 GiB (MI300X run 1)
     peak_bandwidth=5.3e12,
     peak_flops=1.307e15,
     achieved_bandwidth=0.70,    # unvalidated; SLO.md section 9, not measured on this card
     mfu=0.45,                   # unvalidated; prefill figure, not measured on this card
-    provenance="prior, unvalidated; no run on this card",
+    provenance="prior, unvalidated; MI300X run 1 measured 0.46 / 0.166 against it",
 )
 
 L40S = Accelerator(
@@ -148,6 +148,19 @@ L40S_RUN1 = Accelerator(
     provenance="measured (run 1, 2026-08-18); survived runs 2-3",
 )
 
+# Same card as MI300X, coefficients fitted by MI300X run 1
+# (docs/benchmarks/mi300x-run1.md). A separate instance, so the two differ only
+# in what the run measured.
+MI300X_RUN1 = Accelerator(
+    name="AMD Instinct MI300X (run 1 coefficients)",
+    memory_bytes=192 * 2**30,
+    peak_bandwidth=5.3e12,
+    peak_flops=1.307e15,
+    achieved_bandwidth=0.46,    # measured, decode, median ITL, five levels, 0.41-0.49
+    mfu=0.166,                  # measured, prefill, one uncontended 4 000-token request
+    provenance="measured (MI300X run 1, 2026-09-27); not yet faced by a second run",
+)
+
 
 # Cards by name, for every --accelerator flag. A card is physics, so it lives
 # here and not in a caller. Keys are stable: a rename breaks every runsheet
@@ -155,6 +168,7 @@ L40S_RUN1 = Accelerator(
 ACCELERATORS = {
     "l40s-run1": L40S_RUN1,
     "l40s": L40S,
+    "mi300x-run1": MI300X_RUN1,
     "mi300x": MI300X,
 }
 

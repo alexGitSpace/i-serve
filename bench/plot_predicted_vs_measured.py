@@ -1,4 +1,4 @@
-"""Draw every prediction runs 1-3 made, as measured / predicted.
+"""Draw every prediction the runs made, as measured / predicted.
 
 The picture the front page carries. One named **row** per prediction: a dot on
 a log axis and a bar running back to 1.0, so the bar's length is the error and
@@ -24,7 +24,9 @@ picture:
 * one dot per prediction that named a two-sided value;
 * a predicted range is drawn at its midpoint;
 * a one-sided bound (`>= 3.5 req/s`, `< 1 %`) is left out -- a bound that holds
-  says nothing about how close the model was.
+  says nothing about how close the model was;
+* a ratio beyond the axis is drawn at its edge as an arrowhead, its value in the
+  right-hand column.
 
 A hollow dot is a prediction whose coefficient had been fitted to the very run
 it is predicting. Run 1 fitted `eff_mem` to its own decode step, so those four
@@ -62,6 +64,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE = "docs/benchmarks/l40s-baseline.md"
 RUN2 = "docs/benchmarks/l40s-run2.md"
 RUN3 = "docs/benchmarks/l40s-run3.md"
+MI300X_RUN1 = "docs/benchmarks/mi300x-run1.md"
 
 OUT = ROOT / "docs/benchmarks/predicted-vs-measured.svg"
 
@@ -179,6 +182,35 @@ PREDICTIONS: tuple[Prediction, ...] = (
                "| 169 833 ± 5 % |", "| 168 985 / 176 227 |", RUN3),
     Prediction(3, "startup-log keys present", 7, 6,
                "| 7 of 8 |", "| **6 of 8** |", RUN3),
+
+    # --- MI300X run 1, 2026-09-27 --------------------------------------------
+    Prediction(4, "KV pool", 1060655, 1123065,
+               "| 1 060 655 |", "| 1 123 065 (printed; 1 124 064 in blocks) |", MI300X_RUN1),
+    Prediction(4, "KV pool after the L40S's 7 %", 986410, 1123065,
+               "| ~986 000 |", "| 1 123 065 (launch 1) |", MI300X_RUN1),
+    Prediction(4, "decode step c=1, eff_mem 0.70", 4.58, 6.61,
+               "| 4.58 ms |", "| 6.61 ms |", MI300X_RUN1),
+    Prediction(4, "decode step c=32, eff_mem 0.70", 9.51, 14.90,
+               "| 9.51 ms |", "| 14.90 ms |", MI300X_RUN1),
+    Prediction(4, "decode step c=1, eff_mem 0.46", 6.97, 6.61,
+               "| 6.97 ms |", "| 6.61 ms (c001) |", MI300X_RUN1, fitted=True),
+    Prediction(4, "decode step c=8, eff_mem 0.46", 8.71, 9.72,
+               "| 8.71 ms |", "| 9.72 ms (c008) |", MI300X_RUN1, fitted=True),
+    Prediction(4, "decode step c=32, eff_mem 0.46", 14.66, 14.90,
+               "| 14.66 ms |", "| 14.90 ms (c032) |", MI300X_RUN1, fitted=True),
+    Prediction(4, "TTFT c=1, 2 000-token prompt", 47.3, 116.4,
+               "| 47.3 ms |", "| 116.4 ms |", MI300X_RUN1),
+    Prediction(4, "TTFT c=1, 4 000-token prompt", 94.5, 256.9,
+               "| 94.5 ms |", "| 256.9 ms |", MI300X_RUN1),
+    Prediction(4, "TTFT c=1, 8 000-token prompt", 189.1, 642.6,
+               "| 189.1 ms |", "| 642.6 ms |", MI300X_RUN1),
+    Prediction(4, "TTFT doubling, 2 000 to 4 000", 2.00, 2.21,
+               "| 2.00× / 2.00× |", "| 2.21× / 2.50× |", MI300X_RUN1),
+    Prediction(4, "TTFT doubling, 4 000 to 8 000", 2.00, 2.50,
+               "| 2.00× / 2.00× |", "| 2.21× / 2.50× |", MI300X_RUN1),
+    # Left out: the seats row is the pool row divided by 4 200, not a second
+    # test; running at c = 288 was a bound (it held); and the latency limit was
+    # measured as a range, 8-32 -- a midpoint would invent a measured value.
 )
 
 @dataclass(frozen=True)
@@ -200,6 +232,7 @@ RUNS: dict[int, Run] = {
     1: Run("run 1", "2026-08-18", "NVIDIA L40S"),
     2: Run("run 2", "2026-08-23", "NVIDIA L40S"),
     3: Run("run 3", "2026-08-30", "NVIDIA L40S"),
+    4: Run("MI300X run 1", "2026-09-27", "AMD Instinct MI300X"),
 }
 
 # --- geometry ----------------------------------------------------------------
@@ -255,7 +288,12 @@ INK = "#6e7781"                     # 4.55 / 4.16 -- labels and axis text
 DIM = "#8b949e"                     # hairlines, stripes, the band fill
 
 
+def on_axis(ratio: float) -> bool:
+    return X_MIN <= ratio <= X_MAX
+
+
 def x_of(ratio: float) -> float:
+    ratio = min(max(ratio, X_MIN), X_MAX)
     lo, hi = math.log10(X_MIN), math.log10(X_MAX)
     t = (math.log10(ratio) - lo) / (hi - lo)
     return PLOT_L + t * (PLOT_R - PLOT_L)
@@ -314,10 +352,10 @@ def svg() -> str:
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {height:.0f}" '
         f'width="{W}" height="{height:.0f}" font-family="system-ui,-apple-system,'
         f'Segoe UI,Roboto,sans-serif" role="img" '
-        f'aria-label="One row per prediction of L40S runs 1 to 3, each drawn as '
-        f'measured divided by predicted on a logarithmic axis">',
-        '<title>Predicted vs measured — L40S runs 1–3</title>',
-        text(MARGIN, TITLE_Y, "Every prediction runs 1–3 made, against what the "
+        f'aria-label="One row per prediction of L40S runs 1 to 3 and MI300X run 1, '
+        f'each drawn as measured divided by predicted on a logarithmic axis">',
+        '<title>Predicted vs measured — L40S runs 1–3, MI300X run 1</title>',
+        text(MARGIN, TITLE_Y, "Every prediction the runs made, against what the "
              "card did", size=15.5, fill=INK, weight="600"),
         text(MARGIN, SUBTITLE_Y,
              f"{len(PREDICTIONS)} predictions · {hits} within ±10 % · "
@@ -420,7 +458,14 @@ def svg() -> str:
 
             mark = (f'fill="none" stroke="{colour}" stroke-width="1.8"'
                     if p.fitted else f'fill="{colour}"')
-            parts.append(f'<circle cx="{cx:.1f}" cy="{y:.1f}" r="3.8" {mark}/>')
+            if on_axis(p.ratio):
+                parts.append(f'<circle cx="{cx:.1f}" cy="{y:.1f}" r="3.8" {mark}/>')
+            else:
+                # Off the axis: an arrowhead at the edge, pointing the way it went.
+                tip = 6.0 if p.ratio > X_MAX else -6.0
+                parts.append(
+                    f'<polygon points="{cx + tip:.1f},{y:.1f} {cx - tip:.1f},{y - 5:.1f} '
+                    f'{cx - tip:.1f},{y + 5:.1f}" {mark}/>')
 
             parts.append(text(LABEL_R, y + 3.8, p.label, fill=INK, anchor="end"))
             parts.append(text(VALUE_R, y + 3.8, f"{p.ratio:.2f}×",

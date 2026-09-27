@@ -1,4 +1,4 @@
-"""The picture is a selection of three tables; this is what stops it drifting.
+"""The picture is a selection of the reports' tables; this is what stops it drifting.
 
 `bench/plot_predicted_vs_measured.py` restates numbers that already live in
 section 9 of the three benchmark reports, which the repository otherwise
@@ -97,10 +97,18 @@ def test_the_committed_svg_is_what_the_data_produces():
 
 
 def test_no_dot_is_drawn_outside_the_axis():
-    """A point off the canvas is a silently missing miss, and misses are the point."""
-    off = [(p.label, round(p.ratio, 3)) for p in plot.PREDICTIONS
-           if not plot.X_MIN <= p.ratio <= plot.X_MAX]
-    assert not off, f"outside [{plot.X_MIN}, {plot.X_MAX}]: {off}"
+    """A point off the canvas is a silently missing miss, and misses are the point.
+
+    A ratio beyond the axis is drawn at the edge as an arrowhead instead, so the
+    check is that every such row got one and every arrowhead sits on the plot.
+    """
+    off = [p for p in plot.PREDICTIONS if not plot.on_axis(p.ratio)]
+    arrows = re.findall(r'<polygon points="([^"]*)"', plot.svg())
+    assert len(arrows) == len(off), \
+        f"{len(off)} rows off the axis, {len(arrows)} arrowheads drawn"
+    for points in arrows:
+        for x in (float(pair.split(",")[0]) for pair in points.split()):
+            assert plot.PLOT_L - 7 <= x <= plot.PLOT_R + 7, points
 
 
 def test_no_prediction_divides_by_zero():

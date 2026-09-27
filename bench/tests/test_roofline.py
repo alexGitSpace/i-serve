@@ -45,6 +45,7 @@ import math
 from dataclasses import replace
 
 import measured
+import measured_mi300x_run1 as mi300x_run1
 import measured_run2
 import predictions
 
@@ -54,6 +55,7 @@ from roofline import (
     L40S,
     L40S_RUN1,
     MI300X,
+    MI300X_RUN1,
     QWEN3_8B,
     Accelerator,
     aggregate_tokens_per_sec,
@@ -949,7 +951,73 @@ def test_what_if_names_every_card_the_harness_can_be_given():
     import harness
 
     assert harness.ACCELERATORS is ACCELERATORS
-    assert set(ACCELERATORS) == {"l40s-run1", "l40s", "mi300x"}
+    assert set(ACCELERATORS) == {"l40s-run1", "l40s", "mi300x-run1", "mi300x"}
+
+
+# --- MI300X run 1 -------------------------------------------------------------
+# docs/benchmarks/mi300x-run1.md quotes these; bench/measured_mi300x_run1.py reads
+# them from docs/benchmarks/raw/mi300x-2026-09-27/, so a figure that drifts from
+# the evidence fails here.
+
+def test_mi300x_run1_the_logged_pool_is_whole_blocks_and_vllms_own_line():
+    """1 123 065 is max_concurrency x 9 000, and inverts to 70 254 blocks of 16."""
+    for tokens, concurrency in zip(mi300x_run1.LOGGED_KV_TOKENS,
+                                   mi300x_run1.LOGGED_MAX_CONCURRENCY):
+        assert close(tokens / 9000, concurrency, 0.01)
+        blocks = tokens * math.ceil(9000 / 16) / 9000
+        assert abs(blocks - round(blocks)) < 0.05, blocks
+    assert mi300x_run1.logged_blocks(mi300x_run1.LOGGED_KV_TOKENS[0]) == 70_254
+
+
+def test_mi300x_run1_the_unit_was_the_miss():
+    """At 192e9 the derivation fell 5.6 % short of the log; at 192 GiB it is 2.1 % over."""
+    logged = mi300x_run1.LOGGED_KV_TOKENS[0]
+    at_192e9 = kv_cache_tokens(QWEN3_8B, replace(MI300X, memory_bytes=192e9), GMU)
+    assert at_192e9 < logged
+    assert close((kv_cache_tokens(QWEN3_8B, MI300X, GMU) - logged) / logged * 100, 2.1, 0.1)
+    assert close(predictions.POOL_SHORTFALL,
+                 1 - logged / kv_cache_tokens(QWEN3_8B, MI300X, GMU), 0.001)
+
+
+def test_mi300x_run1_the_fitted_coefficients_are_the_raw_files():
+    """0.46 is the mean of five decode rows; 0.166 is the uncontended 4 000-token prefill."""
+    data = mi300x_run1.rows()
+    assert close(MI300X_RUN1.achieved_bandwidth, mi300x_run1.fitted_eff_mem(data), 0.01)
+    assert close(MI300X_RUN1.mfu, mi300x_run1.implied_mfu(data["c001"]), 0.001)
+
+
+def test_mi300x_run1_the_prior_predicted_every_decode_step_too_fast():
+    """0.70 was optimistic at every row where the median ITL is a decode step."""
+    data = mi300x_run1.rows()
+    for name in mi300x_run1.DECODE_ROWS:
+        row = data[name]
+        predicted = tpot_floor(QWEN3_8B, MI300X, row["c"], row["context"]).seconds * 1000
+        assert predicted < row["itl_ms"], (name, predicted, row["itl_ms"])
+
+
+def test_mi300x_run1_running_settles_at_the_token_budget_not_the_pool_or_the_cap():
+    """~99 running against 97.5 derived, the cap 256 unreached, nothing preempted."""
+    saturated = mi300x_run1.saturated_running(mi300x_run1.gauges())
+    ceiling = mi300x_run1.equilibrium_running(4000, 200)
+    assert abs(sorted(saturated)[len(saturated) // 2] - ceiling) <= 2, ceiling
+    assert max(saturated) < mi300x_run1.MAX_NUM_SEQS
+    assert max(mi300x_run1.preemptions()) == 0
+
+
+def test_mi300x_run1_latency_as_served_crossed_between_8_and_32():
+    """TPOT p99 under 50 ms at c008 and over it at c032: latency bound, not the pool."""
+    data = mi300x_run1.rows()
+    assert data["c008"]["tpot_p99_ms"] < 50 < data["c032"]["tpot_p99_ms"]
+
+
+def test_mi300x_run1_interference_needs_no_budget_term():
+    """ITL + (c - 1) x TTFT(c=1) / 200 lands within 3 % of TPOT p50 at c008 and c032."""
+    data = mi300x_run1.rows()
+    alone = data["c001"]["ttft_p50_ms"]
+    for name in ("c008", "c032"):
+        row = data[name]
+        model = mi300x_run1.tpot_with_interference(row["itl_ms"], row["c"], alone)
+        assert abs(model - row["tpot_p50_ms"]) / row["tpot_p50_ms"] < 0.03, (name, model)
 
 
 if __name__ == "__main__":

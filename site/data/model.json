@@ -26,15 +26,27 @@
   },
   "mi300x": {
    "achieved_bandwidth": 0.7,
-   "hourly_rate": 2.0,
-   "hourly_rate_provenance": "assumption: $100 of AMD Developer Cloud credits budgeted as roughly 50 h; re-check before quoting",
+   "hourly_rate": 1.99,
+   "hourly_rate_provenance": "AMD Developer Cloud console, 2026-09-27, on-demand, 1x MI300X; paid from credits",
    "measured": false,
    "memory_bytes": 206158430208,
    "mfu": 0.45,
    "name": "AMD Instinct MI300X",
    "peak_bandwidth": 5300000000000.0,
    "peak_flops": 1307000000000000.0,
-   "provenance": "prior, unvalidated; no run on this card"
+   "provenance": "prior, unvalidated; MI300X run 1 measured 0.46 / 0.166 against it"
+  },
+  "mi300x-run1": {
+   "achieved_bandwidth": 0.46,
+   "hourly_rate": 1.99,
+   "hourly_rate_provenance": "AMD Developer Cloud console, 2026-09-27, on-demand, 1x MI300X; paid from credits",
+   "measured": true,
+   "memory_bytes": 206158430208,
+   "mfu": 0.166,
+   "name": "AMD Instinct MI300X (run 1 coefficients)",
+   "peak_bandwidth": 5300000000000.0,
+   "peak_flops": 1307000000000000.0,
+   "provenance": "measured (MI300X run 1, 2026-09-27); not yet faced by a second run"
   }
  },
  "constants": {
@@ -697,6 +709,12 @@
    "date": "2026-08-30",
    "label": "run 3",
    "report": "docs/benchmarks/l40s-run3.md"
+  },
+  "4": {
+   "card": "AMD Instinct MI300X",
+   "date": "2026-09-27",
+   "label": "MI300X run 1",
+   "report": "docs/benchmarks/mi300x-run1.md"
   }
  },
  "slo_classes": {

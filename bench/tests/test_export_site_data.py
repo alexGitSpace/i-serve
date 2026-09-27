@@ -87,7 +87,7 @@ def test_every_number_the_page_needs_is_in_model_json():
     for key, m in data["models"].items():
         assert m["provenance"] and m["kv_bytes_per_token"] > 0, key
         assert m["served_by_this_stack"] == (key == data["defaults"]["model"]), key
-    assert set(data["runs"]) == {"1", "2", "3"}
+    assert set(data["runs"]) == {"1", "2", "3", "4"}
     assert "generated_at" not in data and "sha" not in data, "byte-stability"
 
 

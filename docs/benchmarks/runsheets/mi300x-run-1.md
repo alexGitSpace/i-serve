@@ -36,7 +36,7 @@ the day are
 `vllm bench sweep serve --help=all` and the server's startup log.
 
 **Cost, flagged up front.** AMD Developer Cloud, 1 × MI300X at **$1.99/h**
-(Phoronix's review of the service, 2025; the console price at droplet creation
+(Phoronix's review of the service, 2025; **confirmed on the console 2026-09-27**, on-demand; the console price at droplet creation
 wins and is written here when read). The $100 of credits are **~50 h** behind a
 **short, fixed expiry** — a date on the calendar, not a budget that can be
 spread — and that is the whole reason this sheet, the harness and the drop
@@ -85,8 +85,9 @@ Nothing numerical transfers; three shapes do, and each is a prediction here.
       one it chooses — the operator tracks the date. What it changes here is
       nothing, because §0 already said it: the sheet and the harness are final
       before the droplet.
-- [ ] Read the hourly price off the console and write it into the header above.
-- [ ] SSH key registered with the service before the droplet is created.
+- [x] Read the hourly price off the console and write it into the header above
+      — **$1.99/h**, on-demand, 1 × MI300X (2026-09-27).
+- [x] SSH key registered with the service before the droplet is created.
 - [ ] **Image: Vanilla ROCm**, not a Quick Start image. The Quick Start images
       boot with a container named `rocm` already running AMD's own vLLM build
       — a second vLLM on the card is VRAM noise and a version confusion, and

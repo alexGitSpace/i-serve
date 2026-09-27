@@ -499,11 +499,12 @@ def main(argv: list[str] | None = None) -> int:
                         help="which card, and which coefficients with it. "
                              "l40s-run1 is the L40S with the coefficients run 1 "
                              "fitted and runs 2-3 failed to break -- the default, "
-                             "and the only entry backed by a measurement. l40s is "
+                             "and the only fit a later run has faced. l40s is "
                              "the same card on spec-sheet priors, kept so a "
-                             "prediction can be printed against either. mi300x is "
-                             "priors throughout: no run on that card yet. The "
-                             "header prints which you got")
+                             "prediction can be printed against either. "
+                             "mi300x-run1 carries the MI300X's run-1 fit; mi300x "
+                             "keeps its priors for contrast. The header prints "
+                             "which you got")
     parser.add_argument("--slo-ttft-ms", type=float, default=300.0)
     parser.add_argument("--slo-tpot-ms", type=float, default=50.0)
     parser.add_argument("--settle", type=float, default=5.0,

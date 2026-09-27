@@ -40,10 +40,10 @@ TTFT_TARGET = 0.300         # section 2, interactive
 TPOT_TARGET = 0.050         # section 2, interactive
 GMU = 0.90                  # the gpu_memory_utilization the runsheet serves at
 
-# The L40S startup log came in 7.6 % below the derived pool
-# (docs/benchmarks/l40s-baseline.md section 2); tables 9 and 11 take 7 % off
-# before predicting a shelf, and the engine's log outranks both (docs/SLO.md §9).
-POOL_SHORTFALL = 0.07
+# MI300X run 1's larger launch-to-derivation gap at 192 GiB (the other was 0.75 %,
+# docs/benchmarks/mi300x-run1.md section 2); tables 9 and 11 take it off, and the
+# engine's log outranks both.
+POOL_SHORTFALL = 0.021
 
 # Two engines on one card: the smallest fleet a router can route over, and the
 # only one a single-GPU droplet holds. The prefix is run 3's construction
@@ -98,17 +98,18 @@ INTERFERENCE_FITS = {
 # Contract figures, not physics: each provenance string says where its rate came
 # from, and the rate enters every $/1M figure as a plain multiplier.
 L40S_HOURLY = 0.99
-MI300X_HOURLY = 2.00
+MI300X_HOURLY = 1.99
 L40S_HOURLY_PROVENANCE = ("RunPod console, 2026-08-15, On-Demand, 1x L40S 48 GB "
                           "(48 GB VRAM, 62 GB RAM, 16 vCPU)")
-MI300X_HOURLY_PROVENANCE = ("assumption: $100 of AMD Developer Cloud credits "
-                            "budgeted as roughly 50 h; re-check before quoting")
+MI300X_HOURLY_PROVENANCE = ("AMD Developer Cloud console, 2026-09-27, on-demand, "
+                            "1x MI300X; paid from credits")
 
 # A default per --accelerator key, with its provenance; --hourly-rate overrides
 # it, and a test asserts every card in ACCELERATORS has one.
 HOURLY_RATES = {
     "l40s-run1": (L40S_HOURLY, L40S_HOURLY_PROVENANCE),
     "l40s": (L40S_HOURLY, L40S_HOURLY_PROVENANCE),
+    "mi300x-run1": (MI300X_HOURLY, MI300X_HOURLY_PROVENANCE),
     "mi300x": (MI300X_HOURLY, MI300X_HOURLY_PROVENANCE),
 }
 
@@ -398,8 +399,8 @@ def sweep_length_table(accel=L40S, batch: int = 4, number: int = 7) -> None:
 def prefix_cache_table() -> None:
     """What a prefix cache hit rate is worth in seats -- docs/SLO.md section 6.
 
-    h is a property of the traffic, not the card. No MI300X row: capacity binds
-    there, so the seats it would buy are already gone.
+    h is a property of the traffic, not the card. No MI300X row: the table
+    prices seats through an interference fit, and that card has none.
     """
     table_header(
         "TABLE 8: prefix cache hit rate against the seat count",
@@ -431,10 +432,9 @@ def prefix_cache_table() -> None:
 def mi300x_sweep_table() -> None:
     """One floor per level of the MI300X calibration sweep -- runsheet mi300x-run-1.
 
-    Table 6's shape at the other card's scale: here the pool, not latency, ends
-    the curve. 'KV seat' applies POOL_SHORTFALL; the coefficients are uncalibrated
-    on purpose (docs/SLO.md section 9). max_num_seqs pinned at 256 -- unpinned,
-    vLLM gives a card of 70 GiB or more 1024 -- is the third limit of section 10.
+    The runsheet froze this table at 192e9 and a 7 % shortfall; the run measured
+    both (docs/benchmarks/mi300x-run1.md). Uncalibrated on purpose (SLO.md
+    section 9); max_num_seqs pinned at 256, the third limit of section 10.
     """
     ctx, out = 4000, 200
     levels = (1, 8, 32, 64, 128, 192, 224, 240, 256, 288)
@@ -450,14 +450,14 @@ def mi300x_sweep_table() -> None:
         f"MI300X at {ctx} tokens of context, uncalibrated eff_mem "
         f"{MI300X.achieved_bandwidth} and mfu {MI300X.mfu}. The pool seats "
         f"{seats_derived} sequences of {ctx + out} tokens by the clean "
-        f"arithmetic and about {seats_corrected} once the L40S's "
-        f"{POOL_SHORTFALL:.0%} startup-log shortfall is applied; the latency "
-        f"limit at 50 ms is {by_latency}. So the prediction is the inverse of "
-        f"the L40S's: every level inside the pool stays inside the SLO, and the "
-        f"first thing to break is capacity, not latency. A pinned "
-        f"max_num_seqs {seq_cap} sits between the two, so the "
-        f"top level queues rather than preempts -- unless the log's pool is "
-        f"smaller still. docs/SLO.md sections 6 and 10.",
+        f"arithmetic and about {seats_corrected} once the measured "
+        f"{POOL_SHORTFALL:.1%} startup-log shortfall is applied; the latency "
+        f"limit at 50 ms is {by_latency}. These are floors, and the run showed "
+        f"what they leave out: the token budget held the engine near 100 "
+        f"running sequences and TPOT p99 crossed 50 ms between 8 and 32 "
+        f"(docs/benchmarks/mi300x-run1.md section 5). The runsheet's copy was "
+        f"printed at 192e9 bytes and a 7% shortfall. docs/SLO.md sections 6 "
+        f"and 10.",
         f"{'concurrency':>12}{'bytes/step':>12}{'TPOT floor':>12}"
         f"{'inside 50 ms':>14}{'KV seat @ 4 200':>17}{'vs max_num_seqs':>17}",
     )
@@ -477,9 +477,9 @@ def mi300x_sweep_table() -> None:
 
     print()
     print(f"  KV pool {pool:,.0f} tokens derived, ~{pool * (1 - POOL_SHORTFALL):,.0f} "
-          f"after the {POOL_SHORTFALL:.0%} shortfall -> logged maximum concurrency "
+          f"after the {POOL_SHORTFALL:.1%} shortfall -> maximum concurrency "
           f"{pool / 9000:.1f}x derived, ~{pool * (1 - POOL_SHORTFALL) / 9000:.1f}x "
-          f"corrected, at max_model_len 9 000 (checkpoint A)")
+          f"corrected, at max_model_len 9 000 (logged: docs/benchmarks/mi300x-run1.md)")
 
 
 def fleet_model(model: Model, replicas: int) -> Model:
@@ -534,7 +534,9 @@ def fleet_router_table() -> None:
         f"is charged whatever the routing policy is. What the policy decides is "
         f"the second half: round_robin puts every prefix on every engine, "
         f"affinity puts it on one. Capacity arithmetic throughout, so no "
-        f"interference fit is borrowed from another card. docs/SLO.md "
+        f"interference fit is borrowed from another card. Capacity counts a "
+        f"{ctx}-token seat and latency a {prompt}-token read, which is why "
+        f"'binds' says capacity where one context would tie. docs/SLO.md "
         f"section 6, channel 2.",
         f"{'arrangement':>14}{'KV pool':>14}{'latency seats':>16}"
         f"{'capacity seats':>17}{'binds':>12}",
@@ -565,7 +567,7 @@ def fleet_router_table() -> None:
           f"weights read at eff_mem {MI300X.achieved_bandwidth}")
     print(f"  one engine holds {pool_per_engine:,.0f} tokens derived, "
           f"~{pool_per_engine * (1 - POOL_SHORTFALL):,.0f} after the "
-          f"{POOL_SHORTFALL:.0%} shortfall; at {per_engine} live seats that "
+          f"{POOL_SHORTFALL:.1%} shortfall; at {per_engine} live seats that "
           f"leaves room for {room:.0f} retained prefixes of {prefix:,} tokens")
     print()
     print(f"  the working set, at {FLEET_CONCURRENCY} seats across the fleet "

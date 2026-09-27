@@ -4,7 +4,7 @@ The calculator on the Pages site is a JavaScript re-implementation of
 bench/roofline.py, and this repository's rule is one home per fact. The two are
 reconciled like this: every *number* -- the card table with its provenance, the
 model figures, the coefficients, the interference fit, the SLO presets, the
-hourly rates, the measured points of runs 1-3 -- lives in Python and is written
+hourly rates, the measured points of every run -- lives in Python and is written
 to `site/data/model.json` by this module, so nothing is typed into the page.
 The *formulas* exist twice, and that duplication is allowed only because it is
 checked: `site/data/golden.json` is rows of `predictions.what_if_point()` over a
@@ -51,7 +51,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SITE_DATA = ROOT / "site" / "data"
 SYMPTOM_MAP = ROOT / "docs" / "symptom-map.json"
 
-REPORTS = {1: plot.BASELINE, 2: plot.RUN2, 3: plot.RUN3}
+REPORTS = {1: plot.BASELINE, 2: plot.RUN2, 3: plot.RUN3, 4: plot.MI300X_RUN1}
 
 # The point every one-factor-at-a-time row departs from: this repository's own
 # operating point, 4 000 in, 200 out, at the cached hit rate run 3 measured.
@@ -140,14 +140,14 @@ def model_data() -> dict:
 
 
 def measured_points() -> dict:
-    """The three runs' levels, each set carrying the geometry it was taken at.
+    """Every run's levels, each set carrying the geometry it was taken at.
 
     The geometry travels with the points because the page decides from it
     whether they may be drawn over the reader's operating point at all: a run at
     4 000-token prompts says nothing about a slider set to 32 000, and a hidden
     point is honest where a misplaced one is a lie.
     """
-    # The model the three runs were taken on, so the page reads it from the data
+    # The model every run was taken on, so the page reads it from the data
     # instead of carrying a copy of the fact in draw.js.
     run1 = list(measured.levels())
     run2_a = measured_run2.block("A")
@@ -272,7 +272,7 @@ def golden_grid() -> list[dict]:
             for kv in (2, 1):
                 add(**dict(BASE, model="qwen2.5-7b", prompt_tokens=prompt,
                            tpot_target=tpot, kv_dtype_bytes=kv))
-    for accelerator in ("l40s", "mi300x"):
+    for accelerator in ("l40s", "mi300x-run1", "mi300x"):
         add(**dict(BASE, model="qwen2.5-7b", accelerator=accelerator))
     add(**dict(BASE, model="qwen2.5-7b", hit_rate=0.0))
     add(**dict(BASE, tpot_target=0.020))
