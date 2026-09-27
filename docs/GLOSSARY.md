@@ -283,7 +283,9 @@ the processes holding the GPU through its kernel driver (KFD). The `nvidia-smi`
 of this card.
 
 **gfx942** — the ISA target name of the MI300 series, which `rocm-smi` prints and
-ROCm kernels are compiled for.
+ROCm kernels are compiled for; gfx950 is the MI350 series'. Both are **CDNA 3** or
+later, CDNA being AMD's data-centre GPU architecture line, and several ROCm code
+paths are gated on that generation rather than on the ISA name.
 
 **Coefficient provenance** — whether an empirical coefficient is *measured* on
 the card it is used for or is a *prior* carried from a spec sheet. A property of
@@ -613,9 +615,10 @@ everyone else's decode.
 stands and every step is a full `max_num_batched_tokens` budget:
 `n = budget × output / (input + output)`, counting only the tokens that are
 prefilled. It binds when it is smaller than both the pool's seat count and
-`max_num_seqs`. Derived after MI300X run 1 to fit its running count and not yet
-faced; the test that would face it is in
-[benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §5.
+`max_num_seqs`. Derived after MI300X run 1 to fit its running count
+([benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md) §5) and not yet faced;
+MI300X run 2's `b4096` serve row faces it
+([benchmarks/runsheets/mi300x-run-2.md](benchmarks/runsheets/mi300x-run-2.md)).
 
 **`long_prefill_token_threshold`** — a cap on how many tokens of a *single* long
 prefill may enter one step, sitting beside `max_num_batched_tokens` rather than
@@ -645,10 +648,14 @@ separate question this repo has not measured.
 from what the card, the dtype and the build support, and printed in the startup log.
 On sm89 with a BF16 cache the choice is `FLASH_ATTN` (FlashAttention 2); an FP8 cache
 removes it from the candidate list and `FLASHINFER` is selected instead. On ROCm
-the first candidate is `ROCM_ATTN`, ahead of `ROCM_AITER_FA` (only with
-`VLLM_ROCM_USE_AITER=1`), `ROCM_AITER_UNIFIED_ATTN` (when AMD's `aiter` package is
-installed, on CDNA 3 or later) and `TRITON_ATTN` (`vllm/platforms/rocm.py`). It
-matters
+the first candidate is `ROCM_ATTN`, ahead of `ROCM_AITER_FA` (a candidate only
+with `VLLM_ROCM_USE_AITER=1`, forceable without it), `ROCM_AITER_UNIFIED_ATTN`
+(when AMD's `aiter` package is found, on CDNA 3 or later) and `TRITON_ATTN`
+(`vllm/platforms/rocm.py`). What each runs at `v0.27.1`: `ROCM_ATTN` prefills
+through a Triton prefix-prefill kernel (`context_attention_fwd`) and decodes
+through a HIP paged-attention kernel; `ROCM_AITER_FA` uses *AITER*'s flash
+attention for prefill and its paged attention for decode; `TRITON_ATTN` runs both
+through one Triton kernel (`unified_attention`). It matters
 because a run that changes the cache dtype has silently changed the kernel too —
 measured worth 0.8% of the decode step on the L40S
 ([benchmarks/l40s-run2.md](benchmarks/l40s-run2.md) §5), but measured rather than
@@ -657,9 +664,35 @@ assumed.
 **`--attention-backend`** — forces that choice instead of leaving it to selection,
 which is how a kernel change is turned into a control. It replaced the environment
 variable `VLLM_ATTENTION_BACKEND`, which vLLM 0.27.1 accepts and ignores. When the
-backend is forced vLLM logs `Using AttentionBackendEnum.X backend.` and *not* the
-usual `out of potential backends` line, so grepping for the latter alone reads like
-a failure.
+backend is forced vLLM logs `Using AttentionBackendEnum.X backend.` — on ROCm,
+`Using X backend (selected via --attention-backend).` — and *not* the usual `out of
+potential backends` line, so grepping for the latter alone reads like a failure. On
+ROCm a forced backend that fails validation raises at startup rather than falling
+back.
+
+**AITER** — AMD's kernel library for ROCm, the `aiter` package, built into vLLM's
+ROCm image with prebuilt kernels for gfx942 and gfx950. `VLLM_ROCM_USE_AITER=1`
+(off by default) lets vLLM choose its kernels across several families at once;
+`--attention-backend ROCM_AITER_FA` uses its flash attention alone, without the
+variable. On gfx942 the variable does not take the BF16 dense *GEMM*s
+(`is_tgemm_enabled` requires gfx950, `vllm/_aiter_ops.py`); it switches AITER's
+RMSNorm, sampler and fused rotary / KV-write paths on, and alone it still leaves
+attention on `ROCM_ATTN`.
+
+**Triton** — a Python-embedded language and compiler for GPU kernels, compiled at
+run time for the card it finds; vLLM writes its portable kernels in it, which is
+what lets one kernel serve both CUDA and ROCm.
+
+**GEMM** — general matrix multiply: the weight products that are almost all of a
+dense model's FLOPs, and so almost all of prefill's time. On ROCm vLLM sends BF16
+GEMMs to PyTorch's own matrix-multiply path (hipBLASLt or rocBLAS) unless a
+kernel library takes them.
+
+**Model runner (V1 / V2)** — the vLLM component that turns a scheduled step into
+tensors and calls the model. `v0.27.1` runs Qwen3-8B on V2 by default
+(`VLLM_USE_V2_MODEL_RUNNER` overrides it). The two order a step's requests
+differently, and an attention backend written for one order can misread the
+other ([benchmarks/runsheets/mi300x-run-2.md](benchmarks/runsheets/mi300x-run-2.md)).
 
 **`enforce_eager`** — disables CUDA graph capture, running each kernel launch from
 Python instead of replaying a recorded graph. It saves the memory a captured graph
@@ -1152,6 +1185,10 @@ carries it and is *appended* otherwise; the subcommand's flags are listed only b
 benchmark command without running any; needs no GPU and writes nothing, so the
 "existing experiment" guard never fires under it. `bench/sweep/dry-run.sh` runs
 it in vLLM's CPU image.
+
+**Serve row** (`vllm bench sweep`) — one entry of `--serve-params`: one server
+launch, kept up across every *benchmark row*, one entry of `--bench-params`. Its key names the `SERVE--<key>` part
+of each results directory.
 
 **`--link-vars a=b`** (`vllm bench sweep`) — keeps only the rows of the Cartesian
 product where serve key `a` equals bench key `b`, e.g.
