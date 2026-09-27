@@ -95,7 +95,8 @@ def test_measured_seat_crossings_are_the_ones_slo_md_quotes():
 def test_measured_sets_carry_their_geometry():
     """Every measured set says the geometry it was taken at, so the page can hide it elsewhere."""
     measured = json.loads(FILES["model.json"])["measured"]
-    for name in ("run1_decode", "run2_rates", "run3_seats", "run3_rates", "mi300x_run1_seats"):
+    for name in ("run1_decode", "run2_rates", "run3_seats", "run3_rates", "mi300x_run1_seats",
+                 "mi300x_run2_seats"):
         block = measured[name]
         for field in ("run", "mode", "accelerator", "prompt_tokens", "output_tokens",
                       "kv_dtype_bytes", "gpu_memory_utilization"):
@@ -104,6 +105,8 @@ def test_measured_sets_carry_their_geometry():
     assert len(measured["run1_decode"]["levels"]) == 12
     assert len(measured["run2_rates"]["levels"]) == 8
     assert len(measured["mi300x_run1_seats"]["levels"]) == 10
+    assert [lv["concurrency"] for lv in measured["mi300x_run2_seats"]["levels"]] == \
+        [1, 8, 16, 24, 32, 256]
 
 
 def test_golden_covers_every_branch_of_the_point_function():

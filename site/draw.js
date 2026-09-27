@@ -52,8 +52,8 @@
     return data.interference[state.accelerator] || null;
   }
 
-  // Which card's runs may be drawn here: "l40s", "mi300x", or null. Every run
-  // so far was taken at 4 000-token prompts, 200 out, BF16 KV.
+  // Which card's runs may be drawn here: "l40s", "mi300x", "mi300x-run2", or
+  // null. Every run so far was taken at 4 000-token prompts, 200 out, BF16 KV.
   function measuredGeometryMatches(state, data) {
     if (data && state.model && state.model !== data.measured.model) return null;
     const geometry = state.prompt_tokens >= 3500 && state.prompt_tokens <= 4500 &&
@@ -61,9 +61,11 @@
       state.kv_dtype_bytes === 2;
     if (!geometry) return null;
     if (state.accelerator === "l40s" || state.accelerator === "l40s-run1") return "l40s";
-    // MI300X run 1 ran with prefix caching off: its points say nothing at h > 0.
-    if ((state.accelerator === "mi300x" || state.accelerator === "mi300x-run1") &&
-        state.hit_rate <= 0.05) return "mi300x";
+    // Both MI300X runs had prefix caching off: their points say nothing at h > 0.
+    if (state.hit_rate > 0.05) return null;
+    // Run 2 was a second droplet and ran faster: each fit is drawn with its own run.
+    if (state.accelerator === "mi300x-run2") return "mi300x-run2";
+    if (state.accelerator === "mi300x" || state.accelerator === "mi300x-run1") return "mi300x";
     return null;
   }
 
@@ -81,9 +83,11 @@
     const targetMs = state.tpot_target * 1e3;
     const fit = interferenceFit(data, state);
     const showMeasured = measuredGeometryMatches(state, data);
-    const mi = data.measured.mi300x_run1_seats;
+    const onMi = showMeasured === "mi300x" || showMeasured === "mi300x-run2";
+    const mi = showMeasured === "mi300x-run2" ? data.measured.mi300x_run2_seats
+      : data.measured.mi300x_run1_seats;
     const measuredMaxN = showMeasured === "l40s" ? 56
-      : showMeasured === "mi300x" ? Math.max(...mi.levels.map((lv) => lv.concurrency)) : 0;
+      : onMi ? Math.max(...mi.levels.map((lv) => lv.concurrency)) : 0;
 
     const nMax = Math.max(16, Math.ceil(Math.max(point.seats.by_capacity, point.seats.by_latency, measuredMaxN) * 1.12));
     const step = (n) => R.tpotFloor(m, a, n, ctx).seconds * 1e3;
@@ -143,20 +147,20 @@
 
     // measured points, only inside the runs' geometry
     let hidden = null, note = null;
-    if (showMeasured === "mi300x") {
+    if (onMi) {
       let above = 0;
       for (const lv of mi.levels) {
         if (lv.concurrency > nMax) continue;
         if (lv.p99_tpot_ms > yMax) { above++; continue; }
         g += el("circle", { class: "pt-h0", cx: sx(lv.concurrency), cy: sy(lv.p99_tpot_ms), r: 4.5,
-                            "data-tip": `MI300X run 1, ${lv.concurrency} seats: TPOT p99 ${lv.p99_tpot_ms.toFixed(1)} ms, median ITL ${lv.median_itl_ms.toFixed(1)} ms, ${lv.max_running} running at most` });
+                            "data-tip": `${mi.label}, ${lv.concurrency} seats: TPOT p99 ${lv.p99_tpot_ms.toFixed(1)} ms, median ITL ${lv.median_itl_ms.toFixed(1)} ms, ${lv.max_running} running at most` });
         if (lv.concurrency <= mi.decode_step_through) {
           g += el("circle", { class: "pt-run1", cx: sx(lv.concurrency), cy: sy(lv.median_itl_ms), r: 3.5,
-                              "data-tip": `MI300X run 1, ${lv.concurrency} seats: median ITL ${lv.median_itl_ms.toFixed(1)} ms -- the decode step itself` });
+                              "data-tip": `${mi.label}, ${lv.concurrency} seats: median ITL ${lv.median_itl_ms.toFixed(1)} ms -- the decode step itself` });
         }
       }
       legend.push({ swatch: "pt-h0", label: "measured TPOT p99",
-                    tip: "TPOT p99 measured on an MI300X on 2026-09-27, prefix caching off." });
+                    tip: `TPOT p99 measured in ${mi.label}, 2026-09-27, prefix caching off.` });
       legend.push({ swatch: "pt-run1", label: "measured decode step alone",
                     tip: `Median ITL on the MI300X, drawn only through ${mi.decode_step_through} seats: above that every step carries a prefill chunk and the median is no longer a decode step.` });
       const lv = mi.levels;
@@ -165,7 +169,10 @@
         : cross === 0 ? `was already over ${fmtMs(targetMs)} ms at ${lv[0].concurrency} seat`
         : `crossed ${fmtMs(targetMs)} ms between ${lv[cross - 1].concurrency} and ${lv[cross].concurrency} seats`;
       const running = Math.max(...lv.map((x) => x.max_running));
-      const why = cross > 0 ? ", through newcomers' prefill rather than the decode step" : "";
+      // The cause is named only where the crossing row's median ITL is still a
+      // decode step and under the target: then the tail is newcomers' prefill.
+      const why = cross > 0 && lv[cross].concurrency <= mi.decode_step_through &&
+        lv[cross].median_itl_ms < targetMs ? ", through newcomers' prefill rather than the decode step" : "";
       note = `Measured, TPOT p99 ${where}${why}; the pool and the cap were never reached, because a ${String(mi.max_num_batched_tokens).replace(/\B(?=(\d{3})+(?!\d))/g, " ")}-token step budget held at most ${running} running.` +
         (above ? ` ${above} measured points sit above the top of this picture, at up to ${fmtMs(Math.max(...mi.levels.map((lv) => lv.p99_tpot_ms)))} ms.` : "");
     } else if (showMeasured === "l40s") {

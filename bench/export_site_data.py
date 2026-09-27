@@ -15,6 +15,7 @@ import pathlib
 
 import measured
 import measured_mi300x_run1
+import measured_mi300x_run2
 import measured_run2
 import measured_run3
 import plot_predicted_vs_measured as plot
@@ -126,6 +127,7 @@ def measured_points() -> dict:
     run3_h80 = measured_run3.levels("run3-a-h80") + measured_run3.levels("run3-a-h80-ext")
     run3_rates = measured_run3.levels("run3-b-h80") + measured_run3.levels("run3-b-h80-ext")
     mi_rows, mi_gauges = measured_mi300x_run1.rows(), measured_mi300x_run1.gauges()
+    mi2_rows, mi2_gauges = measured_mi300x_run2.rows(), measured_mi300x_run2.gauges()
 
     def seats(levels):
         return [{
@@ -192,7 +194,7 @@ def measured_points() -> dict:
         # Prefix caching off, so one cold series; the median ITL is a decode
         # step only through c = 32 (docs/benchmarks/mi300x-run1.md section 3).
         "mi300x_run1_seats": {
-            "run": 4, "mode": "closed", "accelerator": "mi300x",
+            "run": 4, "label": "MI300X run 1", "mode": "closed", "accelerator": "mi300x",
             "prompt_tokens": 4000, "output_tokens": 200, "kv_dtype_bytes": 2,
             "gpu_memory_utilization": GMU, "hit_rate": 0.0,
             "max_num_batched_tokens": measured_mi300x_run1.MAX_NUM_BATCHED_TOKENS,
@@ -203,6 +205,22 @@ def measured_points() -> dict:
                 "median_itl_ms": r["itl_ms"], "output_throughput": r["output_tps"],
                 "max_running": max(x["running"] for x in mi_gauges[name]),
             } for name, r in mi_rows.items() if "-in" not in name],
+        },
+        # The b2048 serve row only: run 1's server line on a second droplet, the
+        # row MI300X_RUN2 was fitted to (docs/benchmarks/mi300x-run2.md section 3).
+        "mi300x_run2_seats": {
+            "run": 5, "label": "MI300X run 2", "mode": "closed", "accelerator": "mi300x-run2",
+            "prompt_tokens": 4000, "output_tokens": 200, "kv_dtype_bytes": 2,
+            "gpu_memory_utilization": GMU, "hit_rate": 0.0,
+            "max_num_batched_tokens": measured_mi300x_run2.SERVE["b2048"]["max_num_batched_tokens"],
+            "decode_step_through": measured_mi300x_run2.DECODE_STEP_THROUGH,
+            "levels": [{
+                "concurrency": r["c"],
+                "p50_tpot_ms": r["tpot_p50_ms"], "p99_tpot_ms": r["tpot_p99_ms"],
+                "median_itl_ms": r["itl_ms"], "output_throughput": r["output_tps"],
+                "max_running": max(x["running"] for x in mi2_gauges[serve, bench]),
+            } for (serve, bench), r in sorted(mi2_rows.items(), key=lambda kv: kv[1]["c"])
+              if serve == "b2048" and "-in" not in bench],
         },
         # Where TPOT p99 crossed 50 ms, linear between two levels: the two
         # figures docs/SLO.md section 6 quotes as 12.5 and 37.8.

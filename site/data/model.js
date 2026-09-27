@@ -93,6 +93,7 @@ window.MODEL_DATA = {
    "gpu_memory_utilization": 0.9,
    "hit_rate": 0.0,
    "kv_dtype_bytes": 2,
+   "label": "MI300X run 1",
    "levels": [
     {
      "concurrency": 1,
@@ -180,6 +181,69 @@ window.MODEL_DATA = {
    "output_tokens": 200,
    "prompt_tokens": 4000,
    "run": 4
+  },
+  "mi300x_run2_seats": {
+   "accelerator": "mi300x-run2",
+   "decode_step_through": 32,
+   "gpu_memory_utilization": 0.9,
+   "hit_rate": 0.0,
+   "kv_dtype_bytes": 2,
+   "label": "MI300X run 2",
+   "levels": [
+    {
+     "concurrency": 1,
+     "max_running": 1.0,
+     "median_itl_ms": 5.218372249998993,
+     "output_throughput": 165.3353975865835,
+     "p50_tpot_ms": 5.2110671319096,
+     "p99_tpot_ms": 5.287649638994993
+    },
+    {
+     "concurrency": 8,
+     "max_running": 8.0,
+     "median_itl_ms": 7.639173249998521,
+     "output_throughput": 478.37589829700084,
+     "p50_tpot_ms": 12.820881942211138,
+     "p99_tpot_ms": 20.21006556462315
+    },
+    {
+     "concurrency": 16,
+     "max_running": 16.0,
+     "median_itl_ms": 9.068328000012116,
+     "output_throughput": 641.033386211599,
+     "p50_tpot_ms": 21.982026635678313,
+     "p99_tpot_ms": 24.44390848972384
+    },
+    {
+     "concurrency": 24,
+     "max_running": 24.0,
+     "median_itl_ms": 11.181659250013354,
+     "output_throughput": 716.2379682552714,
+     "p50_tpot_ms": 29.487845815326573,
+     "p99_tpot_ms": 35.40269225665825
+    },
+    {
+     "concurrency": 32,
+     "max_running": 32.0,
+     "median_itl_ms": 12.46381824998366,
+     "output_throughput": 750.3622403142183,
+     "p50_tpot_ms": 37.366933326633045,
+     "p99_tpot_ms": 47.52402055311549
+    },
+    {
+     "concurrency": 256,
+     "max_running": 100.0,
+     "median_itl_ms": 115.80144675008341,
+     "output_throughput": 800.0643085404655,
+     "p50_tpot_ms": 118.0754071809047,
+     "p99_tpot_ms": 143.61619991495002
+    }
+   ],
+   "max_num_batched_tokens": 2048,
+   "mode": "closed",
+   "output_tokens": 200,
+   "prompt_tokens": 4000,
+   "run": 5
   },
   "model": "qwen3-8b",
   "run1_decode": {

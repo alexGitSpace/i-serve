@@ -53,6 +53,7 @@ LENGTH_ROWS = ("c001-in2000", "c001", "c001-in8000")
 LOADED_ROWS = ("c008", "c016", "c024", "c032")
 # The median ITL is still a decode step through c032 on every row read at concurrency.
 DECODE_ROWS = ("c001-in2000", "c001", "c001-in8000") + LOADED_ROWS
+DECODE_STEP_THROUGH = 32
 
 GIB = 2 ** 30
 RUN1_TTFT_4000_MS = 256.9   # run 1's median at c001, the figure the sheet's lever read uses
