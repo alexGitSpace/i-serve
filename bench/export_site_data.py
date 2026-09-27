@@ -1,34 +1,9 @@
 """Export the performance model as data for `site/`, and the grid that proves the port.
 
-The calculator on the Pages site is a JavaScript re-implementation of
-bench/roofline.py, and this repository's rule is one home per fact. The two are
-reconciled like this: every *number* -- the card table with its provenance, the
-model figures, the coefficients, the interference fit, the SLO presets, the
-hourly rates, the measured points of every run -- lives in Python and is written
-to `site/data/model.json` by this module, so nothing is typed into the page.
-The *formulas* exist twice, and that duplication is allowed only because it is
-checked: `site/data/golden.json` is rows of `predictions.what_if_point()` over a
-grid of inputs, and `site/selftest.js` re-runs the JavaScript on every row and
-compares. A drift in either direction fails CI before it reaches a reader.
-
-Three properties the files have to keep, and why:
-
-  * **Byte-stable.** `sort_keys=True`, no timestamp, no git SHA. The CI job
-    regenerates these files on a clean checkout and `git diff --exit-code`s
-    them; a nondeterministic export would turn that guard permanently red.
-  * **No `Infinity`.** `json.dumps(math.inf)` writes a bare word that is not
-    JSON and that `JSON.parse` rejects. `allow_nan=False` makes Python raise
-    here instead; `what_if_point()` already maps inf to null.
-  * **A `.js` twin beside every `.json`.** `fetch()` and `<script type=module>`
-    both fail on a `file://` URL in Chrome, and a reader who double-clicks
-    `site/index.html` is a reader this page should still serve. The twin is
-    the identical JSON bytes behind `window.NAME = ` and a semicolon, loaded
-    with a plain `<script src>`, which works from a file, from `python3 -m
-    http.server` and from Pages alike. A test asserts the twin is the JSON.
-
-`docs/symptom-map.json` is hand-written beside its prose and gets a twin here
-too, so the advisor loads it the same way. Standard library only, like the
-rest of bench/. Regenerate with:
+Every number the page shows lives in Python and is written to site/data/model.json;
+the formulas exist twice, held equal by site/data/golden.json (what_if_point() over
+a grid) and site/selftest.js. The files stay byte-stable, carry no Infinity, and
+each .json has a .js twin that loads from file:// -- site/README.md has the why.
 
     python3 bench/export_site_data.py
 """
@@ -141,13 +116,7 @@ def model_data() -> dict:
 
 
 def measured_points() -> dict:
-    """Every run's levels, each set carrying the geometry it was taken at.
-
-    The geometry travels with the points because the page decides from it
-    whether they may be drawn over the reader's operating point at all: a run at
-    4 000-token prompts says nothing about a slider set to 32 000, and a hidden
-    point is honest where a misplaced one is a lie.
-    """
+    """Every run's levels, each set carrying the geometry the page hides it outside of."""
     # The model every run was taken on, so the page reads it from the data
     # instead of carrying a copy of the fact in draw.js.
     run1 = list(measured.levels())
@@ -247,12 +216,9 @@ def measured_points() -> dict:
 def golden_grid() -> list[dict]:
     """Inputs and the answer, over a grid the page's sliders can reach.
 
-    Small on purpose -- a few hundred rows -- and shaped in three parts: a core
-    grid over the inputs that change the *regime* (card, prompt length, h,
-    target, KV dtype), one-factor-at-a-time steps away from this repository's
-    own operating point for the rest, and the three edges where the answer is
-    a sentence rather than a number. The crossing points are in the core grid,
-    so a floor() that disagreed on 23.999... would show up.
+    A core grid over the regime-changing inputs (where a floor() disagreeing on
+    23.999... would show), one-factor steps from this repository's operating
+    point, and the edges where the answer is a sentence rather than a number.
     """
     rows: list[dict] = []
 
@@ -279,11 +245,8 @@ def golden_grid() -> list[dict]:
     add(**dict(BASE, hit_rate=0.0))
     for accelerator in ("l40s", "mi300x"):
         add(**dict(BASE, accelerator=accelerator))
-    # The edges: no seat meets the target; the weights do not fit; the gap
-    # wobble at small counts (1.06 against a continuous 1.08, roofline.py).
-    # The second model over the regimes that decide its answer -- without these
-    # rows the page could compute it in JavaScript with nothing holding the two
-    # implementations equal, and its "service: not derivable" would be untested.
+    # The edges, and the second model over the regimes that decide its answer,
+    # so its "service: not derivable" is held to Python too.
     for prompt in (512, 4000, 32000):
         for tpot in (0.050, 0.200):
             for kv in (2, 1):

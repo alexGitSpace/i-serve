@@ -1,54 +1,14 @@
-"""Draw every prediction the runs made, as measured / predicted.
+"""Draw every prediction the runs made, as measured / predicted, on a log axis.
 
-The picture the front page carries. One named **row** per prediction: a dot on
-a log axis and a bar running back to 1.0, so the bar's length is the error and
-its side is the direction -- left of the line the prediction was high, right of
-it that it was low. Rows are grouped by run and sorted by ratio inside it.
-
-**Why a ratio and not milliseconds.** The predictions are in seven different
-units -- tokens of KV, sequences, milliseconds, requests per second, a hit rate,
-a count of log keys. A ratio is the only axis that holds them at once, and it is
-also the only one that does not flatter: a plot of the decode step alone would
-show a model that is right to within 2 %, which is true and is not the claim.
-The claim is that everything was written down first, misses included.
-
-**Where the numbers come from, and what keeps them honest.** Section 9 of each
-report is the source of truth; the rows below are a drawing-sized *selection* of
-it, never an edit. `pred_text` and `meas_text` are the cell contents as that
-table writes them, and `bench/tests/test_plot_predicted_vs_measured.py` asserts that
-**one** row of that section 9 -- the same row -- still contains both, so editing
-either cell breaks the test rather than silently leaving the picture wrong.
-Three rules decide what is drawn, and `README.md` states them beside the
-picture:
-
-* one dot per prediction that named a two-sided value;
-* a predicted range is drawn at its midpoint;
-* a one-sided bound (`>= 3.5 req/s`, `< 1 %`) is left out -- a bound that holds
-  says nothing about how close the model was;
-* a ratio beyond the axis is drawn at its edge as an arrowhead, its value in the
-  right-hand column.
-
-A hollow dot is a prediction whose coefficient had been fitted to the very run
-it is predicting. Run 1 fitted `eff_mem` to its own decode step, so those four
-dots sit near 1.0 by construction and are marked rather than removed -- and any
-sentence counting the dots owes the reader that four of them are not out-of-sample.
-
-Two conventions worth stating because they are easy to misread. The ratio here is
-*measured / predicted*, while the reports' own Error column is the other way
-round, so a dot at 0.905 is inside this band and just outside theirs. And where
-a report gives two measured values for one prediction -- run 3's KV pool reads
-`168 985 / 176 227` -- the dot is the first, the launch the prediction was made
-for; the cell text below carries both so the choice is visible.
-
-Standard library only, like the rest of bench/. Regenerate with:
-
-    python3 bench/plot_predicted_vs_measured.py
-
-Three things keep the committed SVG from falling behind this file, and they
-catch the same mistake at three different distances from it: the pre-commit
-hook in `.githooks/` redraws and stages it, the test above compares the string
-this module returns against the bytes on disk, and `.github/workflows/bench.yml`
-regenerates it on a clean checkout and prints the diff when they disagree.
+The front page's picture: one row per prediction, grouped by run, sorted by ratio;
+a ratio because the predictions come in seven units. Rows are a selection of each
+report's section 9, and bench/tests/test_plot_predicted_vs_measured.py holds
+`pred_text` / `meas_text` to one row of it. Drawn: two-sided values only, a
+predicted range at its midpoint, an off-axis ratio as an arrowhead at the edge;
+hollow means the coefficient was fitted to that run. The ratio is measured /
+predicted, the reports' Error column the reverse; where a report gives two
+measured values the dot is the first. The pre-commit hook, that test and CI keep
+the committed SVG equal to svg().
 """
 
 from __future__ import annotations
@@ -86,10 +46,8 @@ class Prediction:
 
 
 PREDICTIONS: tuple[Prediction, ...] = (
-    # `pred_text` and `meas_text` are the two cells of one section-9 row, copied
-    # with enough of their delimiters and emphasis to identify that row and no
-    # other. A bare number is not enough: "2.00" is a substring of the measured
-    # "2.000×" on the same line, and "| 45 " occurs in three different tables.
+    # Each probe carries enough delimiters to match one section-9 row and no
+    # other: a bare "2.00" is a substring of "2.000×" on the same line.
 
     # --- run 1, 2026-08-18 ---------------------------------------------------
     Prediction(1, "KV pool", 181749, 168985,
@@ -215,13 +173,7 @@ PREDICTIONS: tuple[Prediction, ...] = (
 
 @dataclass(frozen=True)
 class Run:
-    """One rented card on one date.
-
-    The card is here rather than in the title because the title stops being
-    true the moment a second card appears: run 4 on MI300X is a row in this
-    table and nothing else, and the drawing has to keep saying which card
-    produced which band.
-    """
+    """One rented card on one date; the card is named per band, not in the title."""
 
     label: str
     date: str
@@ -236,12 +188,8 @@ RUNS: dict[int, Run] = {
 }
 
 # --- geometry ----------------------------------------------------------------
-# One row per prediction, because the previous version stacked a run's dots down
-# a fixed band: twenty dots of run 2 at a 2.63 px pitch, drawn 8.4 px wide. They
-# overlapped by construction, the vertical position encoded nothing but the
-# order of the list, and thirty-seven of the forty dots carried no name at all --
-# their labels lived in <title>, which never fires, because GitHub renders a
-# README picture inside an <img>.
+# One named row per prediction: GitHub renders the picture inside an <img>, so a
+# <title> label never shows and stacked dots would carry no name.
 W = 860
 MARGIN = 16
 LABEL_R = 258                       # right edge of the name column
@@ -272,16 +220,9 @@ CHAR_W = 6.4                        # generous width per character at BASE_FONT
 ROW_FONT = 11
 SMALL_FONT = 10.5
 
-# Every colour below clears 3:1 against **both** GitHub surfaces -- #ffffff and
-# #0d1117 -- because an <img> gets no way to ask which one it landed on. That
-# constraint is why the palette is mid-toned rather than pretty.
-#
-# HIT and MISS are the CVD-safe warm/cool pair: worst-case separation dE 30.5
-# under protanopia. The green-and-amber pair this file used until 2026-09-11
-# measured dE 3.1 under deuteranopia -- two colours a red-green colourblind
-# reader could not tell apart, on a drawing whose entire subject is which dots
-# are which. Position against the shaded band carries the same fact a second
-# time, so nothing here rests on hue alone.
+# Every colour clears 3:1 on both GitHub surfaces, #ffffff and #0d1117: an <img>
+# cannot ask which it landed on. HIT and MISS are a CVD-safe warm/cool pair
+# (worst case dE 30.5, protanopia), and position against the band repeats them.
 HIT = "#2f81f7"                     # 3.75 on white, 5.05 on #0d1117
 MISS = "#cc7000"                    # 3.57 on white, 5.30 on #0d1117
 INK = "#6e7781"                     # 4.55 / 4.16 -- labels and axis text
@@ -300,12 +241,7 @@ def x_of(ratio: float) -> float:
 
 
 def layout() -> tuple[list[tuple[int, float, list[tuple[Prediction, float]]]], float]:
-    """Where every header and every row sits, and where the plot ends.
-
-    Rows are sorted by ratio inside their run, so a band reads as a gradient
-    from the worst over-prediction to the worst under-prediction instead of as
-    the order someone happened to type the table in.
-    """
+    """Where every header and row sits, rows sorted by ratio inside their run."""
     groups: list[tuple[int, float, list[tuple[Prediction, float]]]] = []
     y = float(PLOT_TOP)
     for run in sorted(RUNS):

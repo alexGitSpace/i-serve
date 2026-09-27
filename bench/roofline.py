@@ -1,14 +1,11 @@
 """Roofline floors for LLM inference: what the hardware can physically do.
 
 Inputs are config.json and the vendor spec table; a floor is a ceiling on
-performance, not a forecast, and the derivations are docs/SLO.md. A library:
-bench/predictions.py prints, bench/tests/test_roofline.py checks, and nothing
-here imports either. Layered in dependency order: specs -> traffic -> roofline
--> floors -> inversions -> money. Each side of a roofline is divided by its own
-coefficient before the max() (SLO.md section 4).
+performance, not a forecast (derivations: docs/SLO.md). A library that
+bench/predictions.py prints and bench/tests/test_roofline.py checks, layered
+specs -> traffic -> roofline -> floors -> inversions -> money.
 
-Owed before quantised weights are benchmarked: weight_dtype_bytes and
-kv_dtype_bytes as float, since 4-bit weights are 0.5 bytes per parameter.
+Owed before quantised weights are benchmarked: the dtype byte counts as float.
 """
 
 import math
@@ -174,11 +171,7 @@ ACCELERATORS = {
 
 
 def decode_step_bytes(model: Model, batch_size: int, context_len: int) -> float:
-    """Bytes moved per decode step: weights once, KV per sequence.
-
-    Every other decode figure derives from this; per batch_size it is bytes
-    per generated token, which cost per million tokens is proportional to.
-    """
+    """Bytes moved per decode step: weights once, KV per sequence; every decode figure derives from it."""
     return (
         model.weights_bytes
         + model.kv_bytes_per_token * batch_size * context_len
@@ -190,11 +183,9 @@ def kv_cache_tokens(
         gpu_memory_utilization: float) -> float:
     """Tokens of KV that fit in what is left after the weights.
 
-    Independent of context and batch: KV is priced per token, then divided into
-    sequences. gpu_memory_utilization has no default -- it is a server knob, and
-    a default would hide an assumption from every call site. An over-estimate:
-    activations and CUDA graph buffers are not modelled, and the engine's
-    startup log outranks this figure (SLO.md section 9).
+    No default for gpu_memory_utilization: a server knob, never an assumption.
+    An over-estimate -- activations are not modelled, and the startup log
+    outranks it (SLO.md section 9).
     """
     kv_space = accel.memory_bytes * gpu_memory_utilization - model.weights_bytes
     if kv_space < 0:
@@ -235,9 +226,7 @@ def tpot_floor(
 def prefill_bytes(model: Model, prompt_tokens: int) -> float:
     """Bytes moved while prefilling one prompt: weights once, KV written once.
 
-    The KV write matters at reasoning lengths and never flips the verdict on
-    these cards (docs/SLO.md section 4). Not modelled: attention re-reading
-    the KV already written, second order at these lengths.
+    Not modelled: attention re-reading the KV already written (SLO.md section 4).
     """
     return model.weights_bytes + model.kv_bytes_per_token * prompt_tokens
 
@@ -294,12 +283,10 @@ def seats_under_prefill_interference(
         hit_rate: float = 0.0) -> float:
     """Seats a service can promise once prefill lands inside decode steps.
 
-    Hardware alone allows max_num_seqs_from_slo; the scheduler stretches every
-    step by the prefill it chunks in (docs/benchmarks/l40s-baseline.md
-    section 5). slope and intercept are in seconds per seat, fitted on one run,
-    valid only over its concurrency range. hit_rate scales the interference
-    term only (docs/SLO.md section 6). Returns a float: callers compare it
-    against a measured crossing that sits between two integers.
+    slope and intercept are seconds per seat, fitted on one run and valid over
+    its concurrency range only (l40s-baseline.md section 5); hit_rate scales the
+    interference term alone (SLO.md section 6). A float: callers compare it
+    against a measured crossing between two integers.
     """
     if not 0.0 <= hit_rate <= 1.0:
         raise ValueError("hit_rate is a share of prompt tokens, so 0 <= h <= 1")
@@ -365,10 +352,7 @@ def max_num_seqs(
 def aggregate_tokens_per_sec(
         model: Model, accel: Accelerator,
         batch_size: int, context_len: int) -> float:
-    """Output tokens per second across the batch: batch_size / TPOT floor.
-
-    A floor divided by a batch is still a floor, never a forecast.
-    """
+    """Output tokens per second across the batch -- still a floor, never a forecast."""
     return batch_size / tpot_floor(model, accel, batch_size, context_len).seconds
 
 
@@ -376,8 +360,7 @@ def cost_per_1m_tokens(
         aggregate_tokens_per_sec: float, hourly_rate: float) -> float:
     """SLO.md section 7: hourly rate over tokens delivered per hour.
 
-    hourly_rate is a contract figure, not physics, so it is an argument and not
-    an Accelerator field; the throughput is an argument so that one function
+    Both are arguments: the rate is a contract, not physics, and one function
     prices a measured run and a predicted one alike.
     """
     return hourly_rate / (aggregate_tokens_per_sec * 3600) * 1e6

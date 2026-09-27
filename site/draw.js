@@ -1,35 +1,13 @@
-/* draw.js -- the two pictures, as SVG strings.
+/* draw.js -- the two pictures, as hand-built SVG strings whose classes the
+ * stylesheet colours, so they follow the reader's theme.
  *
- * Hand-built SVG for the same reason bench/plot_predicted_vs_measured.py is:
- * no library, and every element has a class the stylesheet colours, so the
- * picture follows the reader's light or dark theme with no code of its own.
+ *   Draw.seats -- seats against ms: step(n) solid, the served step dashed where a
+ *     card has an interference fit, the target and both limits as rules; measured
+ *     points only inside a run's geometry (4 000 in, 200 out, BF16 KV, per card).
+ *   Draw.cost  -- $ per 1M output tokens against the TPOT target, on a log axis.
  *
- *   Draw.seats(data, state, point) -- where the seat count comes from. x is
- *     seats, y is milliseconds. The decode step step(n) is solid; the served
- *     step step(n) + (1 - h) * I(n) is dashed and exists only for a card with
- *     an interference fit; the TPOT target is a horizontal rule; the latency
- *     and capacity limits are vertical ticks. Measured points are drawn ONLY when
- *     the sliders sit inside a run's geometry (its card, ~4 000-token prompts,
- *     200 out, BF16 KV) -- a point drawn against a
- *     different operating point would be a lie with a legend.
- *
- *   Draw.cost(data, state, point) -- what the promise costs. x is the TPOT
- *     target, y is $ per 1M output tokens on a log axis, with the current
- *     target marked. This is the front page's $0.39 argument as a curve the
- *     reader can drag.
- *
- * Colours: the model's lines are the text colour; measured points use the
- * blue/orange pair the front-page chart already uses (CVD ΔE 30.5, both
- * cleared 3:1 on light and dark). Legends are HTML beside the picture, not
- * text inside it, so they wrap on a phone.
- *
- * A legend entry is a NAME, two to four words, and nothing else: `tip` carries
- * the formula, the date and the validity range to a hover, and the sentence
- * that explains the mechanism belongs to the figure's caption in index.html.
- * A legend that has to be read is a legend nobody reads. What a picture turns
- * out to SHOW -- the measured squares sitting under the predicted line -- is a
- * finding, not a key to the symbols, so it comes back as `note` and gets its
- * own line under the chart.
+ * A legend entry is a name of two to four words; the formula goes to `tip`, and
+ * what the picture turns out to show comes back as `note` under the chart.
  */
 (function (root) {
   "use strict";

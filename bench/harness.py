@@ -1,33 +1,12 @@
 """The load harness: run a scenario against a server and write down what happened.
 
-The instrument the first open item of docs/SLO.md section 10 is blocked on. It
-orchestrates the other four modules -- bench/scenarios builds the prompts,
-bench/loadgen sends them, bench/stats aggregates, and bench/vllm_metrics reads
-the engine's own counters -- and adds the one thing none of them can do alone:
-decide whether a level is *valid*.
-
-That last part is the reason this is not a shell loop around `vllm bench serve`.
-Run 2 spent real money on two gates that were tighter than the platform's noise
-and on a confounder detector with no power (docs/benchmarks/l40s-run2.md section
-6). The lesson recorded there was that a gate belongs next to the measurement,
-not in a runsheet a tired operator reads at 09:00, so every check below runs
-automatically and prints its verdict beside the row it judges:
-
-  * a closed-loop level's TTFT is labelled not-a-service-metric, always
-  * TTFT p50 below the prefill floor *of the uncached tokens* invalidates the
-    level -- that is the harness measuring the cache instead of the engine
-  * the measured h (counter increments, per level) is scored against the h the
-    workload was built to produce, and a gap over 5 points is a defect
-  * the logged KV pool is gated at +-5% of a reference, because two launches of
-    one identical config differed by 4.2%
-  * the generator's own lateness is measured, since an open loop that cannot
-    keep up has quietly become a closed one
-
-Usage, on the pod:
+It orchestrates bench/scenarios, loadgen, stats and vllm_metrics, and adds what
+none of them can: a verdict on whether each level is valid, printed beside the
+row it judges, because a gate in a runsheet is read too late
+(docs/benchmarks/l40s-run2.md section 6).
 
     python3 bench/harness.py --scenario seats-cached --out results/run3-cached \
         --startup-log /workspace/run3/serve-prefix-on.log
-
     python3 bench/harness.py --scenario seats-cached --dry-run   # no server needed
 """
 
@@ -58,9 +37,7 @@ def _metrics_endpoints(values: list[str] | None,
                        ep: Endpoint) -> tuple[tuple[str, int], ...]:
     """`HOST:PORT` strings into pairs, or the load endpoint when none is given.
 
-    Strict about the shape on purpose: a typo here does not fail, it reads a
-    different engine's counters, and the level it produces looks exactly like a
-    level that measured something.
+    Strict on purpose: a typo would silently read another engine's counters.
     """
     if not values:
         return ((ep.host, ep.port),)
@@ -80,12 +57,7 @@ def _write_json(path: str, payload) -> None:
 
 
 def _write_records(path: str, records: list[Record]) -> None:
-    """Per-request lines, because a percentile is not evidence.
-
-    Run 2's raw directory exists for the same reason: the aggregate is what a
-    write-up quotes, and the only way to ask a question nobody thought of during
-    the run is to still have the individual requests afterwards.
-    """
+    """Per-request lines, because a percentile is not evidence."""
     with open(path, "w", encoding="utf-8") as handle:
         for rec in records:
             row = asdict(rec)
@@ -98,17 +70,9 @@ def check_prefill_floor(stats: LevelStats, workload: Workload,
                         measured_h: float | None, accel) -> LevelStats:
     """Compare TTFT p50 with the floor of the tokens that were actually prefilled.
 
-    The subtlety this function exists for: with a cache warm, the prompt is 1 500
-    tokens and the *work* is 300. Comparing the measured TTFT with the floor at
-    1 500 would call every cached level impossibly fast and invalidate exactly
-    the levels the run is for. The floor that binds is the one at
-    prompt_tokens x (1 - h), and it is h *measured* that goes in there, not h
-    intended -- an engine that cached less than asked did more prefill than the
-    nominal figure claims.
-
-    Below that floor there is no physical story left: the tokens were not
-    computed at all, which means the workload is repeating whole prompts rather
-    than sharing a prefix (docs/GLOSSARY.md, prefix caching).
+    The binding floor is at prompt_tokens x (1 - h measured), not at the prompt:
+    comparing against the full prompt would invalidate every cached level. Below
+    it no tokens were computed, so the workload repeats whole prompts.
     """
     share = measured_h if measured_h is not None else workload.nominal_hit_rate
     uncached = max(1, round(workload.prompt_tokens * (1.0 - share)))
@@ -133,13 +97,8 @@ def check_hit_rate(stats: LevelStats, workload: Workload,
                    measured_h: float | None) -> LevelStats:
     """Score the engine's counters against the h the prompts were built for.
 
-    Two independent routes to one quantity: the construction (a block-aligned
-    shared prefix over a known prompt length) and the measurement (increments of
-    vllm:prefix_cache_hits over vllm:prefix_cache_queries across this level's
-    window). They should agree to a point or two. A gap says the workload is not
-    producing the independent variable it claims, which is a defect in the run
-    rather than a finding about the engine -- and it has to be caught while the
-    pod is still rented.
+    Construction and counters must agree to a point or two; a gap is a defect in
+    the run, caught while the pod is still rented.
     """
     nominal = workload.nominal_hit_rate
     extra = {"nominal_hit_rate": nominal}
@@ -163,15 +122,8 @@ def check_policy(stats: LevelStats, records: list[Record],
                  expected: str | None) -> LevelStats:
     """Was this level routed the way the arm says it was?
 
-    The gate that exists because the alternative was found the expensive way on
-    paper: bench/loadgen.py sends its prompt as token ids, and until 2026-09-19
-    the router could not read that shape, so every request took the round_robin
-    fallback and a prefix arm would have measured the control twice with nothing
-    reporting a fault (docs/benchmarks/runsheets/mi300x-run-3.md section 0).
-
-    Invalidating rather than warning, because a level routed by the wrong policy
-    is not a noisy measurement of the right one -- it is a measurement of
-    something else wearing the level's name.
+    Invalidates rather than warns: a level routed by the wrong policy measures
+    something else (docs/benchmarks/runsheets/mi300x-run-3.md section 0).
     """
     if expected is None:
         return stats
@@ -198,17 +150,9 @@ async def sample_gauges(metrics: tuple[tuple[str, int], ...],
                         interval: float, into: dict) -> None:
     """Poll the engine's gauges while a level runs, keeping the peaks.
 
-    Without this a level can only say what the *client* did. Run 1's seat count
-    was confirmed by `num_requests_running` reaching 41 and its preemption
-    cascade was visible as `num_requests_waiting` 39 at the same instant
-    (docs/benchmarks/l40s-baseline.md section 2) -- neither is derivable from
-    latencies, and a batch that never reached the concurrency asked for makes
-    every number of the level belong to a different operating point.
-
-    Off by default, because it is not free: each poll is an HTTP round trip to
-    the server being measured. It runs in a worker thread so the blocking
-    urllib call cannot stall the event loop between two token arrivals, which
-    would land in the ITL distribution as a stall the server never produced.
+    Only the engine can say the batch reached the concurrency asked for. Off by
+    default, since each poll is a round trip to the server under test; it runs in
+    a thread so a blocking call cannot land in the ITL distribution.
     """
     while True:
         await asyncio.sleep(interval)
@@ -237,10 +181,8 @@ async def run_level(workload: Workload, ep: Endpoint, targets: SLOTargets,
                     ) -> tuple[LevelStats, list[Record], dict]:
     """One level end to end: settle, warm the cache, scrape, load, scrape, judge.
 
-    The order is the measurement. The settle wait comes first, so the previous
-    level's stragglers are not still decoding while this level's step is
-    measured; the warmup comes before the first scrape, so the misses that seed
-    the prefix land outside this level's counter window.
+    The order is the measurement: settle so stragglers are out of the step, warm
+    before the first scrape so seeding misses fall outside the counter window.
     """
     # The load goes to one address; the counters come from the engines. The two
     # are the same thing only when nothing sits in front of them.
@@ -323,12 +265,8 @@ def format_row(stats: LevelStats) -> str:
 def seat_verdict(levels: list[LevelStats], targets: SLOTargets) -> str:
     """The largest closed-loop concurrency whose TPOT p99 still met the target.
 
-    This is the number the run exists to produce, and it is printed rather than
-    left to be eyeballed off the table, for the reason the read-out failed twice
-    before: the suspicion arrives, the division does not. The crossing is
-    reported as an interval between the last level that passed and the first
-    that failed, because it lies between two integers and a single number would
-    be an interpolation nobody measured.
+    Reported as an interval between the last pass and the first failure: the
+    crossing lies between two integers, and one number would be unmeasured.
     """
     closed = [s for s in levels if s.mode == "closed" and s.completed]
     if not closed:
@@ -352,29 +290,10 @@ def dry_run_plan(levels: tuple[Workload, ...], accel,
                  targets: SLOTargets) -> dict:
     """The plan and its derivable floors, as data, judged against the targets.
 
-    Every runsheet in this repository exists because a prediction is only a
-    prediction if it was written down first. This is that step, made cheap: the
-    shape of every level, the h its construction produces, the prefill floor
-    the measurement will be gated against -- and, since 2026-09-13, what the
-    floors already say about the SLO the run will be scored on. Before that
-    date --slo-ttft-ms and --slo-tpot-ms were parsed and then ignored under
-    --dry-run, so a reader could not ask what a 30 ms target does to the plan
-    without renting the card. Now the verdict column answers it:
-
-      ok      neither floor exceeds its target; the level *can* pass
-      TTFT>   the prefill floor at the uncached tokens is already over budget
-      TPOT>   the decode step alone, at this concurrency, is already over budget
-      both    both
-
-    A floor over its target is a level that cannot meet the SLO on any card
-    with these coefficients -- not a prediction that it will fail, a proof
-    that it must. A floor under it says nothing either way, which is why the
-    column is called "vs SLO" and not "passes". Poisson levels carry no TPOT
-    floor: a rate is not a batch, and the batch it produces is what the run
-    measures.
-
-    Returned as a dict so --json can print it and a test can read it; the
-    printer below is the only other reader.
+    The verdict column: ok (neither floor over its target), TTFT>, TPOT>, both. A
+    floor over its target proves the level cannot pass with these coefficients;
+    one under it says nothing. Poisson levels carry no TPOT floor: a rate is not a
+    batch. A dict, so --json and the tests can read it.
     """
     provenance = accel.provenance or "provenance not stated; treat as a prior"
     rows = []
@@ -406,10 +325,7 @@ def dry_run_plan(levels: tuple[Workload, ...], accel,
             "tpot_floor_ms": None if step is None else step * 1e3,
             "verdict": {"ttft_over": floor_unc > targets.ttft, "tpot_over": tpot_over},
         })
-    # One context for the whole plan: the scenarios of this repository share a
-    # prompt length within a block, and a plan that mixed them would need a
-    # seat count per row rather than one line. The longest seat is the honest
-    # choice -- it is the smallest count.
+    # One context for the whole plan: the longest seat, i.e. the smallest count.
     context = max(w.prompt_tokens + w.output_tokens for w in levels)
     return {
         "accelerator": {
@@ -444,13 +360,8 @@ def _verdict_text(verdict: dict) -> str:
 def dry_run(levels: tuple[Workload, ...], accel, targets: SLOTargets) -> None:
     """Print dry_run_plan() without touching a server.
 
-    The first two lines are quoted by README.md and docs/audience.md and are
-    kept byte-identical by a test: the provenance line, not the values, is the
-    point. Printing "eff_mem 0.7" beside "eff_mem 0.83" invites a reader to
-    compare a 4.4 ms floor with a measured 22.9 ms one and conclude something
-    this repository forbids everywhere else -- so the status travels with the
-    number, on the page the number is read from. The SLO line is third for the
-    same reason the other two come first: the targets decide the last column.
+    The first two lines are quoted by README.md and docs/audience.md and held
+    byte-identical by a test: the provenance travels with the coefficients.
     """
     plan = dry_run_plan(levels, accel, targets)
     card = plan["accelerator"]

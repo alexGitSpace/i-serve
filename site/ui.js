@@ -1,15 +1,10 @@
 /* ui.js -- one situation, three steps, everything else folded away.
  *
- * State is one flat object in the URL hash, so an operating point is a link.
- * Every render is a pure function of that state: Roofline.whatIfPoint() gives
- * the numbers, Draw.* the pictures, Advisor.evaluate() the branch. Nothing is
- * computed here that the Python does not compute -- this file chooses which
- * few of those numbers a first-time reader sees, says them in plain words,
- * and hides the rest behind "More assumptions" and "let me type them".
- *
- * The situation is a sentence whose values open small popovers holding the
- * real controls, so the reader learns what each number IS from the sentence
- * around it rather than from a form label.
+ * State is one flat object in the URL hash, so an operating point is a link, and
+ * every render is a pure function of it: Roofline.whatIfPoint() the numbers,
+ * Draw.* the pictures, Advisor.evaluate() the branch. This file computes nothing
+ * the Python does not; it chooses what a first-time reader sees, and the
+ * situation is a sentence whose values open the real controls.
  */
 (function () {
   "use strict";
@@ -98,11 +93,8 @@
   const sliderToPrompt = (v) => Math.round(P_MIN * Math.pow(2, (v / 1000) * Math.log2(P_MAX / P_MIN)));
   const cardShort = (key) => data.accelerators[key].name.replace(" (run 1 coefficients)", "").replace("NVIDIA ", "").replace("AMD Instinct ", "");
   const rateOf = (st) => st.hourly_rate === null ? data.accelerators[st.accelerator].hourly_rate : st.hourly_rate;
-  // The batch class is not a looser latency class: its obligation is tokens
-  // delivered before a deadline, and the per-token threshold is only a guard
-  // against pathological stalls (docs/SLO.md sections 1-2). So the same
-  // operating point is READ differently -- throughput and time to a million,
-  // not milliseconds -- and these three helpers are the whole difference.
+  // The batch class reads the same point as throughput and time to a million,
+  // not milliseconds (docs/SLO.md sections 1-2); these helpers are the difference.
   const isBatch = () => state.slo_class === "batch";
   const perSec = (x) => (x >= 100 ? int(x) : x.toFixed(1));
   const spanFor = (tokens, tokensPerSec) => {
@@ -236,10 +228,8 @@
   }
 
   // --- what the per-token threshold is worth to a batch pipeline --------------
-  // The 200 ms exists to catch a pathological stall, not because anyone is
-  // watching a token arrive (docs/SLO.md section 1). What it is actually worth
-  // is the throughput it buys over the interactive threshold -- on a card where
-  // room binds, nothing at all, which is section 3's sentence made visible.
+  // What the 200 ms stall guard buys over the interactive threshold -- nothing
+  // on a card where room binds (docs/SLO.md section 1).
   function guardLine(point) {
     const here = delivered(point);
     if (!here) return "";
@@ -444,10 +434,8 @@
   }
 
   // --- plain-language terms on hover -----------------------------------------
-  // Every spelling in TERMS becomes a <span class="term" data-tip>. Text nodes
-  // only, never inside code, controls, headings, the big numbers or the
-  // pictures, and never nested. The spans are removed and rebuilt on every
-  // render, so the marking is a pure function of the rendered text.
+  // Every spelling in TERMS becomes a <span class="term" data-tip>, in text nodes
+  // only and never nested; rebuilt on every render from the rendered text.
   const TERM_INDEX = (() => {
     const entries = [];
     for (const t of window.TERMS || []) for (const m of t.match) entries.push({ m, t });

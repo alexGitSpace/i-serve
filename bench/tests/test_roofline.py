@@ -1,39 +1,15 @@
-"""Every figure docs/SLO.md publishes, as an assertion.
+"""Every figure docs/SLO.md and the benchmark reports publish, as an assertion.
 
-Why this file exists, stated plainly: in three separate sessions the code and
-the document disagreed, and every time it was caught by eye. `864` typed as
-`846` is 2.1% and does not look wrong. The batch-1 column was computed at zero
-context under a header saying 4 000. The prefill memory side omitted the KV the
-prompt writes. None of those is a subtle bug; all three survived review because
-nothing forced the two files to meet.
-
-So the rule this file encodes: **a number is published in docs/SLO.md or it is
-asserted here, and preferably both.** Since run 1 the same rule covers
-docs/benchmarks/l40s-baseline.md, whose measured figures are held by the
-run-1 block near the bottom of this file, and since run 2 the same again for
-docs/benchmarks/l40s-run2.md in the block after it. A test that fails after a coefficient
-changes is doing its job -- update the document and the expectation together,
-in the same commit, which is exactly the step that kept being skipped.
-
-Tolerances are stated per assertion rather than globally, because they mean
-different things: an exact integer (seat counts, byte counts) is arithmetic and
-must match exactly, while a millisecond figure is compared against a document
-that rounds to one or two decimals.
-
-No dependency on pytest, which is not installed here -- plain functions, plain
-asserts, and a runner at the bottom:
+The rule: a number is published in a doc or asserted here, preferably both, and a
+test that fails after a coefficient changes means the doc and the expectation
+change together. Tolerances are per assertion: integers match exactly, milliseconds
+to the doc's rounding. No pytest dependency; `pytest bench/` also works.
 
     python3 bench/tests/test_roofline.py
-
-Written so that `pytest bench/` works verbatim the day pytest is installed: the
-names begin with test_, the assertions are bare, and nothing uses a fixture.
 """
 
-# Two ways in, and both have to work. `pytest bench/` gets bench/ on the import
-# path from tests/conftest.py; `python3 bench/tests/test_roofline.py` on a rented
-# pod, where pytest is not installed, gets only this directory. The three lines
-# below are what make the second one work, and they are here rather than in
-# conftest.py for exactly that reason.
+# Run directly on a pod without pytest, this file gets only its own directory on
+# the path; conftest.py is not consulted, so the insert lives here.
 import pathlib as _pathlib
 import sys as _sys
 
@@ -150,13 +126,7 @@ def test_prefill_carries_the_kv_it_writes():
 
 
 def test_the_rejected_cards_are_rejected_by_arithmetic():
-    """Section 4's two counterexamples, kept executable so the choice stays checkable.
-
-    The RTX 4090 has *better* decode bandwidth than the L40S and is still
-    unusable: 165 TFLOP/s dense puts its TTFT floor above the whole budget, so
-    the interactive class cannot exist on it. The L4 fails one step earlier, on
-    the TPOT floor at batch 1.
-    """
+    """Section 4's two counterexamples: the RTX 4090 fails on the TTFT floor, the L4 on the batch-1 TPOT floor."""
     rtx4090 = Accelerator(
         name="NVIDIA RTX 4090", memory_bytes=24e9, peak_bandwidth=1008e9,
         peak_flops=165.2e12, achieved_bandwidth=0.70, mfu=0.45,
@@ -208,7 +178,7 @@ def test_identical_bytes_means_identical_tpot_and_a_64x_cost_gap():
 # --- section 6: the concurrency ceiling -------------------------------------
 
 def test_kv_pool_matches_the_startup_log_prediction():
-    """1.15 M KV tokens on MI300X at 192 GiB; the startup log outranks it (section 9)."""
+    """1.15 M KV tokens on MI300X at 192 GiB; its startup log printed 1.12 M (section 9)."""
     assert close(kv_cache_tokens(QWEN3_8B, MI300X, GMU), 1.147e6, 0.001e6)
     assert close(kv_cache_tokens(QWEN3_8B, L40S, GMU), 0.1817e6, 0.001e6)
 
@@ -254,11 +224,7 @@ def test_fp8_kv_cannot_change_which_limit_binds():
 # --- the inversions ---------------------------------------------------------
 
 def test_latency_limit_round_trip():
-    """The property that makes an inversion checkable: n fits, n+1 does not.
-
-    Printed as a column in bench/predictions.py; asserted here, because an
-    assert is the version that fails a build rather than needing to be read.
-    """
+    """The property that makes an inversion checkable: n fits, n+1 does not."""
     cases = [
         (L40S,   4000, 0.050),
         (L40S,   4000, 0.030),
@@ -298,13 +264,8 @@ def test_reasoning_length_context_collapses_concurrency():
 
 
 # --- the runsheet levels ----------------------------------------------------
-#
-# The sweeps of docs/benchmarks/runsheets/l40s-first-run.md quote a floor per
-# level, and a runsheet is read beside a running pod where nothing re-derives
-# anything. So the
-# levels are asserted here for the same reason every other published figure is:
-# a sheet that has drifted from the module should fail a test in step 0, before
-# the card is rented, rather than be noticed at the pod.
+# docs/benchmarks/runsheets/l40s-first-run.md quotes a floor per level: a sheet
+# that drifted from the module fails here, before the card is rented.
 
 def test_runsheet_concurrency_sweep_floors():
     """Step 4: eight levels at 4 000 context, and the crossing between 23 and 24."""
@@ -322,13 +283,7 @@ def test_runsheet_concurrency_sweep_floors():
 
 
 def test_the_top_level_of_the_sweep_must_preempt():
-    """A seat costs input + output, which is what turns 45 into 43.
-
-    Section 4 seats 45 sequences at 4 000 tokens; the sweep sends 4 000 in and
-    200 out, so a seat holds 4 200 and the pool seats 43. Levels 24 and 32 stay
-    inside capacity and breach only the latency target -- the two failures are
-    separate, and the sweep is arranged to show them one at a time.
-    """
+    """A seat costs input + output, which turns section 4's 45 into 43 at 4 000 in and 200 out."""
     assert concurrency_ceiling(QWEN3_8B, L40S, 4000, GMU) == 45
     assert concurrency_ceiling(QWEN3_8B, L40S, 4200, GMU) == 43
     for level in (23, 24, 32):
@@ -424,14 +379,9 @@ def test_flops_per_mac_is_arithmetic_not_a_dtype():
     assert close(compute_side.seconds, ttft_floor(QWEN3_8B, MI300X, 2000).seconds, 0.1 * MS)
 
 
-# ---------------------------------------------------------------------------
-# Run 1, L40S, 2026-08-18 -- docs/benchmarks/l40s-baseline.md
-#
-# These hold measurements, not derivations, so they fail for a different reason
-# than everything above: not "the code drifted from the document" but "the
-# document quoted a number the raw evidence does not support". The evidence is
-# committed under docs/benchmarks/raw/, which is what makes them re-runnable.
-# ---------------------------------------------------------------------------
+# --- Run 1, L40S -- docs/benchmarks/l40s-baseline.md -------------------------
+# Measurements: these fail when the document quotes a number the raw evidence
+# under docs/benchmarks/raw/ does not support.
 
 def test_run1_the_derived_kv_pool_overstates_the_logged_one():
     """The startup log outranks the derivation, and by 7.6% here (SLO.md 9)."""
@@ -447,11 +397,7 @@ def test_run1_the_measured_pool_reproduces_vllms_own_concurrency_line():
 
 
 def test_run1_uncalibrated_bandwidth_is_pessimistic_at_every_single_level():
-    """0.70 predicted a slower step than the card took, twelve times out of twelve.
-
-    The direction is the finding: a one-sided error is a coefficient, a
-    two-sided one would have been noise.
-    """
+    """0.70 predicted a slower step than the card took at all twelve levels: a coefficient, not noise."""
     for level in measured.levels():
         predicted = tpot_floor(
             QWEN3_8B, L40S, level["ran"], level["context"]).seconds * 1000
@@ -502,11 +448,7 @@ def test_run1_ttft_is_linear_in_prompt_length_and_tpot_is_not():
 
 
 def test_run1_calibration_does_not_change_which_limit_binds_on_this_card():
-    """0.70 -> 0.83 buys nine seats and leaves latency binding, 41 against 32.
-
-    The same property the FP8 test asserts, met from the other side: a
-    coefficient moves a limit, and moving a limit is not moving the verdict.
-    """
+    """0.70 -> 0.83 buys nine seats and leaves latency binding, 41 against 32."""
     before = max_num_seqs(QWEN3_8B, L40S, 4000, 0.050, GMU)
     after = max_num_seqs(QWEN3_8B, L40S_RUN1, 4000, 0.050, GMU)
     assert before.bound_by == after.bound_by == "latency"
@@ -514,12 +456,7 @@ def test_run1_calibration_does_not_change_which_limit_binds_on_this_card():
 
 
 def test_run1_the_service_number_is_far_below_the_calibrated_decode_number():
-    """The headline: the model is right about the card and wrong about the service.
-
-    Calibrated, the roofline permits 32 sequences inside a 50 ms decode step.
-    Measured TPOT p99 -- the metric SLO.md 2 actually promises -- breaches at 13.
-    The residual is chunked prefill, not bandwidth, so no coefficient can absorb it.
-    """
+    """Right about the card, wrong about the service: 32 seats by the decode step, 13 by TPOT p99."""
     at_4000 = {lv["asked"]: lv for lv in measured.levels() if lv["input_len"] == 4000}
     assert max_num_seqs(QWEN3_8B, L40S_RUN1, 4000, 0.050, GMU).by_latency == 32
     assert at_4000[13]["tpot_p99_ms"] > 50.0
@@ -527,15 +464,9 @@ def test_run1_the_service_number_is_far_below_the_calibrated_decode_number():
     assert at_4000[45]["tpot_p50_ms"] / at_4000[45]["decode_step_ms"] > 2.0
 
 
-# ---------------------------------------------------------------------------
-# Run 2 -- L40S, 2026-08-23. docs/benchmarks/l40s-run2.md.
-#
-# The difference from the run-1 block above is the whole reason these exist:
-# eff_mem 0.83 and mfu 0.439 were fitted to run 1 and NOT to any level here, so
-# every assertion below is a prediction facing a measurement that did not
-# produce it -- the condition SLO.md section 9 sets before a coefficient may be
-# called a result.
-# ---------------------------------------------------------------------------
+# --- Run 2, L40S -- docs/benchmarks/l40s-run2.md -----------------------------
+# 0.83 and 0.439 were fitted to run 1, not to any level here: each assertion is
+# a prediction facing a measurement that did not produce it (SLO.md section 9).
 
 
 def _r2(tag):
@@ -543,12 +474,7 @@ def _r2(tag):
 
 
 def test_run2_the_calibrated_coefficient_survives_a_run_it_did_not_see():
-    """The headline. Six BF16 launches at c=13, none of them fitted to.
-
-    Four chunk sizes, two attention backends and three separate starts of the
-    same configuration, on a different pod under a different driver. If 0.83 were
-    an artefact of run 1's twelve levels this is where it would show.
-    """
+    """Six BF16 launches at c=13 on another pod and driver, none of them fitted to, hold 0.83."""
     steps = [lv["decode_step_ms"] for lv in measured_run2.levels()
              if lv["conc"] == 13 and not lv["fp8"]]
     assert len(steps) == 6, steps
@@ -559,12 +485,7 @@ def test_run2_the_calibrated_coefficient_survives_a_run_it_did_not_see():
 
 
 def test_run2_the_coefficient_also_holds_at_the_other_concurrency():
-    """c=32, and only where the median ITL is still a decode step.
-
-    bf16-512 and bf16-1024 are excluded by name rather than by a filter: which
-    levels are contaminated is a finding of this run (write-up section 6), not
-    yet a rule to select data with.
-    """
+    """c=32, only where the median ITL is still a decode step (l40s-run2.md section 6 names the exclusions)."""
     predicted = tpot_floor(QWEN3_8B, L40S_RUN1, 32, 4100).seconds * 1000
     for tag in ("bf16-2048-c32", "bf16-4096-c32"):
         got = _r2(tag)["decode_step_ms"]
@@ -572,12 +493,7 @@ def test_run2_the_coefficient_also_holds_at_the_other_concurrency():
 
 
 def test_run2_the_median_itl_stops_being_a_decode_step_at_small_chunks():
-    """Where the proxy expires, held so the glossary claim cannot drift back.
-
-    At c=32 a 512- or 1024-token chunk puts prefill into the majority of steps.
-    The tell is TPOT p50 / median ITL falling to 1 or below: not less
-    interference, but interference so even that the median sits inside it.
-    """
+    """At c=32 a small chunk puts prefill in most steps, and TPOT p50 / median ITL falls to 1 or below."""
     predicted = tpot_floor(QWEN3_8B, L40S_RUN1, 32, 4100).seconds * 1000
     for tag in ("bf16-512-c32", "bf16-1024-c32"):
         lv = _r2(tag)
@@ -623,12 +539,7 @@ def test_run2_the_attention_kernel_is_not_the_reason_fp8_is_faster():
 
 
 def test_run2_max_num_batched_tokens_moves_the_tail_and_not_the_step():
-    """Prediction 1 and 2 of block B, at c=13, in one assertion.
-
-    The decode step is invariant to the chunk size to under 1%, while ITL p99
-    rises monotonically with it. Whatever the knob does, it does not do it by
-    making the card faster.
-    """
+    """At c=13 the decode step is invariant to the chunk size while ITL p99 rises with it."""
     at13 = {lv["mnbt"]: lv for lv in measured_run2.block("B") if lv["conc"] == 13}
     steps = [at13[m]["decode_step_ms"] for m in (512, 1024, 2048, 4096)]
     assert (max(steps) - min(steps)) / min(steps) < 0.01, steps
@@ -650,11 +561,7 @@ def test_run2_the_worst_step_is_the_decode_step_plus_the_chunk():
 
 
 def test_run2_the_scheduler_knob_buys_two_seats_and_costs_six_times_the_ttft():
-    """Block B's actual question, answered below the lowest offered band.
-
-    Run 1 left the seat count at 12 by TPOT p99. The three candidate answers were
-    ~31, ~18-22, or no movement. It is 14.
-    """
+    """Block B's question, answered below the lowest offered band: 12 seats became 14."""
     lo, hi = _r2("bf16-512-c13"), _r2("bf16-512b-c16")
     assert lo["tpot_p99_ms"] < 50.0 < hi["tpot_p99_ms"]
     crossing = 13 + 3 * (50.0 - lo["tpot_p99_ms"]) / \
@@ -690,11 +597,7 @@ def test_run2_the_pool_ceiling_closes_on_one_number_three_ways():
 
 
 def test_run2_the_checkpoint_gate_was_tighter_than_the_platforms_own_variation():
-    """Why the +-500-token gate is a defect and not a finding.
-
-    Three launches of one configuration on one pod, differing only in whether the
-    torch.compile cache was warm.
-    """
+    """The +-500-token gate was tighter than three launches of one configuration (SLO.md section 9)."""
     pools = measured_run2.LOGGED_KV_TOKENS_RELAUNCHES
     spread = (max(pools) - min(pools)) / min(pools)
     assert spread > 0.04, pools
@@ -702,10 +605,7 @@ def test_run2_the_checkpoint_gate_was_tighter_than_the_platforms_own_variation()
 
 
 def test_run2_ttft_p50_cannot_carry_a_ten_percent_decision():
-    """The card's confounder detector had no power, and this is why.
-
-    Three identical BF16 launches, same concurrency, same prompts.
-    """
+    """TTFT p50 across three identical BF16 launches is too noisy to carry a ten-percent decision."""
     ttfts = [_r2(t)["ttft_p50_ms"]
              for t in ("bf16-2048-c13", "bf16-ctl-c13", "bf16-fi-c13")]
     assert (max(ttfts) - min(ttfts)) / min(ttfts) > 0.30, ttfts
@@ -714,11 +614,8 @@ def test_run2_ttft_p50_cannot_carry_a_ten_percent_decision():
     assert (max(steps) - min(steps)) / min(steps) < 0.02, steps
 
 
-# ---------------------------------------------------------------------------
-# Prefix caching -- docs/SLO.md section 6. Derived, not measured: the only
-# check the model has is that it reproduces run 1's zero-cache crossing, and
-# these assertions hold the published table to the code that prints it.
-# ---------------------------------------------------------------------------
+# --- Prefix caching -- docs/SLO.md section 6 --------------------------------
+# Derived: these hold the published table to the code that prints it.
 
 SLOPE = predictions.L40S_RUN1_INTERFERENCE_SLOPE
 INTERCEPT = predictions.L40S_RUN1_INTERFERENCE_INTERCEPT
@@ -730,32 +627,18 @@ def _seats(h):
 
 
 def test_prefix_cache_at_zero_reproduces_run_1s_measured_crossing():
-    """The model's one validation, and it is against the data it was fitted to.
-
-    Run 1 measured TPOT p50 at 48.62 ms with 13 sequences and 51.36 with 14
-    (docs/benchmarks/l40s-baseline.md section 5), so the crossing is between the
-    two. A model that could not land there would not be worth extrapolating.
-    """
+    """At h = 0 the model lands between run 1's 13 and 14 seats, the data it was fitted to."""
     assert 13.0 < _seats(0.0) < 14.0, _seats(0.0)
 
 
 def test_prefix_cache_at_full_hit_rate_is_the_decode_step_limit():
-    """h = 1 removes all prefill work, leaving the step the hardware performs.
-
-    That is max_num_seqs_from_slo's answer, measured at ~31 and derived at 32:
-    the two must agree, or the interference term is contaminating the step.
-    """
+    """h = 1 removes all prefill, leaving max_num_seqs_from_slo's answer."""
     hardware = max_num_seqs_from_slo(QWEN3_8B, L40S_RUN1, 4100, INTERACTIVE_TPOT)
     assert abs(_seats(1.0) - hardware) < 1.0, (_seats(1.0), hardware)
 
 
 def test_prefix_cache_payoff_is_convex_in_the_hit_rate():
-    """Half the prompt cached buys a quarter of the gap, not half of it.
-
-    The operator-facing claim of section 6, and the reason a hit rate below
-    ~0.5 is not an answer to a seat count. Convexity, not a number, so it is
-    asserted as a shape: each equal step in h buys strictly more than the last.
-    """
+    """Each equal step in h buys strictly more seats than the last (SLO.md section 6)."""
     gains = [_seats(h + 0.2) - _seats(h) for h in (0.0, 0.2, 0.4, 0.6, 0.8)]
     assert all(b > a for a, b in zip(gains, gains[1:])), gains
 
@@ -769,12 +652,7 @@ def test_prefix_cache_table_matches_the_document():
 
 
 def test_prefix_cache_does_not_touch_the_decode_step():
-    """Section 6 channel 1: caching saves computing KV, never reading it.
-
-    The same seat count must come out whatever the hit rate, once the
-    interference term is switched off -- if it does not, the implementation is
-    quietly scaling the bytes a decode step moves.
-    """
+    """Section 6 channel 1: with the interference off, the seat count is the same at any hit rate."""
     flat = [seats_under_prefill_interference(
         QWEN3_8B, L40S_RUN1, 4100, INTERACTIVE_TPOT, SLOPE, 0.0, h)
         for h in (0.0, 0.5, 1.0)]
@@ -793,32 +671,18 @@ def test_prefix_cache_rejects_a_hit_rate_outside_zero_to_one():
         raise AssertionError(f"hit_rate {bad} was accepted")
 
 
-# ---------------------------------------------------------------------------
-# The --what-if flag -- bench/predictions.py, added 2026-09-11 for route 1 of
-# docs/audience.md. Nothing here re-checks the arithmetic, which the sections
-# above already hold to docs/SLO.md; these assert the two properties a flag can
-# break on its own: that it computes the same thing the fixed tables do, and
-# that it cannot reach them.
-# ---------------------------------------------------------------------------
+# --- The --what-if flag -- bench/predictions.py ------------------------------
+# The two properties a flag can break on its own: it computes what the fixed
+# tables do, and it cannot reach them.
 
 
 # --- table 11: a fleet on one card --------------------------------------------
-#
-# The arrangement the router arm runs on (docs/benchmarks/runsheets/mi300x-run-3.md):
-# two engines sharing one MI300X, each with half the memory share. Nothing here
-# needs an interference fit, which is why these figures may be printed for a
-# card no run has touched -- they are capacity arithmetic, and the startup log
-# outranks every one of them on the day.
+# Two engines on one MI300X (docs/benchmarks/runsheets/mi300x-run-3.md):
+# capacity arithmetic, no interference fit, outranked by the startup log.
 
 
 def test_fleet_model_multiplies_the_weights_and_leaves_the_flops_alone():
-    """Two engines read two copies of the weights and compute one token once.
-
-    The whole content of predictions.fleet_model, and the one way it could be
-    wrong that no printed row would reveal: multiplying params_non_embedding
-    too would inflate the compute side of every floor, silently, by the replica
-    count.
-    """
+    """Two engines read two copies of the weights and compute one token once."""
     fleet = predictions.fleet_model(QWEN3_8B, 2)
     assert fleet.params_total == 2 * QWEN3_8B.params_total
     assert fleet.params_non_embedding == QWEN3_8B.params_non_embedding
@@ -826,14 +690,7 @@ def test_fleet_model_multiplies_the_weights_and_leaves_the_flops_alone():
 
 
 def test_a_second_engine_costs_exactly_one_more_copy_of_the_weights():
-    """The fleet's bill, on both limits, is 16.4 GB divided by a seat.
-
-    Both limits have the form (X - weights) / (context x kv_per_token) and
-    differ only in X (docs/SLO.md section 6), so a replica that adds `weights`
-    to the numerator's subtrahend costs the same seats in each -- at whatever
-    context that limit counts a seat in. Asserted rather than read off the
-    table, because it is the sentence the table's first block is for.
-    """
+    """The fleet's bill on both limits is 16.4 GB divided by that limit's seat (SLO.md section 6)."""
     seat_capacity = QWEN3_8B.kv_bytes_per_token * 4200
     seat_latency = QWEN3_8B.kv_bytes_per_token * 4000
     fleet = predictions.fleet_model(QWEN3_8B, 2)
@@ -857,28 +714,14 @@ def test_the_fleet_keeps_the_tie_on_this_card():
 
 
 def test_affinity_repays_the_fleet_bill_only_past_a_working_set():
-    """Below ~35 distinct prefixes the second engine is a loss on one card.
-
-    Affinity stores each prefix once instead of once per replica, which is
-    (R - 1) x N x prefix_tokens of pool -- 0.76 seats per prefix at 3 200
-    tokens in a 4 200-token seat. It has to clear the 27-seat bill above before
-    the arrangement is worth anything at all, and that is the first number the
-    runsheet asks the run to face.
-    """
+    """Below ~35 distinct prefixes, at 0.76 seats each, affinity cannot repay the second engine's bill."""
     per_prefix = (2 - 1) * predictions.SHARED_PREFIX_TOKENS / 4200
     break_even = 27 / per_prefix
     assert 35.0 < break_even < 36.0, break_even
 
 
 def test_affinity_stops_buying_space_once_both_policies_fill_the_pool():
-    """Past the pool's room the gain changes form, from seats to hit rate.
-
-    The regime change table 11 exists to locate: while every prefix is retained
-    under both policies the saving is space; once round_robin is evicting, both
-    policies hold `room` prefixes, there is no space to differ over, and the
-    difference appears in h instead. A model that kept paying seats there would
-    double-count the same saving.
-    """
+    """Past the pool's room the saving moves from seats into h, and is not paid twice."""
     room, replicas = 96.0, 2
     nominal = 0.8
 
@@ -895,24 +738,14 @@ def test_affinity_stops_buying_space_once_both_policies_fill_the_pool():
 
 
 def test_what_if_agrees_with_table_3_on_the_same_operating_point():
-    """A second path to a number is a second chance to get it wrong.
-
-    Table 3 prints max_num_seqs for the points the document argues about;
-    --what-if prints it for the reader's. They call the same function, and this
-    fails the moment one of them starts passing something different -- a target
-    in milliseconds where the other passes seconds, say.
-    """
+    """Table 3 and --what-if call the same function and must print the same seats."""
     seats = max_num_seqs(QWEN3_8B, MI300X, 4000, INTERACTIVE_TPOT, 0.9)
     assert seats.bound_by == "latency", seats
     assert seats.sequences == 286, f"table 3 row moved: {seats.sequences}"
 
 
 def test_what_if_defaults_reserve_room_to_generate():
-    """4 000 tokens of prompt in 4 000 tokens of context is a seat that cannot
-    answer. The default context length is the seat cost this repository
-    measures at -- 4 000 in, 200 out -- and a default that quietly drops the
-    output would price a workload nobody runs.
-    """
+    """The default context reserves the 200 output tokens this repository measures at."""
     import inspect
 
     defaults = inspect.signature(predictions.what_if).parameters
@@ -923,10 +756,7 @@ def test_what_if_defaults_reserve_room_to_generate():
 
 
 def test_what_if_parameters_cannot_reach_the_fixed_tables():
-    """docs/SLO.md quotes the eleven tables' rows, so a parameter that moved them
-    would be a parameter that edits a derivation. Passing one without
-    --what-if has to fail loudly rather than print the unchanged tables.
-    """
+    """A --what-if parameter passed without --what-if fails rather than editing the fixed tables."""
     # argparse prints its usage and its message to stderr before it exits, and
     # a suite that looks like it crashed while passing is a suite people stop
     # reading. Swallowed here rather than globally: this is the one test whose
@@ -945,9 +775,7 @@ def test_what_if_parameters_cannot_reach_the_fixed_tables():
 
 
 def test_what_if_names_every_card_the_harness_can_be_given():
-    """One registry, in bench/roofline.py since 2026-09-11. Two copies is how
-    a card gets added to one tool and not the other.
-    """
+    """One accelerator registry, shared by the harness and --what-if."""
     import harness
 
     assert harness.ACCELERATORS is ACCELERATORS

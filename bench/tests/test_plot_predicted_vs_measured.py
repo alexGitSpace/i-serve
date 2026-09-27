@@ -1,23 +1,13 @@
-"""The picture is a selection of the reports' tables; this is what stops it drifting.
+"""The picture is a selection of the reports' section 9 tables; this stops it drifting.
 
-`bench/plot_predicted_vs_measured.py` restates numbers that already live in
-section 9 of the three benchmark reports, which the repository otherwise
-forbids -- one fact, one file. The duplication is allowed only because it is
-checked, so the check has to be worth the exemption, and the obvious version is
-not: searching the whole report for a bare "2.00" passes even after the cell is
-edited, because "2.00" is a substring of the measured "2.000×" beside it, and
-"| 45 " occurs in three unrelated tables. Measured on the first attempt: 59 of
-80 such probes matched more than one place in their file.
-
-What is checked instead: **one row of section 9 -- the same row -- contains both
-cells**. Editing either value moves it out of that row and the test fails.
+`bench/plot_predicted_vs_measured.py` restates their cells, which one-fact-one-file
+allows only because it is checked. A bare "2.00" would match the measured
+"2.000×" beside it, so the check is that **one row of section 9 -- the same row --
+contains both cells**: editing either value moves it out of that row.
 """
 
-# Two ways in, and both have to work. `pytest bench/` gets bench/ on the import
-# path from tests/conftest.py; `python3 bench/tests/test_roofline.py` on a rented
-# pod, where pytest is not installed, gets only this directory. The three lines
-# below are what make the second one work, and they are here rather than in
-# conftest.py for exactly that reason.
+# Run directly on a pod without pytest, this file gets only its own directory on
+# the path; conftest.py is not consulted, so the insert lives here.
 import pathlib as _pathlib
 import sys as _sys
 
@@ -55,12 +45,7 @@ def test_each_prediction_still_matches_one_row_of_its_report():
 
 
 def test_no_probe_is_satisfied_by_its_own_neighbour():
-    """The "2.00" trap: a probe contained in the other cell checks nothing.
-
-    If `pred_text` is a substring of `meas_text` then editing the predicted
-    value cannot fail the row test above, because the measured cell keeps
-    satisfying it.
-    """
+    """The "2.00" trap: a probe contained in the other cell checks nothing."""
     swallowed = [f"run {p.run} {p.label!r}: {p.pred_text!r} vs {p.meas_text!r}"
                  for p in plot.PREDICTIONS
                  if p.pred_text != p.meas_text
@@ -70,12 +55,7 @@ def test_no_probe_is_satisfied_by_its_own_neighbour():
 
 
 def test_a_mutated_cell_is_actually_caught():
-    """The guard is exercised, not just declared.
-
-    Every real row is perturbed in memory and must stop matching. Without this,
-    a future rewrite could weaken the probes back to substrings and nothing
-    would say so.
-    """
+    """The guard is exercised, not just declared: every row, perturbed in memory, must stop matching."""
     rows = {source: section_nine(source) for source in
             {p.source for p in plot.PREDICTIONS}}
     survived = []
@@ -97,11 +77,7 @@ def test_the_committed_svg_is_what_the_data_produces():
 
 
 def test_no_dot_is_drawn_outside_the_axis():
-    """A point off the canvas is a silently missing miss, and misses are the point.
-
-    A ratio beyond the axis is drawn at the edge as an arrowhead instead, so the
-    check is that every such row got one and every arrowhead sits on the plot.
-    """
+    """A ratio beyond the axis is drawn as an arrowhead at its edge, never as a missing dot."""
     off = [p for p in plot.PREDICTIONS if not plot.on_axis(p.ratio)]
     arrows = re.findall(r'<polygon points="([^"]*)"', plot.svg())
     assert len(arrows) == len(off), \
@@ -112,11 +88,7 @@ def test_no_dot_is_drawn_outside_the_axis():
 
 
 def test_no_prediction_divides_by_zero():
-    """Section 9 has rows like "no preemptions | 0 | 0" that cannot be a ratio.
-
-    They are left out by hand; this says so out loud rather than waiting for a
-    ZeroDivisionError from whoever adds the next row.
-    """
+    """A section 9 row like "no preemptions | 0 | 0" has no ratio and is left out by hand."""
     zeros = [p.label for p in plot.PREDICTIONS if p.predicted == 0]
     assert not zeros, f"a prediction of zero has no ratio: {zeros}"
 
@@ -124,9 +96,7 @@ def test_no_prediction_divides_by_zero():
 def test_no_label_is_drawn_off_the_canvas():
     """A clipped label is invisible in exactly the case that matters: the misses.
 
-    Estimated, not measured -- the renderer is the browser's -- so the width per
-    character is scaled by the font size the element actually carries and chosen
-    generously, to fail before a real clip does.
+    Estimated generously per font size, to fail before the browser really clips.
     """
     body = plot.svg()
     overflow = []
