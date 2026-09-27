@@ -290,8 +290,10 @@
     } else if (sv === null) {
       const text = state.model !== data.measured.model
         ? `Not derivable for this model: the interference fit was measured decoding ${data.models[data.measured.model].name}, and prefill lands differently in another architecture's decode step.`
-        : `Not derivable on this card yet: it needs a run to measure how much of each newcomer's prefill lands in the other seats' steps.`;
-      setStat("svc", "?", "needs a run", text, null);
+        : data.accelerators[state.accelerator].measured
+          ? `Not derivable on this card yet: its run measured the interference, but the model written from it (two rows, after the fact) is not registered as a fit here.`
+          : `Not derivable on this card yet: it needs a run to measure how much of each newcomer's prefill lands in the other seats' steps.`;
+      setStat("svc", "?", data.accelerators[state.accelerator].measured ? "needs a fit" : "needs a run", text, null);
     } else {
       const badge = { cls: "measured", text: "measured", tip: sv.fit ? sv.fit.provenance : "" };
       if (sv.seats_shipped === 0) {
@@ -359,9 +361,11 @@
           `The gap is newcomers' prefill landing in everyone's decode step.`);
       } else if (sv === null) {
         $("alt1-lab").textContent = "a service could promise";
-        setStat("alt1", "?", "needs a run", state.model !== data.measured.model
+        setStat("alt1", "?", state.model === data.measured.model && data.accelerators[state.accelerator].measured ? "needs a fit" : "needs a run", state.model !== data.measured.model
           ? `This is a floor with every permitted seat filled. What a service could promise on this model needs a run: the fit on the page was measured decoding ${data.models[data.measured.model].name}.`
-          : `This is a floor with every permitted seat filled. What a service could promise on this card needs a run.`);
+          : data.accelerators[state.accelerator].measured
+            ? `This is a floor with every permitted seat filled. What a service could promise on this card needs an interference fit registered from its run.`
+            : `This is a floor with every permitted seat filled. What a service could promise on this card needs a run.`);
       } else {
         $("alt1-lab").textContent = "hardware alone";
         setStat("alt1", usd(hw), `${point.seats.max_num_seqs} seats`, `No seat survives once interference is priced in; the figure on the left is the hardware floor.`);
@@ -381,14 +385,19 @@
         setStat("alt2", "—", "", `Even with 80 % repeats nothing fits at ${t} on this card.`);
       }
     } else {
-      const other = state.accelerator === "mi300x" ? "l40s-run1" : "mi300x";
+      const other = state.accelerator.startsWith("mi300x") ? "l40s-run1" : "mi300x-run1";
       const oc = data.accelerators[other];
-      $("alt2-lab").innerHTML = `another card <span class="badge ${oc.measured ? "measured" : "prior"}">${oc.measured ? "measured" : "prior"}</span>`;
       const alt = R.whatIfPoint(data, Object.assign({}, state, { accelerator: other, hourly_rate: null }));
       const d = delivered(alt);
+      // The badge speaks for the number, not the card: a floor stays a floor
+      // even when the card's coefficients were measured.
+      const floorOnly = d && !d.from_service;
+      const tag = floorOnly ? "floor" : (oc.measured ? "measured" : "prior");
+      $("alt2-lab").innerHTML = `another card <span class="badge ${tag === "measured" ? "measured" : "prior"}">${tag}</span>`;
       if (d) {
         setStat("alt2", usd(d.cost), `on an ${cardShort(other)} at $${oc.hourly_rate.toFixed(2)} an hour`,
-          (oc.measured ? `Measured on three runs. ` : `Nobody has run this card here yet: a spec-sheet guess, and a prior can be badly wrong. `) +
+          (floorOnly ? `A floor with every permitted seat filled, not what a service could promise: that needs this card's interference measured. ` : ``) +
+          (oc.measured ? `Coefficients ${oc.provenance}. ` : `Nobody has run this card here yet: a spec-sheet guess, and a prior can be badly wrong. `) +
           `<a href="#" data-set-card="${other}">Switch card</a>`);
       } else {
         setStat("alt2", "—", `on an ${cardShort(other)}`, `No operating point at ${t} on the other card.`);

@@ -61,7 +61,7 @@ window.TERMS = [
   { glossary: "Preemption", match: ["preemptions", "preemption"],
     plain: "The engine taking a seat's KV cache back because the pool is full; the request waits and its prompt is read again later. A climbing count means the card is out of room." },
   { glossary: "Runsheet", match: ["run 1", "run 2", "run 3", "runs 1–3", "a run"],
-    plain: "A rented-card session with its predictions written down beforehand. This repository has three, all on an L40S; every measured point on this page comes from one of them." },
+    plain: "A rented-card session with its predictions written down beforehand. This repository has four so far, three on an L40S and one on an MI300X; every measured point on this page comes from one of them." },
   { glossary: "Dashboard as code", match: ["dashboard", "row 2", "row 3"],
     plain: "The Grafana board the stack ships with, read top to bottom: row 1 is whether the promise holds, row 2 what users get, row 3 where the gap is — queue, seats, KV, preemptions." },
   { glossary: "Workload class", match: ["batch class", "workload class", "batch pipeline"],

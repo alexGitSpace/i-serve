@@ -8,9 +8,9 @@
  *     seats, y is milliseconds. The decode step step(n) is solid; the served
  *     step step(n) + (1 - h) * I(n) is dashed and exists only for a card with
  *     an interference fit; the TPOT target is a horizontal rule; the latency
- *     and capacity limits are vertical ticks. Measured points from runs 1 and
- *     3 are drawn ONLY when the sliders sit inside the runs' geometry (L40S,
- *     ~4 000-token prompts, 200 out, BF16 KV) -- a point drawn against a
+ *     and capacity limits are vertical ticks. Measured points are drawn ONLY when
+ *     the sliders sit inside a run's geometry (its card, ~4 000-token prompts,
+ *     200 out, BF16 KV) -- a point drawn against a
  *     different operating point would be a lie with a legend.
  *
  *   Draw.cost(data, state, point) -- what the promise costs. x is the TPOT
@@ -74,12 +74,19 @@
     return data.interference[state.accelerator] || null;
   }
 
+  // Which card's runs may be drawn here: "l40s", "mi300x", or null. Every run
+  // so far was taken at 4 000-token prompts, 200 out, BF16 KV.
   function measuredGeometryMatches(state, data) {
-    if (data && state.model && state.model !== data.measured.model) return false;
-    return (state.accelerator === "l40s" || state.accelerator === "l40s-run1") &&
-      state.prompt_tokens >= 3500 && state.prompt_tokens <= 4500 &&
+    if (data && state.model && state.model !== data.measured.model) return null;
+    const geometry = state.prompt_tokens >= 3500 && state.prompt_tokens <= 4500 &&
       state.output_tokens >= 150 && state.output_tokens <= 250 &&
       state.kv_dtype_bytes === 2;
+    if (!geometry) return null;
+    if (state.accelerator === "l40s" || state.accelerator === "l40s-run1") return "l40s";
+    // MI300X run 1 ran with prefix caching off: its points say nothing at h > 0.
+    if ((state.accelerator === "mi300x" || state.accelerator === "mi300x-run1") &&
+        state.hit_rate <= 0.05) return "mi300x";
+    return null;
   }
 
   function seats(data, state, point, opts) {
@@ -96,13 +103,15 @@
     const targetMs = state.tpot_target * 1e3;
     const fit = interferenceFit(data, state);
     const showMeasured = measuredGeometryMatches(state, data);
-    const measuredMaxN = showMeasured ? 56 : 0;
+    const mi = data.measured.mi300x_run1_seats;
+    const measuredMaxN = showMeasured === "l40s" ? 56
+      : showMeasured === "mi300x" ? Math.max(...mi.levels.map((lv) => lv.concurrency)) : 0;
 
     const nMax = Math.max(16, Math.ceil(Math.max(point.seats.by_capacity, point.seats.by_latency, measuredMaxN) * 1.12));
     const step = (n) => R.tpotFloor(m, a, n, ctx).seconds * 1e3;
     const served = (n) => step(n) + (1 - state.hit_rate) * (fit.slope_s_per_seat * n + fit.intercept_s) * 1e3;
     let yMax = Math.max(targetMs * 1.4, step(nMax) * 1.05);
-    if (showMeasured) yMax = Math.max(yMax, 95);
+    if (showMeasured === "l40s") yMax = Math.max(yMax, 95);
     const sx = (n) => ML + (n / nMax) * PW;
     const sy = (ms) => MT + PH - (Math.min(ms, yMax) / yMax) * PH;
 
@@ -156,7 +165,32 @@
 
     // measured points, only inside the runs' geometry
     let hidden = null, note = null;
-    if (showMeasured) {
+    if (showMeasured === "mi300x") {
+      let above = 0;
+      for (const lv of mi.levels) {
+        if (lv.concurrency > nMax) continue;
+        if (lv.p99_tpot_ms > yMax) { above++; continue; }
+        g += el("circle", { class: "pt-h0", cx: sx(lv.concurrency), cy: sy(lv.p99_tpot_ms), r: 4.5,
+                            "data-tip": `MI300X run 1, ${lv.concurrency} seats: TPOT p99 ${lv.p99_tpot_ms.toFixed(1)} ms, median ITL ${lv.median_itl_ms.toFixed(1)} ms, ${lv.max_running} running at most` });
+        if (lv.concurrency <= mi.decode_step_through) {
+          g += el("circle", { class: "pt-run1", cx: sx(lv.concurrency), cy: sy(lv.median_itl_ms), r: 3.5,
+                              "data-tip": `MI300X run 1, ${lv.concurrency} seats: median ITL ${lv.median_itl_ms.toFixed(1)} ms -- the decode step itself` });
+        }
+      }
+      legend.push({ swatch: "pt-h0", label: "measured TPOT p99",
+                    tip: "TPOT p99 measured on an MI300X on 2026-09-27, prefix caching off." });
+      legend.push({ swatch: "pt-run1", label: "measured decode step alone",
+                    tip: `Median ITL on the MI300X, drawn only through ${mi.decode_step_through} seats: above that every step carries a prefill chunk and the median is no longer a decode step.` });
+      const lv = mi.levels;
+      const cross = lv.findIndex((x) => x.p99_tpot_ms > targetMs);
+      const where = cross < 0 ? `never crossed ${fmtMs(targetMs)} ms in the sweep`
+        : cross === 0 ? `was already over ${fmtMs(targetMs)} ms at ${lv[0].concurrency} seat`
+        : `crossed ${fmtMs(targetMs)} ms between ${lv[cross - 1].concurrency} and ${lv[cross].concurrency} seats`;
+      const running = Math.max(...lv.map((x) => x.max_running));
+      const why = cross > 0 ? ", through newcomers' prefill rather than the decode step" : "";
+      note = `Measured, TPOT p99 ${where}${why}; the pool and the cap were never reached, because a ${String(mi.max_num_batched_tokens).replace(/\B(?=(\d{3})+(?!\d))/g, " ")}-token step budget held at most ${running} running.` +
+        (above ? ` ${above} measured points sit above the top of this picture, at up to ${fmtMs(Math.max(...mi.levels.map((lv) => lv.p99_tpot_ms)))} ms.` : "");
+    } else if (showMeasured === "l40s") {
       const r3 = data.measured.run3_seats;
       for (const series of r3.series) {
         const cls = series.hit_rate > 0.5 ? "pt-h80" : "pt-h0";
@@ -188,8 +222,8 @@
         : null;
     } else {
       hidden = state.model && state.model !== data.measured.model
-        ? `measured points hidden: runs 1–3 decoded ${data.models[data.measured.model].name}, and a point measured on one architecture says nothing about another. This model is predicted only.`
-        : "measured points hidden: runs 1–3 were on an L40S at 4 000-token prompts, 200 output tokens, BF16 KV. Move the sliders there to see them.";
+        ? `measured points hidden: every run decoded ${data.models[data.measured.model].name}, and a point measured on one architecture says nothing about another. This model is predicted only.`
+        : "measured points hidden: every run was at 4 000-token prompts, 200 output tokens, BF16 KV, on an L40S or an MI300X, the MI300X with nothing cached. Move the sliders there to see them.";
     }
     return { svg: el("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart", role: "img" }, g), legend, hidden, note,
              caption: "The more people, the slower each token; where a line meets your promise is the seat count." };

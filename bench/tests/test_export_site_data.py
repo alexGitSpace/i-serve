@@ -106,7 +106,7 @@ def test_measured_sets_carry_their_geometry():
     it can only do that if every set says what it was taken at.
     """
     measured = json.loads(FILES["model.json"])["measured"]
-    for name in ("run1_decode", "run2_rates", "run3_seats", "run3_rates"):
+    for name in ("run1_decode", "run2_rates", "run3_seats", "run3_rates", "mi300x_run1_seats"):
         block = measured[name]
         for field in ("run", "mode", "accelerator", "prompt_tokens", "output_tokens",
                       "kv_dtype_bytes", "gpu_memory_utilization"):
@@ -114,6 +114,7 @@ def test_measured_sets_carry_their_geometry():
     assert [s["hit_rate"] for s in measured["run3_seats"]["series"]] == [0.0, 0.8]
     assert len(measured["run1_decode"]["levels"]) == 12
     assert len(measured["run2_rates"]["levels"]) == 8
+    assert len(measured["mi300x_run1_seats"]["levels"]) == 10
 
 
 def test_golden_covers_every_branch_of_the_point_function():

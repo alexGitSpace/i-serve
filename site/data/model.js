@@ -75,6 +75,100 @@ window.MODEL_DATA = {
   }
  },
  "measured": {
+  "mi300x_run1_seats": {
+   "accelerator": "mi300x",
+   "decode_step_through": 32,
+   "gpu_memory_utilization": 0.9,
+   "hit_rate": 0.0,
+   "kv_dtype_bytes": 2,
+   "levels": [
+    {
+     "concurrency": 1,
+     "max_running": 1.0,
+     "median_itl_ms": 6.6131833333524055,
+     "output_throughput": 127.27590778068505,
+     "p50_tpot_ms": 6.6054507587939115,
+     "p99_tpot_ms": 6.610969881658292
+    },
+    {
+     "concurrency": 8,
+     "max_running": 8.0,
+     "median_itl_ms": 9.717632833314838,
+     "output_throughput": 345.90209553346557,
+     "p50_tpot_ms": 18.812358983249737,
+     "p99_tpot_ms": 24.352873944271373
+    },
+    {
+     "concurrency": 32,
+     "max_running": 32.0,
+     "median_itl_ms": 14.89725000000893,
+     "output_throughput": 499.0702803604874,
+     "p50_tpot_ms": 55.828281496649794,
+     "p99_tpot_ms": 76.32667393127304
+    },
+    {
+     "concurrency": 64,
+     "max_running": 64.0,
+     "median_itl_ms": 134.3990361666935,
+     "output_throughput": 501.71371482709395,
+     "p50_tpot_ms": 113.96066354103843,
+     "p99_tpot_ms": 143.63443870284775
+    },
+    {
+     "concurrency": 128,
+     "max_running": 101.0,
+     "median_itl_ms": 168.07005250007023,
+     "output_throughput": 511.20168902439354,
+     "p50_tpot_ms": 174.5736918065322,
+     "p99_tpot_ms": 237.263182959874
+    },
+    {
+     "concurrency": 192,
+     "max_running": 101.0,
+     "median_itl_ms": 169.12176849996285,
+     "output_throughput": 524.6057752357567,
+     "p50_tpot_ms": 174.5235888856783,
+     "p99_tpot_ms": 236.91245765221032
+    },
+    {
+     "concurrency": 224,
+     "max_running": 101.0,
+     "median_itl_ms": 169.71287775004384,
+     "output_throughput": 529.1154715081127,
+     "p50_tpot_ms": 174.8152450062817,
+     "p99_tpot_ms": 236.84921779057714
+    },
+    {
+     "concurrency": 240,
+     "max_running": 100.0,
+     "median_itl_ms": 169.80597824988308,
+     "output_throughput": 530.4743833140576,
+     "p50_tpot_ms": 174.96888210929689,
+     "p99_tpot_ms": 237.3013777694979
+    },
+    {
+     "concurrency": 256,
+     "max_running": 101.0,
+     "median_itl_ms": 170.06478250027612,
+     "output_throughput": 531.7309293685132,
+     "p50_tpot_ms": 175.1174055690953,
+     "p99_tpot_ms": 237.53040764007395
+    },
+    {
+     "concurrency": 288,
+     "max_running": 100.0,
+     "median_itl_ms": 170.17858824988252,
+     "output_throughput": 534.1195098551223,
+     "p50_tpot_ms": 175.1790417211044,
+     "p99_tpot_ms": 237.63836793268786
+    }
+   ],
+   "max_num_batched_tokens": 2048,
+   "mode": "closed",
+   "output_tokens": 200,
+   "prompt_tokens": 4000,
+   "run": 4
+  },
   "model": "qwen3-8b",
   "run1_decode": {
    "accelerator": "l40s",
