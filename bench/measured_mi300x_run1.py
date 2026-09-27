@@ -22,6 +22,8 @@ from roofline import (
     MI300X_RUN1,
     QWEN3_8B,
     kv_cache_tokens,
+    token_budget_ceiling,
+    tpot_with_interference,
     ttft_floor,
     tpot_floor,
 )
@@ -159,26 +161,13 @@ def fitted_eff_mem(data):
     return statistics.mean(implied_eff_mem(data[n]) for n in DECODE_ROWS)
 
 
-def equilibrium_running(input_len, output_len, budget=MAX_NUM_BATCHED_TOKENS):
-    """The token-budget ceiling: the running count once every step is full (report §5)."""
-    return budget * output_len / (input_len + output_len)
-
-
-def tpot_with_interference(itl_ms, c, ttft_alone_ms, output_len=OUTPUT_TOKENS):
-    """TPOT with the c - 1 others' prefills spread over one request's decode.
-
-    Written after the run from two rows, not a prediction it faced (report §6).
-    """
-    return itl_ms + (c - 1) * ttft_alone_ms / output_len
-
-
 def model_crossing(data, target_ms=TPOT_TARGET_MS):
     """Where tpot_with_interference crosses the target, ITL linear from c008 to c032."""
     alone = data["c001"]["ttft_p50_ms"]
     lo, hi = data["c008"], data["c032"]
     for c in range(lo["c"], hi["c"] + 1):
         itl = lo["itl_ms"] + (c - lo["c"]) * (hi["itl_ms"] - lo["itl_ms"]) / (hi["c"] - lo["c"])
-        if tpot_with_interference(itl, c, alone) > target_ms:
+        if tpot_with_interference(itl, c, alone, OUTPUT_TOKENS) > target_ms:
             return c
     return None
 
@@ -360,7 +349,7 @@ def the_curve(data, gauge):
           f"max_num_seqs {MAX_NUM_SEQS} never reached")
     print(f"  running, c128 and up, saturated lines: {min(saturated):.0f}-{max(saturated):.0f}, "
           f"median {statistics.median(saturated):.0f}")
-    n_star = equilibrium_running(4000, OUTPUT_TOKENS)
+    n_star = token_budget_ceiling(MAX_NUM_BATCHED_TOKENS, 4000, OUTPUT_TOKENS)
     print(f"  the token budget sets that count: {MAX_NUM_BATCHED_TOKENS} x {OUTPUT_TOKENS} / "
           f"(4 000 + {OUTPUT_TOKENS}) = {n_star:.1f} decoding, plus one or two mid-prefill")
     print(f"  throughput had already flattened by c032: {data['c032']['output_tps']:.0f} "
@@ -378,7 +367,7 @@ def interference(data):
     alone = data["c001"]["ttft_p50_ms"]
     for name in ("c001", "c008", "c032"):
         r = data[name]
-        model = tpot_with_interference(r["itl_ms"], r["c"], alone)
+        model = tpot_with_interference(r["itl_ms"], r["c"], alone, OUTPUT_TOKENS)
         print(f"  {name}  ratio {r['tpot_p50_ms'] / r['itl_ms']:.2f}   "
               f"TPOT p50 {r['tpot_p50_ms']:6.2f} ms   ITL + (c-1) x TTFT_1 / 200 = {model:6.2f} ms")
     print(f"  the model crosses {TPOT_TARGET_MS:.0f} ms at c = {model_crossing(data)} "

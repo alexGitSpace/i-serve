@@ -44,7 +44,9 @@ from roofline import (
     prefill_bytes,
     roofline,
     seats_under_prefill_interference,
+    token_budget_ceiling,
     tpot_floor,
+    tpot_with_interference,
     ttft_floor,
 )
 
@@ -826,7 +828,7 @@ def test_mi300x_run1_the_prior_predicted_every_decode_step_too_fast():
 def test_mi300x_run1_running_settles_at_the_token_budget_not_the_pool_or_the_cap():
     """~99 running against 97.5 derived, the cap 256 unreached, nothing preempted."""
     saturated = mi300x_run1.saturated_running(mi300x_run1.gauges())
-    ceiling = mi300x_run1.equilibrium_running(4000, 200)
+    ceiling = token_budget_ceiling(mi300x_run1.MAX_NUM_BATCHED_TOKENS, 4000, 200)
     assert abs(sorted(saturated)[len(saturated) // 2] - ceiling) <= 2, ceiling
     assert max(saturated) < mi300x_run1.MAX_NUM_SEQS
     assert max(mi300x_run1.preemptions()) == 0
@@ -844,7 +846,7 @@ def test_mi300x_run1_interference_needs_no_budget_term():
     alone = data["c001"]["ttft_p50_ms"]
     for name in ("c008", "c032"):
         row = data[name]
-        model = mi300x_run1.tpot_with_interference(row["itl_ms"], row["c"], alone)
+        model = tpot_with_interference(row["itl_ms"], row["c"], alone, 200)
         assert abs(model - row["tpot_p50_ms"]) / row["tpot_p50_ms"] < 0.03, (name, model)
 
 

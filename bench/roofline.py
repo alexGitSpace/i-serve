@@ -364,3 +364,14 @@ def cost_per_1m_tokens(
     prices a measured run and a predicted one alike.
     """
     return hourly_rate / (aggregate_tokens_per_sec * 3600) * 1e6
+
+
+def token_budget_ceiling(budget: int, prompt_tokens: int, output_tokens: int) -> float:
+    """GLOSSARY.md, *Token-budget ceiling*: running count when every step is full."""
+    return budget * output_tokens / (prompt_tokens + output_tokens)
+
+
+def tpot_with_interference(step: float, batch_size: int, ttft_alone: float,
+                           output_tokens: int) -> float:
+    """Run 1's interference model (docs/benchmarks/mi300x-run1.md section 6), in the unit of its inputs."""
+    return step + (batch_size - 1) * ttft_alone / output_tokens
