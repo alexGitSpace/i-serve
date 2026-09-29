@@ -40,6 +40,7 @@ from roofline import (
     tpot_with_interference,
     ttft_floor,
 )
+from scenarios.fleet import WORKING_SETS
 
 TTFT_TARGET = 0.300         # section 2, interactive
 TPOT_TARGET = 0.050         # section 2, interactive
@@ -514,7 +515,7 @@ def fleet_router_table() -> None:
     prefix = SHARED_PREFIX_TOKENS
     nominal_h = prefix / prompt
     per_engine = FLEET_CONCURRENCY // replicas
-    working_sets = (32, 64, 128, 256, 512)
+    working_sets = WORKING_SETS
 
     fits = (MI300X_RUN1, MI300X_RUN2)
     fleet = fleet_model(QWEN3_8B, replicas)
@@ -525,11 +526,11 @@ def fleet_router_table() -> None:
     lat_one = [max_num_seqs_from_slo(QWEN3_8B, a, prompt, TPOT_TARGET) for a in fits]
     lat_fleet = [max_num_seqs_from_slo(fleet, a, prompt, TPOT_TARGET) for a in fits]
 
-    # The K of the hit-rate model below: prefixes one engine can still hold once
-    # its live seats have reserved theirs. A prediction; the log outranks it.
+    # K of the hit-rate model, in seats: vLLM v0.27.1 caches a finished request's
+    # body and output beside its prefix (block_pool.free_blocks; runsheet section 0).
     pool_per_engine = kv_cache_tokens(QWEN3_8B, MI300X, GMU / replicas)
     live = per_engine * ctx
-    room = (pool_per_engine * (1 - POOL_SHORTFALL) - live) / prefix
+    room = (pool_per_engine * (1 - POOL_SHORTFALL) - live) / ctx
 
     table_header(
         "TABLE 11: a fleet on one card, and what prefix affinity buys back",
@@ -579,7 +580,8 @@ def fleet_router_table() -> None:
     print(f"  one engine holds {pool_per_engine:,.0f} tokens derived, "
           f"~{pool_per_engine * (1 - POOL_SHORTFALL):,.0f} after the "
           f"{POOL_SHORTFALL:.1%} shortfall; at {per_engine} live seats that "
-          f"leaves room for {room:.0f} retained prefixes of {prefix:,} tokens")
+          f"leaves room for {room:.0f} retained prefixes, each visit keeping "
+          f"a whole {ctx:,}-token request behind it")
     print()
     print(f"  the working set, at {FLEET_CONCURRENCY} seats across the fleet "
           f"({per_engine} per engine) and a nominal h of {nominal_h:.2f}:")
@@ -608,15 +610,18 @@ def fleet_router_table() -> None:
           f"{room:.0f} and affinity past N = {room * replicas:.0f}")
     # Block C: a hit skips the linear part of its prefill, so an h difference
     # between the arms is at most this much TTFT; attention does not scale.
-    uniform = nominal_h * (min(1.0, room * replicas / 256) - min(1.0, room / 256))
-    rotation = nominal_h        # N = 128: round_robin past its cliff, affinity not
+    n_uniform, n_rotation = working_sets[3], working_sets[2]
+    uniform = nominal_h * (min(1.0, room * replicas / n_uniform)
+                           - min(1.0, room / n_uniform))
+    assert room < n_rotation < room * replicas, "no level between the two cliffs"
+    rotation = nominal_h        # round_robin past its cliff, affinity not
     alone = [ttft_floor(QWEN3_8B, a, prompt).seconds * 1e3 for a in fits]
     print(f"  TTFT alone at {prompt} tokens, the prefill a hit shortens: "
           f"{alone[0]:.1f} / {alone[1]:.1f} ms at the two fits, so the arms "
           f"differ by at most {uniform * alone[1]:.1f}-{uniform * alone[0]:.1f} ms "
-          f"at N = 256 under the uniform model (h {uniform:.3f} apart) and "
-          f"{rotation * alone[1]:.1f}-{rotation * alone[0]:.1f} ms at N = 128 "
-          f"under the rotation")
+          f"at N = {n_uniform} under the uniform model (h {uniform:.3f} apart) "
+          f"and {rotation * alone[1]:.1f}-{rotation * alone[0]:.1f} ms at "
+          f"N = {n_rotation} under the rotation")
 
 
 RUN2_SWEEP = os.path.join(os.path.dirname(os.path.abspath(__file__)),

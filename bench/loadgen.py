@@ -76,6 +76,9 @@ class Record:
     # X-Router-Policy, if something in front of the engine set it (docs/GLOSSARY.md).
     # None is the ordinary case of loading an engine directly, not a failed read.
     policy: str | None = None
+    # X-Router-Upstream: which engine answered, the only per-request record of
+    # the split between replicas (docs/benchmarks/runsheets/mi300x-run-3.md §4).
+    upstream: str | None = None
 
     @property
     def ok(self) -> bool:
@@ -204,6 +207,7 @@ async def send_one(ep: Endpoint, req: Request, scheduled: float) -> Record:
 
         status, headers = await asyncio.wait_for(_read_headers(reader), ep.timeout)
         rec.policy = headers.get("x-router-policy")
+        rec.upstream = headers.get("x-router-upstream")
         if status != 200:
             detail = b"".join([c async for c in _iter_body(reader, headers)])
             rec.error = f"HTTP {status}: {detail[:200].decode('utf-8', 'replace')}"

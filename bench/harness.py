@@ -21,7 +21,9 @@ from dataclasses import asdict
 from loadgen import Endpoint, Record, run_closed_loop, run_open_loop, send_one
 from roofline import ACCELERATORS, QWEN3_8B, max_num_seqs_from_slo, tpot_floor, ttft_floor
 from scenarios import Workload
-from scenarios.prefix_sweep import SCENARIOS
+from scenarios import fleet, prefix_sweep
+
+SCENARIOS = {**prefix_sweep.SCENARIOS, **fleet.SCENARIOS}
 from stats import LevelStats, SLOTargets, as_vllm_json, summarize, with_flag
 from vllm_metrics import (delta, delta_fleet, hit_rate, pool_gate,
                           read_startup_log, scrape_fleet,
@@ -146,6 +148,38 @@ def check_policy(stats: LevelStats, records: list[Record],
     return stats
 
 
+def check_split(stats: LevelStats, records: list[Record]) -> LevelStats:
+    """Requests per replica, from X-Router-Upstream; warns past 60 % (runsheet mi300x-run-3 section 4)."""
+    counts: dict[str, int] = {}
+    for rec in records:
+        if rec.ok and rec.upstream:
+            counts[rec.upstream] = counts.get(rec.upstream, 0) + 1
+    if not counts:
+        return stats                     # no router in front: nothing to split
+    stats = with_flag(stats, extra={f"upstream_{addr}": float(n)
+                                    for addr, n in counts.items()})
+    total = sum(counts.values())
+    top, n = max(counts.items(), key=lambda kv: kv[1])
+    if len(counts) > 1 and n / total > 0.60:
+        return with_flag(stats, warning=(
+            f"{top} took {n / total:.0%} of the level: bounded loads or a ring "
+            f"imbalance, read the split before the hit rate"))
+    return stats
+
+
+def per_engine_hit_rates(metrics: tuple[tuple[str, int], ...],
+                         before: tuple, after: tuple) -> dict[str, float]:
+    """h of each engine alone; the fleet's h is their token-weighted sum, not a mean."""
+    if len(metrics) < 2:
+        return {}
+    out = {}
+    for (host, port), b, a in zip(metrics, before, after):
+        h = hit_rate(delta(b, a))
+        if h is not None:
+            out[f"hit_rate_{host}:{port}"] = h
+    return out
+
+
 async def sample_gauges(metrics: tuple[tuple[str, int], ...],
                         interval: float, into: dict) -> None:
     """Poll the engine's gauges while a level runs, keeping the peaks.
@@ -223,6 +257,7 @@ async def run_level(workload: Workload, ep: Endpoint, targets: SLOTargets,
     stats = check_hit_rate(stats, workload, measured_h)
     stats = check_prefill_floor(stats, workload, measured_h, accel)
     stats = check_policy(stats, records, expect_policy)
+    stats = check_split(stats, records)
 
     load = workload.concurrency if workload.mode == "closed" else workload.request_rate
     extra = {
@@ -231,6 +266,7 @@ async def run_level(workload: Workload, ep: Endpoint, targets: SLOTargets,
         "prefix_tokens": float(workload.prefix_tokens),
         "preemptions": increments.get("vllm:num_preemptions", 0.0),
     }
+    extra.update(per_engine_hit_rates(metrics, before, after))
     extra.update(peaks)
     stats = with_flag(stats, extra=extra)
 

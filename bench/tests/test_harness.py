@@ -53,7 +53,7 @@ from harness import (check_hit_rate, check_prefill_floor, dry_run,
                      dry_run_plan, seat_verdict)
 from roofline import L40S_RUN1
 from scenarios import BLOCK_SIZE, Workload
-from scenarios.prefix_sweep import SCENARIOS
+from harness import SCENARIOS
 from stats import (SLOTargets, as_vllm_json, max_concurrent, percentile,
                    summarize)
 from vllm_metrics import (Snapshot, delta, hit_rate, parse_prometheus,
@@ -910,6 +910,51 @@ def test_a_level_routed_by_the_wrong_policy_is_invalid_not_noisy():
     fell_back = check_policy(blank, records(["no-prompt"] * 4), "prefix")
     assert routing_flags(fell_back), "a level that never routed by prefix passed"
     assert fell_back.extra["policy_no-prompt"] == 4.0, fell_back.extra
+
+
+def test_round_robin_over_an_even_rotation_is_affinity():
+    """Under the rotation an even N pins each prefix to one engine, so every working set is odd (runsheet mi300x-run-3 section 0)."""
+    from scenarios.fleet import WORKING_SETS
+
+    def engines_per_prefix(n):
+        seen = {}
+        for i in range(4 * n):
+            seen.setdefault(i % n, set()).add(i % 2)
+        return {len(engines) for engines in seen.values()}
+
+    assert engines_per_prefix(128) == {1}
+    for n in WORKING_SETS:
+        assert engines_per_prefix(n) == {2}, n
+
+
+def test_the_split_between_replicas_and_each_engines_h_are_recorded():
+    """The done-criteria ask for h per engine and the request split; both land in extra."""
+    from harness import check_split, per_engine_hit_rates
+    from stats import SLOTargets as Targets, summarize
+    from vllm_metrics import Snapshot
+
+    def rec(i, upstream):
+        r = Record(index=i, prompt_tokens=4, scheduled=0.0)
+        r.sent, r.ttft, r.upstream = 0.0, 0.01, upstream
+        r.latency, r.itls, r.output_tokens = 0.05, [0.01, 0.01], 3
+        return r
+
+    blank = summarize("w", "closed", [], 1.0, Targets())
+    even = check_split(blank, [rec(i, f"e{i % 2}") for i in range(10)])
+    assert even.extra["upstream_e0"] == 5.0 and not even.warnings, even
+    skewed = check_split(blank, [rec(i, "e0" if i < 7 else "e1") for i in range(10)])
+    assert any("70%" in w for w in skewed.warnings), skewed.warnings
+    assert check_split(blank, [rec(0, None)]) is blank
+
+    def snap(hits, queries):
+        return Snapshot(values={"vllm:prefix_cache_hits": hits,
+                                "vllm:prefix_cache_queries": queries}, at=0.0)
+
+    pair = (("127.0.0.1", 8000), ("127.0.0.1", 8001))
+    rates = per_engine_hit_rates(pair, (snap(0, 0), snap(0, 0)),
+                                 (snap(800, 1000), snap(0, 1000)))
+    assert rates == {"hit_rate_127.0.0.1:8000": 0.8, "hit_rate_127.0.0.1:8001": 0.0}
+    assert per_engine_hit_rates(pair[:1], (snap(0, 0),), (snap(1, 1),)) == {}
 
 
 TESTS = [value for name, value in sorted(globals().items())

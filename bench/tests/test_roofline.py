@@ -752,6 +752,14 @@ def test_affinity_stops_buying_space_once_both_policies_fill_the_pool():
     assert prefix == 2 * rr > 0, (rr, prefix)
 
 
+def test_a_retained_prefix_costs_the_whole_request_it_arrived_with():
+    """vLLM v0.27.1 caches a finished request's body and output too, so room is counted in seats."""
+    pool = predictions.kv_cache_tokens(QWEN3_8B, MI300X, 0.45) * (1 - predictions.POOL_SHORTFALL)
+    room = (pool - 32 * 4200) / 4200
+    assert 88 < room < 89, room
+    assert room < 127 < 2 * room, "the rotation's one separating level moved"
+
+
 def test_what_if_agrees_with_table_3_on_the_same_operating_point():
     """Table 3 and --what-if call the same function and must print the same seats."""
     seats = max_num_seqs(QWEN3_8B, MI300X, 4000, INTERACTIVE_TPOT, 0.9)
