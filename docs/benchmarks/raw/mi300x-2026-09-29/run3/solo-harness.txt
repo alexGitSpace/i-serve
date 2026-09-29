@@ -1,0 +1,16 @@
+startup log: {'kv_cache_tokens': 1119644.0, 'kv_cache_gib': 153.9, 'max_concurrency': 124.4, 'enable_prefix_caching': 'True', 'kv_cache_dtype': 'auto'}
+  -> NOT FOUND in the log: max_num_batched_tokens, max_num_seqs, attention_backend
+  -> a gate that reads a missing fact does not fire and does not complain; fix the pattern in bench/vllm_metrics.py before spending a level on it
+KV pool 1,119,644 tokens against reference 1,123,065 (0.997x, gate +-5%): PASS
+
+level                  load     ok/f      h  TTFT p50  TTFT p99  TPOT p50  TPOT p99   medITL   interf  good/s    tok/s
+fleet-c001-h00            1   20/0    0.000     157.2     165.3      5.04      5.06     5.04    -0.00    0.86    172.2
+  INVALID  ttft-not-a-service-metric: closed loop
+  INVALID  ttft p50 157.2 ms is below the 172.2 ms prefill floor of 4000 uncached tokens: the cache is being measured, not the engine
+fleet-c064-h00           64  192/0    0.000     591.5   14986.9     75.30     86.96    83.43    -8.13    0.00    767.9
+  INVALID  ttft-not-a-service-metric: closed loop
+
+seats: between 1 and 64 at TPOT p99 <= 50 ms
+levels carrying an INVALID flag: fleet-c001-h00
+
+artefacts: /workspace/run3/results/solo/

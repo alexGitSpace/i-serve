@@ -1,0 +1,11 @@
+ARMDONE prefix 031 0
+ARMDONE round_robin 031 0
+ARMDONE round_robin 063 0
+ARMDONE prefix 063 0
+ARMDONE prefix 127 0
+ARMDONE round_robin 127 0
+ARMDONE round_robin 255 0
+ARMDONE prefix 255 0
+ARMDONE prefix 511 0
+ARMDONE round_robin 511 0
+ALLDONE

@@ -553,6 +553,18 @@ def test_a_renamed_log_line_is_reported_rather_than_silently_ungated():
     assert unread_startup_facts(read_startup_log(path)) == ("max_num_seqs",)
 
 
+def test_a_rocm_startup_log_yields_the_same_facts_as_a_cuda_one():
+    """A raw ROCm v0.27.1 log yields the budget and the backend, as a CUDA log does."""
+    path = os.path.join(REPO_ROOT, "docs", "benchmarks", "raw",
+                        "mi300x-2026-09-29", "run3", "engine-8000.log")
+    facts = read_startup_log(path)
+    assert facts["kv_cache_tokens"] == 506_525
+    assert facts["max_num_batched_tokens"] == 2048
+    assert facts["attention_backend"] == "ROCM_ATTN"
+    assert facts["enable_prefix_caching"] == "True"
+    assert unread_startup_facts(facts) == ("max_num_seqs",)
+
+
 def test_pool_gate_is_looser_than_the_platform_s_own_noise():
     """4.2% between two launches of one identical config, so the gate is 5%.
 

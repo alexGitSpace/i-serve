@@ -1,0 +1,14 @@
+startup log: {'kv_cache_tokens': 506525.0, 'kv_cache_gib': 69.62, 'max_concurrency': 56.28, 'enable_prefix_caching': 'True', 'kv_cache_dtype': 'auto'}
+  -> NOT FOUND in the log: max_num_batched_tokens, max_num_seqs, attention_backend
+  -> a gate that reads a missing fact does not fire and does not complain; fix the pattern in bench/vllm_metrics.py before spending a level on it
+KV pool 506,525 tokens against reference 507,050 (0.999x, gate +-5%): PASS
+
+level                  load     ok/f      h  TTFT p50  TTFT p99  TPOT p50  TPOT p99   medITL   interf  good/s    tok/s
+router-n511              64 2044/0    0.000     426.3    9448.7     63.77    158.86    43.86    19.92    0.26    757.0
+  INVALID  ttft-not-a-service-metric: closed loop
+  INVALID  measured h 0.000 against nominal 0.800: the workload is not producing the hit rate it claims
+
+seats: none -- TPOT p99 exceeds 50 ms at every concurrency measured
+levels carrying an INVALID flag: router-n511
+
+artefacts: /workspace/run3/results/round_robin-n511/

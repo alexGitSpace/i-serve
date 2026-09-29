@@ -1,0 +1,4 @@
+Digest: sha256:bb44b39aea26798cce43030a98bf48efd0322ca7147367db86e38b96bd80f0e7
+Status: Downloaded newer image for vllm/vllm-openai-rocm:v0.27.1
+docker.io/vllm/vllm-openai-rocm:v0.27.1
+PULLDONE

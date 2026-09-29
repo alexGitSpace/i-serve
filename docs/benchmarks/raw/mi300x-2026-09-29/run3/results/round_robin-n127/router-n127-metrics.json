@@ -1,0 +1,10 @@
+{
+  "vllm:generation_tokens": 101600.0,
+  "vllm:num_preemptions": 0.0,
+  "vllm:num_requests_running": 0.0,
+  "vllm:num_requests_waiting": 0.0,
+  "vllm:prefix_cache_hits": 935088.0,
+  "vllm:prefix_cache_queries": 2032000.0,
+  "vllm:prompt_tokens": 2032000.0,
+  "vllm:request_success": 508.0
+}

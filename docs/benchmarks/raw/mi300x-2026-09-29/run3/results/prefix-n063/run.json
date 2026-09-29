@@ -1,0 +1,63 @@
+{
+  "accelerator": "AMD Instinct MI300X (run 2 coefficients)",
+  "argv": [
+    "bench/harness.py",
+    "--scenario",
+    "router-arm-n063",
+    "--accelerator",
+    "mi300x-run2",
+    "--port",
+    "8080",
+    "--expect-policy",
+    "prefix",
+    "--metrics-endpoint",
+    "127.0.0.1:8000",
+    "--metrics-endpoint",
+    "127.0.0.1:8001",
+    "--startup-log",
+    "/workspace/run3/engine-8000.log",
+    "--reference-pool",
+    "507050",
+    "--out",
+    "/workspace/run3/results/prefix-n063"
+  ],
+  "coefficients": {
+    "achieved_bandwidth": 0.57,
+    "mfu": 0.247,
+    "provenance": "measured (MI300X run 2, 2026-09-27); a second droplet, not yet faced"
+  },
+  "endpoint": {
+    "host": "127.0.0.1",
+    "model": "Qwen/Qwen3-8B",
+    "port": 8080
+  },
+  "expect_policy": "prefix",
+  "finished": "2026-09-29T09:14:33+0000",
+  "levels": [
+    "router-n063"
+  ],
+  "metrics_endpoints": [
+    "127.0.0.1:8000",
+    "127.0.0.1:8001"
+  ],
+  "pool_gate": "KV pool 506,525 tokens against reference 507,050 (0.999x, gate +-5%): PASS",
+  "scenario": "router-arm-n063",
+  "seat_verdict": "seats: none -- TPOT p99 exceeds 50 ms at every concurrency measured",
+  "slo": {
+    "tpot_ms": 50.0,
+    "ttft_ms": 300.0
+  },
+  "started": "2026-09-29T09:13:56+0000",
+  "startup_log": {
+    "enable_prefix_caching": "True",
+    "kv_cache_dtype": "auto",
+    "kv_cache_gib": 69.62,
+    "kv_cache_tokens": 506525.0,
+    "max_concurrency": 56.28
+  },
+  "startup_log_unread": [
+    "max_num_batched_tokens",
+    "max_num_seqs",
+    "attention_backend"
+  ]
+}

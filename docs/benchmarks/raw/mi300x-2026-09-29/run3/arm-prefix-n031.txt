@@ -1,0 +1,13 @@
+startup log: {'kv_cache_tokens': 506525.0, 'kv_cache_gib': 69.62, 'max_concurrency': 56.28, 'enable_prefix_caching': 'True', 'kv_cache_dtype': 'auto'}
+  -> NOT FOUND in the log: max_num_batched_tokens, max_num_seqs, attention_backend
+  -> a gate that reads a missing fact does not fire and does not complain; fix the pattern in bench/vllm_metrics.py before spending a level on it
+KV pool 506,525 tokens against reference 507,050 (0.999x, gate +-5%): PASS
+
+level                  load     ok/f      h  TTFT p50  TTFT p99  TPOT p50  TPOT p99   medITL   interf  good/s    tok/s
+router-n031              64  256/0    0.784     541.0    3247.3     28.03     65.23    15.99    12.03    1.19   1566.0
+  INVALID  ttft-not-a-service-metric: closed loop
+  warning  http://127.0.0.1:8001 took 66% of the level: bounded loads or a ring imbalance, read the split before the hit rate
+
+seats: none -- TPOT p99 exceeds 50 ms at every concurrency measured
+
+artefacts: /workspace/run3/results/prefix-n031/

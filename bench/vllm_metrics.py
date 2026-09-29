@@ -161,18 +161,21 @@ def hit_rate(increments: dict[str, float]) -> float | None:
 
 
 # --- the startup log ---------------------------------------------------------
-# Wording from docs/benchmarks/raw/l40s-2026-08-23/startup-lines.txt; it changes
-# between vLLM versions, and a renamed line fails one regex here.
+# Wording from docs/benchmarks/raw/l40s-2026-08-23/startup-lines.txt and
+# mi300x-2026-09-29/run3/engine-8000.log; a renamed line fails one regex here.
 
 _LOG_PATTERNS = {
     "kv_cache_tokens": re.compile(r"GPU KV cache size:\s*([\d,]+)\s*tokens", re.I | re.S),
     "kv_cache_gib": re.compile(r"kv cache memory in use is\s*([\d.]+)\s*GiB", re.I),
     "max_concurrency": re.compile(r"Maximum concurrency[\s\S]*?([\d.]+)x", re.I),
-    "max_num_batched_tokens": re.compile(r"max_num_batched_tokens[=:]\s*([\d]+)"),
+    # The quote is how "non-default args" prints the key in a raw log.
+    "max_num_batched_tokens": re.compile(r"max_num_batched_tokens'?[=:]\s*([\d]+)"),
     "max_num_seqs": re.compile(r"max_num_seqs[=:]\s*([\d]+)"),
     "enable_prefix_caching": re.compile(r"enable_prefix_caching[=:]\s*'?(True|False)'?"),
     "kv_cache_dtype": re.compile(r"kv_cache_dtype[=:]\s*'?([\w]+)'?"),
-    "attention_backend": re.compile(r"Using (\w+) attention", re.I),
+    # CUDA announces its choice; ROCm reports it as an override (MI300X runs 1-3).
+    "attention_backend": re.compile(
+        r"Using (\w+) attention|Overriding with (\w+) out of potential backends", re.I),
 }
 
 
@@ -190,7 +193,7 @@ def read_startup_log(path: str) -> dict[str, float | str]:
         match = pattern.search(text)
         if not match:
             continue
-        raw = match.group(1)
+        raw = next(group for group in match.groups() if group is not None)
         if key in ("enable_prefix_caching", "kv_cache_dtype", "attention_backend"):
             found[key] = raw
         else:

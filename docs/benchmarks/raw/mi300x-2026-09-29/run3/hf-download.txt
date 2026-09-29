@@ -1,0 +1,7 @@
+[90mHint: A new version of huggingface_hub (2.0.0) is available! You are using version 1.27.0.
+To update, run: hf update[0m
+[90mHint: The `hf-cli` skill is not installed. Run `hf skills add -g --claude` to teach your AI agents how to use the `hf` CLI.[0m
+Fetching 15 files:   0%|          | 0/15 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 15 files:  53%|█████▎    | 8/15 [00:00<00:00, 77.75it/s]Fetching 15 files: 100%|██████████| 15/15 [00:09<00:00,  1.51it/s]
+[32m✓ Downloaded[0m
+  path: /root/.cache/huggingface/hub/models--Qwen--Qwen3-8B/snapshots/b968826d9c46dd6066d109eabc6255188de91218
