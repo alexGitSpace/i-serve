@@ -26,7 +26,7 @@ from scenarios import fleet, prefix_sweep
 SCENARIOS = {**prefix_sweep.SCENARIOS, **fleet.SCENARIOS}
 from stats import LevelStats, SLOTargets, as_vllm_json, summarize, with_flag
 from vllm_metrics import (delta, delta_fleet, hit_rate, pool_gate,
-                          read_startup_log, scrape_fleet,
+                          read_startup_log, reset_prefix_cache, scrape_fleet,
                           scrape, unread_startup_facts)
 
 # Run 1's logged pool on the L40S, the reference the +-5% gate compares against
@@ -212,11 +212,13 @@ async def run_level(workload: Workload, ep: Endpoint, targets: SLOTargets,
                     sample_interval: float = 0.0,
                     metrics: tuple[tuple[str, int], ...] = (),
                     expect_policy: str | None = None,
+                    reset: bool = False, warmup_passes: int = 1,
                     ) -> tuple[LevelStats, list[Record], dict]:
-    """One level end to end: settle, warm the cache, scrape, load, scrape, judge.
+    """One level end to end: settle, reset, warm the cache, scrape, load, scrape, judge.
 
-    The order is the measurement: settle so stragglers are out of the step, warm
-    before the first scrape so seeding misses fall outside the counter window.
+    The order is the measurement: settle so stragglers are out of the step and
+    hold no blocks the reset needs freed, warm before the first scrape so
+    seeding misses fall outside the counter window.
     """
     # The load goes to one address; the counters come from the engines. The two
     # are the same thing only when nothing sits in front of them.
@@ -225,8 +227,13 @@ async def run_level(workload: Workload, ep: Endpoint, targets: SLOTargets,
     if settle > 0:
         await asyncio.sleep(settle)
 
+    if reset:
+        for host, port in metrics:
+            await asyncio.to_thread(reset_prefix_cache, host, port)
+
+    # Passes per replica under round robin: docs/GLOSSARY.md, --warmup-passes.
     if warm and workload.prefix_tokens:
-        for req in workload.warmup():
+        for req in workload.warmup() * warmup_passes:
             record = await send_one(ep, req, time.perf_counter())
             if not record.ok:
                 raise RuntimeError(
@@ -265,6 +272,8 @@ async def run_level(workload: Workload, ep: Endpoint, targets: SLOTargets,
         "prompt_tokens_nominal": float(workload.prompt_tokens),
         "prefix_tokens": float(workload.prefix_tokens),
         "preemptions": increments.get("vllm:num_preemptions", 0.0),
+        "cache_reset": float(reset),
+        "warmup_passes": float(warmup_passes if warm and workload.prefix_tokens else 0),
     }
     extra.update(per_engine_hit_rates(metrics, before, after))
     extra.update(peaks)
@@ -464,6 +473,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-warmup", action="store_true",
                         help="skip seeding the shared prefix -- only for "
                              "measuring a cold cache deliberately")
+    parser.add_argument("--warmup-passes", type=int, default=1, metavar="R",
+                        help="send the warmup R times; R = the replica count "
+                             "when a round-robin router sits in front, so every "
+                             "prefix is seeded on every engine")
+    parser.add_argument("--reset-cache", action="store_true",
+                        help="POST /reset_prefix_cache to every metrics endpoint "
+                             "before each level's warmup; needs the engines "
+                             "started with VLLM_SERVER_DEV_MODE=1")
     parser.add_argument("--sample-gauges", type=float, default=0.0,
                         metavar="SECONDS",
                         help="poll num_requests_running/waiting while each level "
@@ -501,6 +518,8 @@ def main(argv: list[str] | None = None) -> int:
     # day the harness was written the two --slo flags were parsed and then
     # thrown away on the one path a reader without a card can take.
     targets = SLOTargets(ttft=args.slo_ttft_ms / 1e3, tpot=args.slo_tpot_ms / 1e3)
+    if args.warmup_passes < 1:
+        parser.error("--warmup-passes below 1 is --no-warmup, which says so")
     if args.json and not args.dry_run:
         parser.error("--json means nothing without --dry-run: a live run "
                      "writes run.json and one JSON per level into --out")
@@ -529,6 +548,8 @@ def main(argv: list[str] | None = None) -> int:
         "endpoint": {"host": ep.host, "port": ep.port, "model": ep.model},
         "metrics_endpoints": [f"{host}:{port}" for host, port in metrics],
         "expect_policy": args.expect_policy,
+        "reset_cache": args.reset_cache,
+        "warmup_passes": args.warmup_passes,
         "accelerator": accel.name,
         # The console header says where the coefficients came from; so must
         # the file, or a results/ directory read months later cannot say
@@ -577,7 +598,8 @@ def main(argv: list[str] | None = None) -> int:
             workload, ep, targets, accel, args.settle,
             warm=not args.no_warmup, max_in_flight=args.max_in_flight,
             sample_interval=args.sample_gauges, metrics=metrics,
-            expect_policy=args.expect_policy))
+            expect_policy=args.expect_policy, reset=args.reset_cache,
+            warmup_passes=args.warmup_passes))
         collected.append(stats)
         print(format_row(stats))
         for note in stats.invalid:

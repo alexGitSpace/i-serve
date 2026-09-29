@@ -1432,6 +1432,15 @@ shared prefix. Only for measuring a cold cache deliberately: without the seed th
 `h` a level measures is not the `h` its construction intends, and the harness
 stops rather than reporting one for the other.
 
+**`--warmup-passes`** (`bench/harness.py`) — how many times the warmup is sent.
+One pass seeds a prefix on the one engine the router picks; under round robin
+over R engines it takes R passes, with N coprime to R, for every prefix to be
+seeded on every engine.
+
+**`--reset-cache`** (`bench/harness.py`) — `POST /reset_prefix_cache` to every
+metrics endpoint before a level's warmup, so no earlier level's requests can be
+hit. Needs `VLLM_SERVER_DEV_MODE=1`; a refusal is raised, not skipped.
+
 **Stub fixtures** (`MAX_NUM_SEQS`, `SIM_DECODE_MS`) — the seat count and simulated
 milliseconds per token of the `kind` stub
 (`deploy/manifests/overlays/kind/patch-stub.yaml`). They set the behaviour a

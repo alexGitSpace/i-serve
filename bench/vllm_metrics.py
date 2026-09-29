@@ -83,6 +83,25 @@ def scrape(host: str = "127.0.0.1", port: int = 8000,
     return Snapshot(at=time.perf_counter(), values=parse_prometheus(text))
 
 
+def reset_prefix_cache(host: str = "127.0.0.1", port: int = 8000,
+                       attempts: int = 10, pause: float = 1.0,
+                       timeout: float = 5.0) -> None:
+    """POST /reset_prefix_cache, retried while a request still holds blocks.
+
+    Raises on a 404 (no VLLM_SERVER_DEV_MODE=1) and when every attempt is
+    refused. Why a level needs it: docs/GLOSSARY.md, --reset-cache.
+    """
+    url = f"http://{host}:{port}/reset_prefix_cache"
+    for _ in range(attempts):
+        request = urllib.request.Request(url, data=b"", method="POST")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            if b'"success":true' in response.read().replace(b" ", b""):
+                return
+        time.sleep(pause)
+    raise RuntimeError(f"{url}: still refused after {attempts} attempts -- "
+                       f"a request is holding blocks")
+
+
 def delta(before: Snapshot, after: Snapshot) -> dict[str, float]:
     """Counter increments across a window. Gauges are taken from `after`.
 

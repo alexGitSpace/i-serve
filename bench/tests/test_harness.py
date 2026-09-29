@@ -85,11 +85,13 @@ class FakeVLLM:
     """
 
     def __init__(self, ttft: float = 0.004, itl: float = 0.002,
-                 fail_after: int | None = None, truncate: bool = False):
+                 fail_after: int | None = None, truncate: bool = False,
+                 dev_mode: bool = True):
         self.ttft = ttft
         self.itl = itl
         self.fail_after = fail_after
         self.truncate = truncate
+        self.dev_mode = dev_mode
         self.served = 0
         self.in_flight = 0
         self.seen_blocks: set[int] = set()
@@ -150,6 +152,17 @@ class FakeVLLM:
             return
 
         body = await reader.readexactly(int(headers.get("content-length", 0)))
+        if path.startswith("/reset_prefix_cache"):
+            # vLLM mounts the route only in dev mode, and clears every hash.
+            if self.dev_mode:
+                self.seen_blocks.clear()
+            reply = (b"HTTP/1.1 200 OK\r\nContent-Length: 17\r\n\r\n{\"success\": true}"
+                     if self.dev_mode else
+                     b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n")
+            writer.write(reply)
+            await writer.drain()
+            writer.close()
+            return
         payload = json.loads(body)
         self.served += 1
 
@@ -925,6 +938,67 @@ def test_round_robin_over_an_even_rotation_is_affinity():
     assert engines_per_prefix(128) == {1}
     for n in WORKING_SETS:
         assert engines_per_prefix(n) == {2}, n
+
+
+def test_one_warmup_pass_under_round_robin_leaves_the_first_pass_cold():
+    """With N odd, one warmup pass leaves every first-pass prefix cold under round robin."""
+    from scenarios.fleet import WORKING_SETS
+
+    def cold_first_pass(n, passes, cursor):
+        warmed = set()
+        for _ in range(passes):
+            for prefix in range(n):
+                warmed.add((prefix, cursor % 2))
+                cursor += 1
+        return sum((i, (cursor + i) % 2) not in warmed for i in range(n))
+
+    for n in WORKING_SETS:
+        for start in (0, 1):
+            assert cold_first_pass(n, 1, start) == n, n
+            assert cold_first_pass(n, 2, start) == 0, n
+
+
+def test_the_second_arm_at_one_working_set_hits_the_first_arms_bodies():
+    """Without a reset the second arm at one N hits the first arm's identical requests."""
+    from harness import run_level
+    from stats import SLOTargets as Targets
+
+    workload = Workload(name="w", prompt_tokens=256, output_tokens=3,
+                        num_prompts=8, mode="closed", concurrency=2,
+                        hit_rate_target=0.75, num_prefixes=2)
+
+    async def twice(server, ep, reset):
+        for _ in range(2):
+            stats, _, _ = await run_level(workload, ep, Targets(), L40S_RUN1,
+                                          settle=0.0, warm=True, max_in_flight=None,
+                                          reset=reset)
+        return stats.extra["measured_hit_rate"]
+
+    stale = with_server(lambda s, ep: twice(s, ep, False))
+    clean = with_server(lambda s, ep: twice(s, ep, True))
+    assert stale > workload.nominal_hit_rate + 0.05, stale
+    assert abs(clean - workload.nominal_hit_rate) < 0.05, clean
+
+
+def test_a_reset_the_engine_does_not_serve_is_raised_not_skipped():
+    """A 404 from /reset_prefix_cache (no VLLM_SERVER_DEV_MODE=1) stops the level instead of running it warm."""
+    import urllib.error
+    from harness import run_level
+    from stats import SLOTargets as Targets
+
+    workload = Workload(name="w", prompt_tokens=64, output_tokens=3,
+                        num_prompts=2, mode="closed", concurrency=1)
+
+    async def body(server, ep):
+        await run_level(workload, ep, Targets(), L40S_RUN1, settle=0.0,
+                        warm=False, max_in_flight=None, reset=True)
+
+    try:
+        with_server(body, dev_mode=False)
+    except urllib.error.HTTPError as exc:
+        assert exc.code == 404
+        return
+    raise AssertionError("a reset answered 404 and the level ran anyway")
 
 
 def test_the_split_between_replicas_and_each_engines_h_are_recorded():
