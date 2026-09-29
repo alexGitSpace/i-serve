@@ -1,12 +1,9 @@
-"""The engine's own numbers: /metrics counters between levels, and the startup log.
+"""The engine's own numbers: /metrics counters around a level, and the startup log.
 
-Two of run 3's questions are invisible from the client. The hit rate h is a
-ratio of two token counters over a window (docs/GLOSSARY.md); the KV pool is
-logged once at startup, and that log outranks every derivation here
-(docs/SLO.md section 9). This module scrapes counters around a level and reads
-the log's facts out of a file; what they mean for a level is bench/harness.py.
-Snapshot and delta() exist because h must be taken per concurrency level
-(docs/SLO.md section 10), not averaged over a session.
+h is a ratio of two token counters over a window (docs/GLOSSARY.md), taken per
+level, never per session (docs/SLO.md section 10); the logged KV pool outranks
+every derivation (docs/SLO.md section 9). What each fact means for a level is
+bench/harness.py.
 """
 
 import re
@@ -77,9 +74,8 @@ def scrape(host: str = "127.0.0.1", port: int = 8000,
            timeout: float = 5.0) -> Snapshot:
     """One blocking GET /metrics, parsed.
 
-    Never call it on the event loop: a blocked loop cannot timestamp an arriving
-    token, and the stall lands in the ITL distribution. The harness goes through
-    asyncio.to_thread, which also lets a fake server stand in for tests.
+    Never on the event loop: a blocked loop cannot timestamp an arriving token,
+    and the stall lands in the ITL distribution.
     """
     url = f"http://{host}:{port}/metrics"
     with urllib.request.urlopen(url, timeout=timeout) as response:
@@ -111,12 +107,9 @@ def delta(before: Snapshot, after: Snapshot) -> dict[str, float]:
 
 
 def scrape_fleet(endpoints: tuple[tuple[str, int], ...]) -> tuple[Snapshot, ...]:
-    """One GET /metrics per engine, in the order given.
+    """One GET /metrics per engine, in order, never through a router; raises if refused.
 
-    /metrics is not a keyed path, so a router round-robins it and one replica
-    answers at random (docs/benchmarks/runsheets/mi300x-run-3.md section 0).
-    A refused scrape raises: a partly read fleet has no meaningful hit rate.
-    """
+    Why not the router: docs/benchmarks/runsheets/mi300x-run-3.md section 0."""
     return tuple(scrape(host, port) for host, port in endpoints)
 
 
@@ -149,9 +142,8 @@ def hit_rate(increments: dict[str, float]) -> float | None:
 
 
 # --- the startup log ---------------------------------------------------------
-#
-# Wording from run 2's log, docs/benchmarks/raw/l40s-2026-08-23/startup-lines.txt.
-# It changes between vLLM versions: a renamed line fails one regex loudly here.
+# Wording from docs/benchmarks/raw/l40s-2026-08-23/startup-lines.txt; it changes
+# between vLLM versions, and a renamed line fails one regex here.
 
 _LOG_PATTERNS = {
     "kv_cache_tokens": re.compile(r"GPU KV cache size:\s*([\d,]+)\s*tokens", re.I | re.S),
@@ -168,10 +160,8 @@ _LOG_PATTERNS = {
 def read_startup_log(path: str) -> dict[str, float | str]:
     """Pull the facts a run is gated on out of a vLLM startup log.
 
-    The pool in tokens moves 4.2% between identical launches and every seat
-    count divides by it; prefix caching's actual state, the KV dtype and the
-    attention backend can change under one flag (docs/benchmarks/l40s-run2.md
-    sections 5-6).
+    Each can move between launches or under one flag
+    (docs/benchmarks/l40s-run2.md sections 5-6).
     """
     with open(path, encoding="utf-8", errors="replace") as handle:
         text = handle.read()
@@ -190,13 +180,9 @@ def read_startup_log(path: str) -> dict[str, float | str]:
 
 
 def unread_startup_facts(facts: dict[str, float | str]) -> tuple[str, ...]:
-    """Which of the gated facts the log did not yield.
+    """Gated facts the log did not yield: a renamed line would remove a gate in silence.
 
-    read_startup_log returns only what matched, so a renamed log line would
-    silently remove a gate (bench/harness.py gates the pool only if the key is
-    present). Returned for printing, so the operator learns in the first minute
-    (docs/benchmarks/runsheets/l40s-run-2.md, postscript items 3 and 4).
-    """
+    docs/benchmarks/runsheets/l40s-run-2.md, postscript 3-4."""
     return tuple(key for key in _LOG_PATTERNS if key not in facts)
 
 
@@ -204,9 +190,8 @@ def pool_gate(logged_tokens: float, reference_tokens: float,
               tolerance: float = 0.05) -> tuple[bool, str]:
     """Is this pod's KV pool the same one the reference run measured?
 
-    5% because two launches of one config moved the logged pool by 4.2%
-    (docs/benchmarks/l40s-run2.md section 6); a tighter gate fails on the
-    platform's own noise.
+    5 % sits just above one config's launch-to-launch noise
+    (docs/benchmarks/l40s-run2.md section 6).
     """
     ratio = logged_tokens / reference_tokens
     ok = abs(ratio - 1.0) <= tolerance
