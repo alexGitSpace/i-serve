@@ -1337,6 +1337,11 @@ attached and direct SSH, no cluster in between. Billed per second from creation
 until **destroyed** — a powered-off droplet keeps its disk, RAM and address
 reserved and keeps billing. Module: `deploy/terraform/`.
 
+**Droplet check** — the first level of an MI300X run: one request at a time,
+4 000 tokens, read as a median ITL against the figure each earlier droplet
+logged, to say whose fitted coefficients apply. Two droplets of one product
+have differed by 21 % on the decode step, and a run cannot choose its droplet.
+
 **AMD Developer Cloud** — DigitalOcean GPU Droplets behind AMD's own front door:
 the console at `amd.digitalocean.com`, the API at `api-amd.digitalocean.com`.
 Same API shape, different host, different contract ($1.99/h against $2.59/h for

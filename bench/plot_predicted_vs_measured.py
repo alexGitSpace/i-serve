@@ -26,6 +26,7 @@ RUN2 = "docs/benchmarks/l40s-run2.md"
 RUN3 = "docs/benchmarks/l40s-run3.md"
 MI300X_RUN1 = "docs/benchmarks/mi300x-run1.md"
 MI300X_RUN2 = "docs/benchmarks/mi300x-run2.md"
+MI300X_RUN3 = "docs/benchmarks/mi300x-run3.md"
 
 OUT = ROOT / "docs/benchmarks/predicted-vs-measured.svg"
 
@@ -205,6 +206,21 @@ PREDICTIONS: tuple[Prediction, ...] = (
     # Left out: the b8192 running row is a tie of two caps, the ratio rows are
     # tests or ratios, and the p99 crossing and the plateau bound are not
     # two-sided values.
+
+    # --- MI300X run 3, 2026-09-29 --------------------------------------------
+    Prediction(6, "KV pool, solo at 0.90", 1123065, 1119644,
+               "| 1 123 065 (logged, runs 1–2) |", "| 1 119 644 |", MI300X_RUN3),
+    Prediction(6, "KV pool, each engine at 0.45", 507050, 506525,
+               "| ~507 050 |", "| 506 525 |", MI300X_RUN3),
+    Prediction(6, "the second copy of the weights", 111220, 106594,
+               "| 111 220 |", "| 106 594 |", MI300X_RUN3),
+    Prediction(6, "h, affinity, N = 31", 0.800, 0.784,
+               "| 0.800 |", "| 0.784 | +1.99 % |", MI300X_RUN3),
+    Prediction(6, "h, affinity, N = 127", 0.800, 0.748,
+               "| 0.800 (both models) |", "| 0.748 |", MI300X_RUN3),
+    # Left out: the zeros of the rotation model cannot be drawn as a ratio, the
+    # uniform model's miss is read against the same measurement as a zero, and
+    # every second-arm level and round robin at N = 63 are defects, not faced.
 )
 
 @dataclass(frozen=True)
@@ -222,6 +238,7 @@ RUNS: dict[int, Run] = {
     3: Run("run 3", "2026-08-30", "NVIDIA L40S"),
     4: Run("MI300X run 1", "2026-09-27", "AMD Instinct MI300X"),
     5: Run("MI300X run 2", "2026-09-27", "AMD Instinct MI300X"),
+    6: Run("MI300X run 3", "2026-09-29", "AMD Instinct MI300X"),
 }
 
 # --- geometry ----------------------------------------------------------------

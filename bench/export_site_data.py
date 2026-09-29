@@ -29,7 +29,7 @@ SITE_DATA = ROOT / "site" / "data"
 SYMPTOM_MAP = ROOT / "docs" / "symptom-map.json"
 
 REPORTS = {1: plot.BASELINE, 2: plot.RUN2, 3: plot.RUN3, 4: plot.MI300X_RUN1,
-           5: plot.MI300X_RUN2}
+           5: plot.MI300X_RUN2, 6: plot.MI300X_RUN3}
 
 # The point every one-factor-at-a-time row departs from: this repository's own
 # operating point, 4 000 in, 200 out, at the cached hit rate run 3 measured.

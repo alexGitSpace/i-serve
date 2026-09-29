@@ -502,6 +502,13 @@ def fleet_model(model: Model, replicas: int) -> Model:
                    params_total=model.params_total * replicas)
 
 
+def retained_room(ctx: int = 4200) -> float:
+    """Whole requests one engine keeps hashed beside its live seats (runsheet mi300x-run-3 section 0)."""
+    pool_per_engine = kv_cache_tokens(QWEN3_8B, MI300X, GMU / FLEET_REPLICAS)
+    live = FLEET_CONCURRENCY // FLEET_REPLICAS * ctx
+    return (pool_per_engine * (1 - POOL_SHORTFALL) - live) / ctx
+
+
 def fleet_router_table() -> None:
     """What a second engine costs and what affinity buys back -- runsheet mi300x-run-3.
 
@@ -529,8 +536,7 @@ def fleet_router_table() -> None:
     # K of the hit-rate model, in seats: vLLM v0.27.1 caches a finished request's
     # body and output beside its prefix (block_pool.free_blocks; runsheet section 0).
     pool_per_engine = kv_cache_tokens(QWEN3_8B, MI300X, GMU / replicas)
-    live = per_engine * ctx
-    room = (pool_per_engine * (1 - POOL_SHORTFALL) - live) / ctx
+    room = retained_room(ctx)
 
     table_header(
         "TABLE 11: a fleet on one card, and what prefix affinity buys back",
