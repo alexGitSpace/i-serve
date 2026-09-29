@@ -10,9 +10,11 @@ first place?* — and it asks it in the regime where the answer is not obviously
 "nothing": a card where capacity binds — a premise MI300X run 1 has put in question
 (status, below).
 
-**Status: written 2026-09-19, before any card exists and before run 1 has been
-taken. Not reviewed** — `docs/adding-a-run.md` §1 says a sheet is reviewed and
-committed before renting, and neither has happened for this one.
+**Status: written 2026-09-19, before any card existed; reviewed before
+renting in three passes** (§0) — two against the repository and the engine's
+block pool (2026-09-28/29), one external, against the v0.27.1 source and the
+startup logs of runs 1 and 2 (2026-09-29), as `docs/adding-a-run.md` §1
+requires.
 
 **Re-derived 2026-09-27, after MI300X run 1** (`docs/benchmarks/mi300x-run1.md`):
 the figures below are table 11 at `memory_bytes` = 192 GiB, with run 1's larger
@@ -87,8 +89,8 @@ variable. Prefix caching is **on** in both arms, which run 3 measured to be free
 when it buys nothing (+0.027 % on the decode step, `docs/SLO.md` §6).
 
 **Cost, flagged up front.** AMD Developer Cloud, 1 × MI300X at **$1.99/h**
-assumed (the console price at droplet creation wins and is written here when
-read). Expected clock **≈ 2 h**, session budget **≤ 3 h ≈ $6**, hard stop. The
+on-demand, as read off the console for runs 1 and 2 on 2026-09-27 (the price at
+droplet creation wins and is written here when read). Expected clock **≈ 2 h**, session budget **≤ 3 h ≈ $6**, hard stop. The
 credits expire **2026-10-18**; runs 1 and 2 spent ≈ $6.7 of them.
 
 ---
@@ -201,6 +203,34 @@ four are closed in the change that adds this paragraph.
 - [x] `bench/harness.py --dry-run --scenario router-arm --accelerator mi300x-run1`
       and the same with `mi300x-run2` exit 0 off-card, and so do `fleet-bill`
       and `fleet-bill-half`.
+**An external pass on 2026-09-29**, against the v0.27.1 source and runs 1–2's
+startup logs, found three more — two that would have produced a wrong pool
+without an error, one that would have ended the session on an SSH drop. All
+three are closed in the change that adds this paragraph.
+
+- [x] **"GPU KV cache size" is not the end of an engine's start-up.** At the
+      pinned tag the line is printed by `get_kv_cache_configs`, *before*
+      `initialize_from_config` allocates the pool and before
+      `compile_or_warm_up_model` captures the graphs: 12 s to `Graph capturing
+      finished … took 4.12 GiB` and 21–22 s to `init engine` in both runs' logs.
+      And an engine sizes its pool as `total × utilization` less how far the
+      *device's* free memory fell across its own profiling window
+      (`total_consumed` in `vllm/utils/mem_utils.py`) — so whatever the first
+      engine allocates inside the second's window is charged to the second.
+      Started on that line, engine 8001 would have logged ~30 000 tokens
+      (4.12 GiB) short, outside checkpoint A's 5 %, and block A's bill would
+      have been a quarter too large. **Done**: the second engine waits for the
+      first's `/health`, which answers only once `init engine` has finished; and
+      checkpoint A compares the two engines' `Available KV cache memory`.
+- [x] **The solo engine's memory must be gone before the pair starts.** A
+      release that lands inside engine 8000's window enlarges its pool silently
+      — the profiler's assert catches only a release larger than the engine's
+      own allocation. **Done**: the `rocm-smi` wait run 2 used (`mi300x-run-2.md`
+      §8), now a step of §3 rather than a recovery.
+- [x] **Nothing survived an SSH drop.** Both engines are background jobs of the
+      container's shell, and the container is `--rm`: runs 1 and 2 ran inside
+      `tmux`, this sheet did not. **Done**: §1 opens `tmux new -s run3`, with a
+      second window for the host's commands.
 - [ ] The router image built **on the droplet** (`docker build -t
       prefix-router:dev /workspace/i-serve/router`): a Mac builds arm64 and
       the droplet is amd64.
@@ -215,7 +245,11 @@ under `/workspace` and copied off before the destroy (`mi300x-run-1.md` §1). Th
 container is the same image with the same device flags, plus `--network host` so
 the router can reach the engines, and the repository's `bench/` and `router/`
 copied by `scp` to `/workspace/i-serve/`. Every `python3 bench/…` below runs in
-the container from that directory; `docker` runs on the host.
+the container from that directory; `docker` runs on the host. The container
+runs inside `tmux new -s run3` (reattach with `tmux attach -t run3`), and the
+host's commands — the router build, §4's `arm` calls — in a second window of
+the same session (`Ctrl-b c`), because both engines are jobs of the
+container's shell and die with it.
 
 ```
 docker run -it --rm --name run3 --network host \
@@ -259,6 +293,7 @@ grep -E 'GPU KV cache size|Maximum concurrency|prefix_caching|max_num_batched_to
 |---|---|---|---|
 | `GPU KV cache size`, solo at 0.90 | **1 123 065**, logged by runs 1 and 2 on two droplets; **1 147 072** derived | runs 1–2, table 11 | Within §9's 5 % of the logged figure is a pass: the same card, flags and image, and run 1's two launches differed by 1.4 %. The two figures are 2.1 % apart, so the two-band rule run 1 used no longer separates them |
 | `GPU KV cache size`, each engine of the pair at 0.45 | **517 926** derived, **~507 000** corrected | table 11 | Within 5 % of the corrected figure |
+| `Available KV cache memory`, engine 8000 against 8001 | **Equal**, within run 1's launch-to-launch 1.4 % | same flags, same share | 8001 ~4 GiB lower is 8000's graphs charged to it: the launch gate was early. Kill both and relaunch per §3 |
 | The pair's two pools summed | **1 035 852** derived, against the solo engine's own figure | table 11 | The difference, **111 220 tokens**, *is* the second copy of the weights. A sum that does not show it means the flag was not obeyed and §3 has nothing to measure |
 | `prefix_caching` | **True** everywhere | V1 default | If false, relaunch: every level in §4 asks for a hit rate |
 | `max_num_batched_tokens` | **2 048** everywhere | the launch line | A different value moves the interference and makes run 1's fit inapplicable |
@@ -285,20 +320,27 @@ python3 bench/harness.py --scenario fleet-bill --accelerator $FIT \
   --reference-pool 1123065 --out /workspace/run3/results/solo
 ```
 
-Then stop it and bring the pair up **serially — the second only once the first
-has logged its KV pool**:
+Then stop it (`Ctrl-c`), wait on the host until `rocm-smi --showmeminfo vram
+--showpids` shows ~0.3 GB in use and no process, and bring the pair up
+**serially — the second only once the first answers `/health`**:
 
 ```
 vllm serve Qwen/Qwen3-8B --host 127.0.0.1 --port 8000 --dtype auto \
   --gpu-memory-utilization 0.45 --max-model-len 9000 \
-  --max-num-batched-tokens 2048 2>&1 | tee /workspace/run3/engine-8000.log &
-# wait for "GPU KV cache size" in that log, then the same at --port 8001
+  --max-num-batched-tokens 2048 > /workspace/run3/engine-8000.log 2>&1 &
+until curl -sf 127.0.0.1:8000/health; do sleep 2; done
+vllm serve Qwen/Qwen3-8B --host 127.0.0.1 --port 8001 --dtype auto \
+  --gpu-memory-utilization 0.45 --max-model-len 9000 \
+  --max-num-batched-tokens 2048 > /workspace/run3/engine-8001.log 2>&1 &
+until curl -sf 127.0.0.1:8001/health; do sleep 2; done
 ```
 
-The ordering is load-bearing, and checkpoint A is what tests it: vLLM sizes its
-pool from the memory it finds free at start-up, so two engines racing each other
-through that measurement is a way to get two pools that do not add up to the
-card. Read both logs rather than assuming the flag was obeyed. `--reference-pool`
+The ordering is load-bearing, and checkpoint A is what tests it: an engine
+sizes its pool as `total × utilization` less how far the device's free memory
+fell while it profiled, so anything the other engine allocates in that window —
+its pool, its 4.12 GiB of graphs — is charged to this one (§0, third pass).
+`GPU KV cache size` is printed before either is allocated; `/health` answers
+after both. Read both logs rather than assuming the flag was obeyed. `--reference-pool`
 is not optional here: its default is the L40S's 168 985, and without it every
 launch prints "not comparable". Then the same
 level against the pair, half its concurrency to each engine:
@@ -505,7 +547,7 @@ once for a credential before staging, and the file count checked across
 | Symptom | First move |
 |---|---|
 | Both arms measure the same `h` | The key defect is back. `X-Router-Policy` on any response says which of the five ran; `no-prompt` means the body shape, not the router |
-| The second engine's pool is far below the first's | The launch race. Kill both, relaunch strictly serially, and re-read checkpoint A — every figure in §3 is against the pair, so one wrong pool invalidates the block |
+| The second engine's pool is far below the first's | The launch race. Kill both, wait for `rocm-smi` to show the card empty, relaunch with the second engine only after the first's `/health` answers, and re-read checkpoint A — every figure in §3 is against the pair, so one wrong pool invalidates the block |
 | OOM at launch | `--gpu-memory-utilization 0.42` each, note it, and re-derive §2 and §3 at the new share before continuing; the seat figures are not comparable across shares |
 | One engine takes almost everything | Bounded loads at 1.25, or a ring imbalance. Read the request split before the hit rate: a policy that concentrated the load is not the policy the table predicts |
 | `h` on the prefix arm sits below nominal at every N | The warmup is not warm, or the counter window includes it. Run 3 hit exactly this and the fix was the per-level seed offset (`bench/scenarios/prefix_sweep.py`) |
