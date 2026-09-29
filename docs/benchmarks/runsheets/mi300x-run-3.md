@@ -156,22 +156,54 @@ fixed cannot be judged.
       **Done**: `--metrics-endpoint`, `scrape_fleet()` and `delta_fleet()`,
       which sum the counters before taking the ratio — an average of two
       engines' ratios would give an idle engine an equal vote.
-- [ ] Three scenarios in `bench/scenarios/`: `router-arm`, five levels at
-      `num_prefixes` 32 / 64 / 128 / 256 / 512, `prompt_tokens` 4 000,
+**A second pass on 2026-09-28**, before renting, found four more of the same
+kind: each lets a level complete, print a row and measure the wrong thing. All
+four are closed in the change that adds this paragraph.
+
+- [x] **The control arm was affinity.** The harness asks for prefixes in strict
+      rotation — request *i* carries prefix *i* mod N — and `round_robin`'s
+      cursor sends request *i* to engine *i* mod 2. With an even N every prefix
+      lands on the same engine every time, which is affinity with a perfect
+      split: at the N = 128 the sheet called decisive, both arms would have
+      measured `h` = 0.8. **Done**: N is odd, 31 / 63 / 127 / 255 / 511, so
+      every prefix visits both engines under the control; asserted in
+      `bench/tests/test_harness.py`.
+- [x] **A retained prefix costs a whole request, not a prefix.** Read at the
+      pinned tag: `free_blocks` in `vllm/v1/core/block_pool.py` appends every
+      hashed block of a finished request to the LRU tail, and
+      `Request.update_block_hashes` hashes output blocks as they fill, so each
+      visit leaves its unique body and its output in the cache beside the
+      prefix. Room is ~89 prefixes per engine, not 116, and the rotation's
+      cliffs sit at N = 89 and 177. Eviction is LRU from the head, which the
+      sheet had assumed and not read. **Done**: table 11 counts room in seats.
+- [x] **"h per engine" and "the split" were not recorded anywhere.** The
+      harness summed the counters before the ratio and the loadgen dropped
+      `X-Router-Upstream`. **Done**: each level's JSON carries
+      `harness_hit_rate_<host:port>` per engine and `harness_upstream_<addr>`
+      per replica, with a warning past 60 %.
+- [x] **One harness call per arm cannot alternate the arm order.** §4 asks
+      for the order to flip per working set, which needs the router relaunched
+      between levels. **Done**: `router-arm-n031` … `router-arm-n511`, one
+      level each, beside the five-level `router-arm`.
+- [x] Three scenarios in `bench/scenarios/fleet.py`: `router-arm`, five levels at
+      `num_prefixes` 31 / 63 / 127 / 255 / 511, `prompt_tokens` 4 000,
       `prefix_tokens` 3 200, `concurrency` 64, `num_prompts` = 4 × N and never
       below 256; and `fleet-bill` / `fleet-bill-half`, one level each of unique
       prompts at concurrency 64 and 32 for block A. `fleet-bill` opens with a
       level at concurrency 1, 20 unique 4 000-token prompts: the droplet check
       of §3.
-- [ ] `python3 bench/predictions.py` — table 11 open beside the terminal.
+- [x] `python3 bench/predictions.py` — table 11 open beside the terminal.
 - [x] Runs 1 and 2 taken, `mi300x-run1` and `mi300x-run2` in `ACCELERATORS`.
-- [ ] An MI300X entry in `INTERFERENCE_FITS`, or the review's decision not to
-      register one. Without it §5's seat line stays *not derivable*, and that is
-      a correct answer rather than a missing one.
-- [ ] `bench/harness.py --dry-run --scenario router-arm --accelerator mi300x-run1`
-      and the same with `mi300x-run2` exit 0 off-card.
+- [x] An MI300X entry in `INTERFERENCE_FITS`, or the review's decision not to
+      register one. **Decided 2026-09-29: not registered** (§5). §5's seat line
+      stays *not derivable*, and that is a correct answer rather than a missing
+      one.
+- [x] `bench/harness.py --dry-run --scenario router-arm --accelerator mi300x-run1`
+      and the same with `mi300x-run2` exit 0 off-card, and so do `fleet-bill`
+      and `fleet-bill-half`.
 - [ ] The router image built **on the droplet** (`docker build -t
-      prefix-router:dev router`): a Mac builds arm64 and the droplet is amd64.
+      prefix-router:dev /workspace/i-serve/router`): a Mac builds arm64 and
+      the droplet is amd64.
 - [ ] Read the hourly price off the console and write it into the header above.
 
 ---
@@ -182,7 +214,8 @@ Same droplet as run 1 — one card, not eight; destroy, never stop; everything
 under `/workspace` and copied off before the destroy (`mi300x-run-1.md` §1). The
 container is the same image with the same device flags, plus `--network host` so
 the router can reach the engines, and the repository's `bench/` and `router/`
-copied in by `scp`.
+copied by `scp` to `/workspace/i-serve/`. Every `python3 bench/…` below runs in
+the container from that directory; `docker` runs on the host.
 
 ```
 docker run -it --rm --name run3 --network host \
@@ -249,7 +282,7 @@ read block A against both rows of the table below.
 # against the solo engine
 python3 bench/harness.py --scenario fleet-bill --accelerator $FIT \
   --host 127.0.0.1 --port 8000 --startup-log /workspace/run3/engine-solo.log \
-  --out /workspace/run3/results/solo
+  --reference-pool 1123065 --out /workspace/run3/results/solo
 ```
 
 Then stop it and bring the pair up **serially — the second only once the first
@@ -265,16 +298,18 @@ vllm serve Qwen/Qwen3-8B --host 127.0.0.1 --port 8000 --dtype auto \
 The ordering is load-bearing, and checkpoint A is what tests it: vLLM sizes its
 pool from the memory it finds free at start-up, so two engines racing each other
 through that measurement is a way to get two pools that do not add up to the
-card. Read both logs rather than assuming the flag was obeyed. Then the same
+card. Read both logs rather than assuming the flag was obeyed. `--reference-pool`
+is not optional here: its default is the L40S's 168 985, and without it every
+launch prints "not comparable". Then the same
 level against the pair, half its concurrency to each engine:
 
 ```
 python3 bench/harness.py --scenario fleet-bill-half --accelerator $FIT \
   --port 8000 --startup-log /workspace/run3/engine-8000.log \
-  --out /workspace/run3/results/pair-8000 &
+  --reference-pool 507050 --out /workspace/run3/results/pair-8000 &
 python3 bench/harness.py --scenario fleet-bill-half --accelerator $FIT \
   --port 8001 --startup-log /workspace/run3/engine-8001.log \
-  --out /workspace/run3/results/pair-8001 &
+  --reference-pool 507050 --out /workspace/run3/results/pair-8001 &
 ```
 
 Predicted (table 11), at both droplets' fits where a row needs one:
@@ -310,76 +345,91 @@ Five working sets × two policies, at 64 seats across the fleet, 32 per engine,
 prompts of 4 000 tokens behind a shared prefix of 3 200 — the construction that
 measured `h` = 0.800 on every cached level of run 3.
 
-The model, from table 11: a replica retains about **116** prefixes after the
-shortfall and the live sequences. Under `round_robin` a replica sees all N
+The model, from table 11: a replica retains about **89** prefixes after the
+shortfall and the live sequences — each visit keeps its whole 4 200-token
+request in the LRU, not just its prefix (§0). Under `round_robin` a replica sees all N
 prefixes; under affinity it sees N/R. So the same pool holds twice the working
 set, and what that is worth depends on where N falls:
 
 | Prefixes N | Retained, rr / prefix | `h` rr | `h` prefix | Seats recovered |
 |---|---|---|---|---|
-| 32 | 32 / 16 | 0.800 | 0.800 | 24.4 |
-| 64 | 64 / 32 | 0.800 | 0.800 | 48.8 |
-| 128 | 116 / 64 | 0.728 | 0.800 | 79.9 |
-| 256 | 116 / 116 | 0.364 | 0.728 | 0.0 |
-| 512 | 116 / 116 | 0.182 | 0.364 | 0.0 |
+| 31 | 31 / 16 | 0.800 | 0.800 | 23.6 |
+| 63 | 63 / 32 | 0.800 | 0.800 | 48.0 |
+| 127 | 89 / 64 | 0.559 | 0.800 | 38.4 |
+| 255 | 89 / 89 | 0.278 | 0.557 | 0.0 |
+| 511 | 89 / 89 | 0.139 | 0.278 | 0.0 |
 
-The router goes in front of the pair, and the arm is the flag on it:
-
-```
-docker build -t prefix-router:dev router      # on the droplet: it is amd64
-docker run -d --name router --network host prefix-router:dev \
-  -listen :8080 -upstreams http://127.0.0.1:8000,http://127.0.0.1:8001 \
-  -policy prefix -dial-timeout 250ms
-```
+The router goes in front of the pair, and the arm is the flag on it. One level
+per call, on a freshly launched router, from the host — `FIT` set there too:
 
 ```
-python3 bench/harness.py --scenario router-arm --accelerator $FIT \
-  --port 8080 --expect-policy prefix \
-  --metrics-endpoint 127.0.0.1:8000 --metrics-endpoint 127.0.0.1:8001 \
-  --startup-log /workspace/run3/engine-8000.log \
-  --out /workspace/run3/results/prefix
+docker build -t prefix-router:dev /workspace/i-serve/router   # amd64, on the droplet
+
+arm() {   # arm <prefix|round_robin> <031|063|127|255|511>
+  docker rm -f router >/dev/null 2>&1
+  docker run -d --name router --network host prefix-router:dev \
+    -listen :8080 -upstreams http://127.0.0.1:8000,http://127.0.0.1:8001 \
+    -policy $1 -dial-timeout 250ms >/dev/null
+  until curl -sf localhost:8080/v1/models >/dev/null; do sleep 1; done
+  docker exec -w /workspace/i-serve run3 python3 bench/harness.py \
+    --scenario router-arm-n$2 --accelerator $FIT --port 8080 --expect-policy $1 \
+    --metrics-endpoint 127.0.0.1:8000 --metrics-endpoint 127.0.0.1:8001 \
+    --startup-log /workspace/run3/engine-8000.log --reference-pool 507050 \
+    --out /workspace/run3/results/$1-n$2
+}
+
+arm prefix 031;      arm round_robin 031
+arm round_robin 063; arm prefix 063
+arm prefix 127;      arm round_robin 127
+arm round_robin 255; arm prefix 255
+arm prefix 511;      arm round_robin 511
 ```
 
-Then `docker rm -f router`, relaunch it with `-policy round_robin`, and send the
-same scenario with `--expect-policy round_robin` to `--out …/round-robin`. The load goes to `:8080` both times and
-the counters are read from the engines directly — which is the point of
-`--metrics-endpoint`, since `/metrics` through the router is an unkeyed path and
-therefore one replica chosen by the fallback.
+The load goes to `:8080` every time and the counters are read from the engines
+directly — which is the point of `--metrics-endpoint`, since `/metrics` through
+the router is an unkeyed path and therefore one replica chosen by the fallback.
+The readiness probe is an unkeyed path too, so it moves the `round_robin`
+cursor by one before the first request; with an odd N that shifts which engine
+a prefix meets first, and nothing else.
 
 **Two regimes, and locating the boundary is the point.** While both policies
 retain everything, affinity's saving is *space* — it buys seats, at 0.76 each
 per prefix, and it has to clear block A's 27-seat bill before the arrangement is
 worth anything at all: **below N ≈ 35, two engines on one card are a loss no
 routing policy recovers.** Once `round_robin` is evicting, both policies hold the
-same 116 prefixes, there is no space left to differ over, and the whole difference
+same 89 prefixes, there is no space left to differ over, and the whole difference
 moves into `h`.
 
 **The order the prefixes are asked for is a decision, and it is made here.** The
 `h` columns above assume any prefix is as likely to be asked for next as any
 other. The harness draws them in strict rotation, which is LRU's worst case: a
 prefix comes round again only after every other one has evicted it, so the hit
-rate does not fall to a share, it falls to **zero** — `round_robin` past N = 116
-and affinity past N = 233. Both cliffs assume vLLM evicts least-recently-used
-blocks, which this repository has *not* read at the pinned tag
-(`vllm/v1/core/block_pool.py`): it is the one input to this block that is
-neither measured nor derived, and reading it costs nothing and no credits. That is the grid this run sends, unchanged, and it
+rate does not fall to a share, it falls to **zero** — `round_robin` past N = 89
+and affinity past N = 177. Both cliffs rest on vLLM evicting least-recently-used
+blocks, read at the pinned tag on 2026-09-28 (§0). Under the rotation only
+N = 127 sits between the cliffs; N = 255 separates the two order models, not the
+arms. That is the grid this run sends, and it
 means the measured spread between the arms is the **friendliest case for the
 router**, not a general figure. Real traffic is neither: it is Zipf-shaped, and
 sits between the two models. Both predictions are written down; the run faces the
 rotation one.
 
-**Alternate the arm order across the working sets** — prefix first at 32, 128 and
-512, `round_robin` first at 64 and 256. Each level warms its own prefixes, but
+**Alternate the arm order across the working sets** — prefix first at 31, 127 and
+511, `round_robin` first at 63 and 255, as the ten calls above do. Each level warms its own prefixes, but
 the arm that runs second starts against a cache the first arm shaped, and
 alternating is what keeps that bias from lining up with the policy.
 
-**Read per level:** measured `h` summed over both engines; the
-`X-Router-Policy` counts; the split of requests between the two engines. If one
+**Read per level:** measured `h` summed over both engines, and each engine's
+(`harness_hit_rate_127.0.0.1:800x`); the `X-Router-Policy` counts; the split of
+requests between the two engines (`harness_upstream_*`). The hit-rate gate
+invalidates any level more than 0.05 from the nominal 0.8, so every level the
+model predicts to evict prints `INVALID` by design: read the measured `h`, and
+treat the flag as a verdict only at N = 31 and 63. If one
 engine takes more than 60 % of a level, bounded loads engaged — affinity was
 traded for balance, by design (`router/README.md` §4), and `h` is not the only
 thing that moved.
 
-**Stop condition.** If the prefix arm at N = 32 does not measure `h` ≈ 0.8, stop
+**Stop condition.** If the prefix arm at N = 31 does not measure `h` ≈ 0.8, stop
 and fix the instrument: at that working set everything is retained under either
 policy and the number is not about the card.
 
@@ -393,8 +443,8 @@ Read off block B's levels; nothing new is sent.
 of TTFT falls by `(1 − h)` — the one knob that moves TTFT and TPOT the same way
 (`docs/SLO.md` §6). At 4 000 tokens a lone prefill takes **256.3 ms** at run 1's
 fit and **172.2 ms** at run 2's (table 11). The predicted difference between the
-arms is that times `(h_prefix − h_rr)` per request: **62.7–93.3 ms** at N = 256
-under the uniform model, **137.8–205.0 ms** at N = 128 under the rotation the run
+arms is that times `(h_prefix − h_rr)` per request: **47.9–71.3 ms** at N = 255
+under the uniform model, **137.8–205.0 ms** at N = 127 under the rotation the run
 actually sends. Both are upper bounds: a hit removes the linear part of a
 prefill, and the 800 new tokens still attend over the whole prompt. Compared arm against arm at
 the same load, never against the floor: queueing sits on top of it and is the
@@ -406,14 +456,12 @@ different memory system and a different attention backend would print a seat
 count with no run behind any part of it. Run 1 measured the interference and wrote
 a model from two rows after the fact (`docs/benchmarks/mi300x-run1.md` §6), and
 run 2 faced it within 7 % at run 1's budget and kernel (`mi300x-run2.md` §6).
-Whether it is registered is the review's decision. Once a fit is registered:
-
-```
-python3 bench/predictions.py --what-if --accelerator $FIT --hit-rate <measured h>
-```
-
-once per arm, and the difference between the two is the seat effect of the
-routing policy. Those numbers belong in the report, never back into this sheet.
+**The review decided on 2026-09-29 not to register it.** One facing is not a
+fit a later run confirmed, the facing was at run 1's budget and kernel, and its
+`(1 − h)` scaling overstates the saving here, since the 800 new tokens still
+attend over the whole prompt. Block C answers in TTFT and `h`, both measured;
+seats are not in §6's "done". A fit registered later from this run's rows
+would be scored by the run after it, as `docs/adding-a-run.md` §0 requires.
 
 ---
 
@@ -423,8 +471,8 @@ routing policy. Those numbers belong in the report, never back into this sheet.
 |---|---|
 | Expected clock | ≈ 2 h — 25 min up, 15 min block A, 50 min block B, the rest harvest and destroy |
 | Hard stop | **3 h ≈ $6** of the credit balance |
-| Drop order | N = 512 first (it only halves an already-broken hit rate), then N = 32 (it predicts no difference), then N = 64. **Never N = 128 or 256** — those two are what separate the two order models |
-| Done | both logged pools read against table 11; block A's four rows faced; the arm pair at N = 128 and N = 256 measured with `h` per engine and the policy header counted |
+| Drop order | N = 511 first (it only halves an already-broken hit rate), then N = 31 (it predicts no difference), then N = 63. **Never N = 127 or 255** — 127 is the one level where the arms differ under the rotation, 255 the one that separates the two order models |
+| Done | both logged pools read against table 11; block A's four rows faced; the arm pair at N = 127 and N = 255 measured with `h` per engine and the policy header counted |
 | Not done | anything where `X-Router-Policy` was not checked. A level without it is a level that may have run the control twice |
 
 Everything lands in `docs/benchmarks/raw/mi300x-<date>/` with its README, read
