@@ -227,11 +227,13 @@ budget, measured in `../deploy/router/README.md` §2).
   which replica, how evenly, how often it changes. Not one of them says the
   seat count moves. That measurement needs the fleet on `kind` and then a card,
   and the prediction has to be written before the run
-  ([`../docs/adding-a-run.md`](../docs/adding-a-run.md)). That prediction now
-  exists and the run does not:
-  [`../docs/benchmarks/runsheets/mi300x-run-3.md`](../docs/benchmarks/runsheets/mi300x-run-3.md),
-  written 2026-09-19, which also found three reasons the run would have measured
-  nothing without erroring — the first of them the key this file's §2 defends.
+  ([`../docs/adding-a-run.md`](../docs/adding-a-run.md)). MI300X run 3 faced
+  that prediction on 2026-09-29, and its arm comparison was void: the
+  instrument let the second arm hit the first arm's requests
+  ([`../docs/benchmarks/mi300x-run3.md`](../docs/benchmarks/mi300x-run3.md) §5).
+  The same run showed the router routing as this file says, bounded loads
+  included, on a pair whose engines were not equal (§6 there). The re-run is
+  [`../docs/benchmarks/runsheets/mi300x-run-4.md`](../docs/benchmarks/runsheets/mi300x-run-4.md).
 - **That the byte prefix buys the block alignment §2 argues it does.** The
   argument is about BPE, and BPE was not run. The test is one prompt pair
   tokenized by the engine's own tokenizer, compared block by block.

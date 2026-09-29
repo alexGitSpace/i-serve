@@ -16,8 +16,8 @@ built from. The routes are in [../README.md](../README.md).
 | `docs/symptom-map.md`, `.json` | The decision tree, and the checked subset the site evaluates | 70 nodes; the JSON's 37 nodes held equal by a test |
 | `docs/running-on-kind.md` | The eleven commands, the two waits, the stub contract | ✅ |
 | `docs/adding-a-run.md` | Why runs accumulate here, and the checklist | first user: MI300X run 1 |
-| `docs/benchmarks/` | Load test reports, cost figures, the chart above | L40S runs 1–3 and MI300X runs 1–2 written up, raw evidence committed |
-| `docs/benchmarks/runsheets/` | The sheet written **before** each run | five for L40S runs 1–3; three for MI300X — runs 1 and 2 taken, run 3 not yet |
+| `docs/benchmarks/` | Load test reports, cost figures, the chart above | L40S runs 1–3 and MI300X runs 1–3 written up, raw evidence committed; MI300X run 3's arm comparison void, re-run as run 4 |
+| `docs/benchmarks/runsheets/` | The sheet written **before** each run | five for L40S runs 1–3; four for MI300X — runs 1–3 taken, run 4 written and not yet reviewed |
 | `docs/instrument-vllm-bench-sweep.md` | What `vllm bench sweep` does at `v0.27.1` | verified off-card against that tag |
 | `bench/` | Load harness, `roofline.py`, chart generator, site export; tests in `bench/tests/` | model calibrated; the harness ran run 3 on a card |
 | `site/` | Calculator and advisor as one static page for Pages | live; parity 333/333 rows |
