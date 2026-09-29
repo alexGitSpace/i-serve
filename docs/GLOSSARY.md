@@ -525,9 +525,10 @@ a no-op ([SLO.md](SLO.md) §6, channel 2; the arithmetic is table 11 of
 free space: the block untouched for longest goes first. It is why a working set
 larger than the pool costs hit rate rather than memory, and why a workload that
 asks for its prefixes in strict rotation measures the worst case — each one is
-evicted exactly before it is next needed. **Which order vLLM's block pool
-actually uses has not been read here** at the pinned tag, so every hit-rate
-prediction over a working set inherits it as an assumption ⏳.
+evicted exactly before it is next needed. vLLM's block pool is LRU, read at the
+pinned tag: a finished request's hashed blocks — body and output as well as the
+prefix — go to the tail, eviction takes the head
+([runsheet, MI300X run 3 §0](benchmarks/runsheets/mi300x-run-3.md)).
 
 **Zipf distribution** — the popularity shape real prompt traffic has: a few
 prefixes carry most requests and a long tail carries the rest. Between a uniform
@@ -1416,6 +1417,10 @@ from, repeatable, separate from the address the load is sent to. Needed the
 moment a router sits in front of a fleet: the load endpoint is then one hop, and
 the counters live on several engines behind it
 (`docs/benchmarks/runsheets/mi300x-run-3.md` §0).
+
+**`--reference-pool`** (`bench/harness.py`) — the logged KV pool, in tokens,
+that a level's pool gate compares the engine's startup log against. Defaults to
+the L40S's run-1 pool, so any other card must pass its own.
 
 **`--expect-policy`** (`bench/harness.py`) — the `X-Router-Policy` every
 response of a level must carry, or the level is invalid. Turns a routing arm
