@@ -1,14 +1,12 @@
 """Draw every prediction the runs made, as measured / predicted, on a log axis.
 
-The front page's picture: one row per prediction, grouped by run, sorted by ratio;
-a ratio because the predictions come in seven units. Rows are a selection of each
-report's section 9, and bench/tests/test_plot_predicted_vs_measured.py holds
-`pred_text` / `meas_text` to one row of it. Drawn: two-sided values only, a
-predicted range at its midpoint, an off-axis ratio as an arrowhead at the edge;
-hollow means the coefficient was fitted to that run. The ratio is measured /
-predicted, the reports' Error column the reverse; where a report gives two
-measured values the dot is the first. The pre-commit hook, that test and CI keep
-the committed SVG equal to svg().
+The front page's picture, one row per prediction, grouped by run and sorted by
+ratio, because the predictions come in seven units. Rows are a selection of each
+report's section 9, held to it by bench/tests/test_plot_predicted_vs_measured.py,
+which with the pre-commit hook and CI also keeps the SVG equal to svg(). Drawn:
+two-sided values only, a range at its midpoint, an off-axis ratio as an arrowhead,
+hollow where the coefficient was fitted to that run. The ratio is the reverse of
+the reports' Error column; of two measured values, the dot is the first.
 """
 
 from __future__ import annotations
