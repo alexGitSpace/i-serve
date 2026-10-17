@@ -42,6 +42,7 @@ button { font: inherit; color: inherit; }
 
 /* badges: the three colours that mean something */
 .badge { display: inline-block; white-space: nowrap; padding: 0 7px; border-radius: 3px; font-size: 11px; font-weight: 600; line-height: 18px; vertical-align: middle; letter-spacing: 0.02em; }
+.badge[hidden] { display: none; }
 .badge.measured, .prov.measured { background: var(--measured-bg); color: var(--blue); }
 .badge.prior, .prov.prior { background: var(--prior-bg); color: var(--prior-ink); }
 .badge.over { background: var(--over-bg); color: var(--red); }
@@ -56,7 +57,6 @@ button { font: inherit; color: inherit; }
 .top nav a { text-decoration: none; color: var(--text-2); }
 .top nav a:hover { color: var(--ink); }
 .top nav a:not([href]) { color: var(--muted); cursor: default; }
-.top nav a[aria-current] { color: var(--ink); font-weight: 600; }   /* after :not([href]): the current page has no href and must not read as disabled */
 
 /* rail + main */
 .body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 72px; padding: 48px 56px 0; max-width: 1440px; margin: 0 auto; }
@@ -67,7 +67,6 @@ button { font: inherit; color: inherit; }
                 padding: 12px 0; border: 0; border-top: 1px solid var(--hair); background: none; cursor: pointer; line-height: 1.4; }
 .steps .n { font-family: var(--mono); font-size: 12px; color: var(--text-2); }
 .steps .t { font-weight: 400; }
-.steps .r { font-size: 13px; color: var(--text-2); }
 .steps button.on .n, .steps button.on .t { color: var(--ink); font-weight: 600; }
 .rail .keys { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
 .rail .keys div { display: flex; gap: 8px; align-items: center; color: var(--text-2); }
@@ -203,7 +202,6 @@ ul.legend li[data-tip] .lbl { border-bottom: 1px dotted var(--border); }
 ul.legend li[data-tip]:hover .lbl { border-bottom-color: var(--muted); color: var(--ink); }
 ul.legend li:focus { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 3px; }
 ul.legend li.legend-group { font-weight: 600; color: var(--ink); margin-left: 6px; }
-ul.legend li.caption { margin-left: auto; white-space: normal; text-align: right; max-width: 46%; }
 .swatch { display: inline-block; width: 16px; height: 0; border-top: 2px solid var(--ink); flex: none; position: relative; top: -2px; }
 .swatch.line-served { border-top-style: dashed; }
 .swatch.pt-h0, .swatch.pt-h80, .swatch.pt-run1, .swatch.pt-now, .swatch.pt-service { width: 8px; height: 8px; border: 0; border-radius: 50%; top: 0; }
@@ -244,7 +242,6 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13.5px; }
 .reading .rname { font-family: var(--mono); font-size: 0.8rem; }
 .reading input[type=number], .reading select { padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--ink); width: 100%; font: inherit; font-size: 0.9rem; }
 .reading .panel { color: var(--muted); font-size: 0.78rem; }
-.kindnote { color: var(--orange); }
 .derived { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.85rem; color: var(--text-2); margin: 10px 0; }
 
 /* pin and compare */
@@ -264,7 +261,6 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13.5px; }
 footer { margin: 72px auto 0; max-width: 1440px; padding: 24px 56px 40px; border-top: 1px solid var(--hair); font-size: 13px; }
 footer .grid { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 72px; }
 footer .lines { display: flex; flex-direction: column; gap: 6px; }
-footer .lines .badge { margin-right: 8px; }
 footer .fine code { color: var(--ink); }
 footer .fine .badge { white-space: normal; }   /* the parity sentence wraps on a phone */
 footer .fine { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--hair); color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
@@ -278,7 +274,6 @@ footer .fine { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--
   .steps { display: flex; border: 0; }
   .steps button { border: 0; padding: 6px 0; grid-template-columns: 16px 1fr; width: auto; flex: 0 1 auto; min-width: 0; margin-right: 18px; }
   .top { height: auto; min-height: 56px; flex-wrap: wrap; padding-block: 10px; }
-  .steps .r { display: none; }
   .rail .keys { flex-direction: row; gap: 16px; }
   footer .grid { grid-template-columns: 1fr; gap: 12px; }
   .lede { font-size: 26px; }
@@ -289,7 +284,6 @@ footer .fine { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--
   .stat + .stat { padding-left: 0; border-left: 0; border-top: 1px solid var(--hair); }
   .num { font-size: 36px; }
   .flow { grid-template-columns: 1fr; }
-  ul.legend li.caption { margin-left: 0; max-width: none; text-align: left; }
   .top nav { gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
 }
 /* phones: a chart keeps a readable size and scrolls inside its figure */

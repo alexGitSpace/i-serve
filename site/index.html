@@ -17,7 +17,6 @@
 <header class="top">
   <h1>i-serve</h1>
   <nav id="nav">
-    <a aria-current="page">The page</a>
     <a data-doc="docs/benchmarks/">How it was measured</a>
     <a data-doc="docs/running-on-kind.md">Run it yourself</a>
     <a data-repo-link>GitHub</a>
@@ -27,11 +26,11 @@
 <div class="body">
 <!-- ------------------------------------------------------------- rail -->
 <aside class="rail">
-  <p class="note">Numbers here are the best the hardware could do. A real deployment lands a little above them. Nothing on this page reads your cluster.</p>
+  <p class="note">The best case for the hardware: a real deployment lands a little worse.</p>
   <div class="steps" id="steps">
-    <button type="button" data-step="step-speed"><span class="n">1</span><span><span class="t">Speed</span><br><span class="r">size it before you rent</span></span></button>
-    <button type="button" data-step="step-cost"><span class="n">2</span><span><span class="t">Cost</span><br><span class="r">price a product, compare cards</span></span></button>
-    <button type="button" data-step="step-trouble"><span class="n">3</span><span><span class="t">Trouble</span><br><span class="r">read the dashboard on a bad morning</span></span></button>
+    <button type="button" data-step="step-speed"><span class="n">1</span><span class="t">Speed</span></button>
+    <button type="button" data-step="step-cost"><span class="n">2</span><span class="t">Cost</span></button>
+    <button type="button" data-step="step-trouble"><span class="n">3</span><span class="t">Trouble</span></button>
   </div>
   <div class="keys">
     <div><span class="badge measured">measured</span><span>checked on a real card</span></div>
@@ -42,7 +41,7 @@
 <main>
 <!-- ------------------------------------------------ the situation -->
 <section class="step" id="step-situation">
-  <p class="lede">Running an AI model on a rented GPU is a trade between speed, how many people you serve at once, and money. Describe your situation, and the page works out the trade.</p>
+  <p class="lede">On a rented GPU, speed, people served at once and money trade against each other. Describe your setup.</p>
   <div class="situation">
     <p class="sentence"><span class="glue">I serve</span>
       <span class="edit-wrap"><button type="button" class="edit" data-pop="pop-model" aria-controls="pop-model" aria-expanded="false" id="v-model">—</button>
@@ -50,7 +49,6 @@
         <span class="pop" id="pop-model" hidden>
           <label><span class="lab">model</span><select id="model"></select></label>
           <span class="hint" id="model-prov"></span>
-          <span class="hint">Pricing a model is not serving it: the second one is arithmetic over its config, never run here.</span>
         </span></span>
       <span class="glue">on one</span>
       <span class="edit-wrap"><button type="button" class="edit" data-pop="pop-accelerator" aria-controls="pop-accelerator" aria-expanded="false" id="v-accelerator">—</button>
@@ -69,13 +67,13 @@
       <span class="edit-wrap" data-pin-label="prompt tok"><button type="button" class="edit mono" data-pop="pop-prompt" aria-controls="pop-prompt" aria-expanded="false" id="v-prompt">—</button>
         <span class="pop" id="pop-prompt" hidden>
           <label><span class="lab">prompt tokens</span><span class="row"><input type="range" id="prompt-range" min="0" max="1000"><input type="number" id="prompt" min="1" max="32768" aria-label="prompt tokens"></span></label>
-          <span class="hint">The slider runs 128 to 32 768 on a log scale; type any value from 1. Everything the model reads before it answers: system prompt, history, the question.</span>
+          <span class="hint">Everything the model reads before it answers: system prompt, history, the question.</span>
         </span></span>
       <span class="glue">tokens and the answer</span>
       <span class="edit-wrap" data-pin-label="answer tok"><button type="button" class="edit mono" data-pop="pop-output" aria-controls="pop-output" aria-expanded="false" id="v-output">—</button>
         <span class="pop" id="pop-output" hidden>
           <label><span class="lab">output tokens</span><span class="row"><input type="range" id="output-range" min="1" max="4096"><input type="number" id="output" min="1" max="8192" aria-label="output tokens"></span></label>
-          <span class="hint">The slider runs to 4 096; type up to 8 192. A seat reserves room for prompt plus answer.</span>
+          <span class="hint">A seat reserves room for prompt plus answer.</span>
         </span></span><span class="glue">;</span>
       <span class="glue">about</span>
       <span class="edit-wrap" data-pin-label="cached"><button type="button" class="edit mono" data-pop="pop-hit" aria-controls="pop-hit" aria-expanded="false" id="v-hit">—</button>
@@ -85,7 +83,6 @@
         </span></span>
       <span class="glue">of each prompt repeats something the card has already seen.</span></p>
     <div class="actions">
-      <p class="hint">Change anything dotted. Every answer below follows. A token is about three quarters of an English word.</p>
       <span class="spacer"></span>
       <button type="button" class="ghost" data-pin>Keep this to compare</button>
       <button type="button" class="ghost" id="copy-link">Copy link</button>
@@ -100,7 +97,7 @@
           <label><input type="radio" name="kv" value="2"> BF16</label><label><input type="radio" name="kv" value="1"> FP8</label>
           <span class="hint">FP8 stores each seat's memory in half the bytes: twice the room, twice the time limit, the same gap between them</span></div>
         <label><span class="lab">gpu_memory_utilization, %</span><span class="row"><input type="range" id="gmu-range" min="30" max="98"><input type="number" id="gmu" min="5" max="99" aria-label="gpu_memory_utilization, %"></span>
-          <span class="hint">the share of the card the engine may use; its startup log outranks this</span></label>
+          <span class="hint">the share of the card the engine may use</span></label>
       </form>
       <div class="detail-grid" id="outputs"></div>
       <div class="coefficients" id="coefficients"></div>
@@ -113,7 +110,7 @@
   <div class="step-head">
     <div class="lab">1 · Speed</div>
     <h2 id="slo-question">How fast should each word appear?</h2>
-    <p class="why" id="slo-why">At 50 ms per token the answer stays well ahead of a person reading it. A batch job only needs its deadline, so it can trade speed for seats.</p>
+    <p class="why" id="slo-why">At 50 ms per token the answer stays well ahead of a person reading it.</p>
   </div>
   <div class="controls">
     <div class="seg">
@@ -190,7 +187,7 @@
   <div class="step-head">
     <div class="lab">3 · Trouble</div>
     <h2>It got slow. Where do you look first?</h2>
-    <p class="why">Answer what your dashboard shows; <i>don't know</i> is fine. For each symptom your answers point to, the page names the likeliest cause at your operating point, and the knob for it.</p>
+    <p class="why">Answer what your dashboard shows; <i>don't know</i> is fine. The page names the likeliest cause and its knob.</p>
   </div>
   <div class="flow" id="flow">
     <div class="q">
@@ -246,15 +243,11 @@
   <div class="grid">
     <div class="lab">Where the numbers come from</div>
     <div class="lines">
-      <p><span class="badge measured">measured</span>Three sessions on a rented L40S and four on an MI300X, written up run by run with the predictions that missed. <a data-doc="docs/benchmarks/">The runs</a></p>
-      <p><span class="badge prior">prior</span>Spec-sheet coefficients, kept beside each card's fit for contrast and marked everywhere they appear. <a data-doc="docs/adding-a-run.md">Add a run</a></p>
-      <p class="quiet">Want the arithmetic in a terminal, the cluster on your laptop, or the derivations? <a data-doc="docs/audience.md">Start here</a>, by how much time you have.</p>
+      <p><a data-doc="docs/benchmarks/">The runs</a> · <a data-doc="docs/adding-a-run.md">Add a run</a> · <a data-doc="docs/audience.md">Where to start</a>, by how much time you have</p>
     </div>
   </div>
   <div class="fine">
     <span id="selftest" class="badge">parity check pending</span>
-    <span>The formulas are a port of <code>bench/roofline.py</code>, re-checked against it at <span id="golden-count"></span> operating points on every load.</span>
-    <span id="source-link"></span>
     <span>Apache-2.0.</span>
   </div>
 </footer>

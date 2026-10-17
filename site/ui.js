@@ -287,7 +287,7 @@
       : "How fast should each word appear?";
     $("slo-why").textContent = isBatch()
       ? "Nobody is watching a token arrive, so the per-token threshold is only a guard against a stall. What matters is tokens per second, and how long a million takes."
-      : `At ${tight} per token the answer stays well ahead of a person reading it. A batch job only needs its deadline, so it can trade speed for seats.`;
+      : `At ${tight} per token the answer stays well ahead of a person reading it.`;
     $("cost-question").textContent = isBatch()
       ? "What does a million tokens cost, and how long do they take?"
       : "What does a million tokens cost at that speed?";
@@ -341,7 +341,7 @@
     } else {
       const s = point.seats;
       const why = s.bound_by === "latency"
-        ? `Each extra seat slows every token a little, and the ${ordinal(s.by_latency + 1)} would break the ${t} promise. Room would hold ${int(s.by_capacity)}.`
+        ? `Each extra seat slows every token a little, and the ${ordinal(s.by_latency + 1)} would break the ${t} promise.`
         : `Room binds: the KV pool holds ${int(s.by_capacity)} seats' memory at this prompt length, while time alone would allow ${int(s.by_latency)}.`;
       if (isBatch()) {
         setStat("hw", perSec(point.aggregate_tokens_per_sec), "tokens per second",
@@ -373,15 +373,10 @@
           : `Nothing is lost to newcomers here: room set the seat count, and interference would have to eat the whole budget before it moved.`;
         setStat("svc", perSec(sv.aggregate_tokens_per_sec), "tokens per second", text, badge);
       } else {
-        let text = `Newcomers' prompts have to be read first, and that reading slows everyone else's tokens. ` +
-          (state.hit_rate > 0 ? `${pct(state.hit_rate)} of each prompt is already cached, so less of it is read.` : `Nothing is cached, so every prompt is read in full.`);
-        if (state.hit_rate < 0.8 - 1e-9) {
-          const alt = R.whatIfPoint(data, Object.assign({}, state, { hit_rate: 0.8 }));
-          if (alt.service && alt.service.seats_shipped > 0) text += ` With 80 % repeats: ${alt.service.seats_shipped}.`;
-        }
+        let text = `Newcomers' prompts are read first and slow everyone's tokens.`;
         if (sv.note) {
           const r3 = window.Draw.run3Check(data);
-          text += ` A floor, not an estimate: at 80 % cached and ${ms(r3.tpot_s)}, run 3 measured ${r3.measured.toFixed(1)} seats where this formula, at that run's settings, gives ${r3.formula.toFixed(1)}.`;
+          text += ` A floor: at 80 % cached and ${ms(r3.tpot_s)}, run 3 measured ${r3.measured.toFixed(1)} seats; this formula, at that run's settings, gives ${r3.formula.toFixed(1)}.`;
         }
         setStat("svc", String(sv.seats_shipped), seatsUnit, text, badge);
       }
@@ -397,14 +392,14 @@
     if (tf.seconds > state.ttft_target) {
       if (state.hit_rate > 0 && tu.seconds <= state.ttft_target) {
         setStat("ttft", msNum(tu.seconds), asked,
-          `Reading a ${prompt}-token prompt cold would take ${ms(tf.seconds)}, over the target; with ${pct(state.hit_rate)} cached only ${int(tu.uncached_tokens)} tokens are left to read, and that fits.${change}`, null);
+          `Cold it would take ${ms(tf.seconds)}; with ${pct(state.hit_rate)} cached only ${int(tu.uncached_tokens)} tokens are left to read.${change}`, null);
       } else {
         setStat("ttft", msNum(tf.seconds), asked,
-          `Reading a ${prompt}-token prompt takes at least this long on this card, past the ${target} target. Shorter prompts, a cache serving most of them, or a looser target.${change}`,
+          `Reading ${prompt} tokens takes at least this long here. Shorten prompts, cache them, or <a href="#assumptions" data-open-ttft>loosen the target</a>.`,
           { cls: "over", text: "too slow" });
       }
     } else {
-      setStat("ttft", msNum(tf.seconds), asked, `Reading the ${prompt}-token prompt fits inside the first-word target.${change}`, null);
+      setStat("ttft", msNum(tf.seconds), asked, `Reading ${prompt} tokens fits inside the target.${change}`, null);
     }
     $("q-ttft-small").textContent = `TTFT p99 against its floor, ${ms(tu.seconds)}`;
     $("q-tpot-small").textContent = `TPOT p99 against the promise, ${t}`;
@@ -428,11 +423,10 @@
       const rateTxt = `$${rate.toFixed(2)} an hour`;
       setStat("cost", usd(c), unit, isBatch()
         ? `${n} seats sharing ${rateTxt}; a million tokens every ${spanFor(1e6, useSvc ? sv.aggregate_tokens_per_sec : point.aggregate_tokens_per_sec)}.`
-        : `${n} people sharing ${rateTxt}, every token inside the ${t} promise.`);
+        : `${n} people share $${rate.toFixed(2)}/h.`);
       if (useSvc) {
         $("alt1-lab").textContent = "hardware alone";
-        setStat("alt1", usd(hw), `${point.seats.max_num_seqs} ${isBatch() ? "seats" : "people at once"}`,
-          `The gap is newcomers' prefill landing in everyone's decode step.`);
+        setStat("alt1", usd(hw), `${point.seats.max_num_seqs} ${isBatch() ? "seats" : "people at once"}`, "");
       } else if (sv === null) {
         $("alt1-lab").textContent = "a service could promise";
         setStat("alt1", "?", state.model === data.measured.model && data.accelerators[state.accelerator].measured ? "needs a fit" : "needs a run", state.model !== data.measured.model
@@ -454,7 +448,7 @@
       const d = delivered(R.whatIfPoint(data, Object.assign({}, state, { hit_rate: 0.8 })));
       if (d) {
         setStat("alt2", usd(d.cost), "with 80 % repeats",
-          `Same card, same promise, ${d.seats} ${isBatch() ? "seats" : "people"}. Repeats come from your traffic (a shared system prompt, the same examples), not from hardware. <a href="#" data-set-hit="0.8">Try it</a>`);
+          `Same card, same promise, ${d.seats} ${isBatch() ? "seats" : "people"}. <a href="#" data-set-hit="0.8">Try it</a>`);
       } else {
         setStat("alt2", "—", "", `Even with 80 % repeats nothing fits at ${t} on this card.`);
       }
@@ -489,14 +483,15 @@
       const head = l.group && l.group !== group ? `<li class="legend-group">${l.group}:</li>` : "";
       group = l.group || null;
       return head + `<li${l.tip ? ` data-tip="${escAttr(l.tip)}" tabindex="0"` : ""}><span class="swatch ${l.swatch}"></span><span class="lbl">${l.label}</span></li>`;
-    }).join("") +
-      (result.caption ? `<li class="caption">${result.caption}</li>` : "");
+    }).join("");
     const note = fig.querySelector(".hidden-note");
     note.hidden = !result.hidden;
     note.textContent = result.hidden || "";
     const finding = fig.querySelector(".finding");
-    finding.hidden = !result.note;
-    finding.textContent = result.note || "";
+    // A note is text; a jump is a link that moves the point to where the note would read.
+    finding.hidden = !result.note && !result.jump;
+    if (result.jump) finding.innerHTML = `<a href="#" data-set-hit="${result.jump.hit_rate}">${result.jump.label}</a>`;
+    else finding.textContent = result.note || "";
   }
   function bindTooltips() {
     const tip = $("tooltip");
@@ -547,7 +542,7 @@
     return { re, byLower };
   })();
   const SKIP = new Set(["CODE", "BUTTON", "SELECT", "OPTION", "INPUT", "OUTPUT", "SVG", "A", "SCRIPT", "STYLE", "H1", "H2", "H3"]);
-  const SKIP_CLASS = ["term", "rname", "legend", "num", "lab", "lede"];
+  const SKIP_CLASS = ["term", "rname", "legend", "num", "lab", "lede", "badge"];
   function markTerms(root) {
     // A focused term is rebuilt like the rest; remember it, so focus can return to its twin.
     const act = document.activeElement;
@@ -695,14 +690,16 @@
     $("accelerator").value = state.accelerator;
     const card = data.accelerators[state.accelerator];
     const badge = $("accel-badge");
-    badge.textContent = card.measured ? "measured" : "prior";
+    const run = card.name.match(/\((run \d+) coefficients\)/);
+    badge.textContent = run ? run[1] : card.measured ? "measured" : "prior";
     badge.className = "badge " + (card.measured ? "measured" : "prior");
     badge.title = card.provenance;
     $("accel-prov").textContent = card.provenance;
-    $("v-accelerator").textContent = cardShort(state.accelerator);
+    $("v-accelerator").textContent = cardShort(state.accelerator).replace(/ \(.*\)$/, "");   // the badge says which entry
     $("model").value = state.model;
     const mdl = data.models[state.model];
     const mbadge = $("model-badge");
+    mbadge.hidden = mdl.measured;   // marked only when it is not the model the runs decoded
     mbadge.textContent = mdl.measured ? "measured" : "predicted";
     mbadge.className = "badge " + (mdl.measured ? "measured" : "prior");
     mbadge.title = mdl.served_by_this_stack
@@ -766,7 +763,6 @@
     let html = "";
     for (const [name, spec] of Object.entries(map.inputs)) {
       if (name === "ttft_target_ms" || name === "tpot_target_ms") continue;
-      const kind = spec.on_kind ? "" : `<span class="kindnote">not on kind</span>`;
       if (spec.type === "enum") {
         html += `<label class="reading"><span class="rname">${name}</span><select data-reading="${name}">` +
           spec.values.map((v) => `<option value="${v}">${v}</option>`).join("") + `</select><span class="panel">${spec.panel}</span></label>`;
@@ -774,7 +770,7 @@
         html += `<label class="reading"><span class="rname">${name}</span><input type="checkbox" data-reading="${name}"><span class="panel">${spec.panel}</span></label>`;
       } else {
         html += `<label class="reading"><span class="rname">${name}</span><input type="number" step="any" min="0" data-reading="${name}" placeholder="No data">` +
-          `<span class="panel">${spec.panel} ${kind}</span></label>`;
+          `<span class="panel">${spec.panel}</span></label>`;
       }
     }
     form.innerHTML = html;
@@ -868,8 +864,15 @@
   function nodeHtml(n, cls) {
     const ev = n.evidence ? `<span class="evidence">${n.evidence}</span>` : "";
     const link = docLink(n.source);
-    const src = link ? `<a href="${link}">${n.source}</a>` : `<code>${n.source}</code>`;
-    return `<li class="node ${cls}">${ev}${inlineMd(n.text)} <span class="src">${src}</span></li>`;
+    // "architecture.md#4-the-control-loop-..." reads as "architecture.md §4"; the link keeps the anchor.
+    const [file, anchor] = n.source.split("#");
+    const sec = anchor && /^\d+-/.test(anchor) ? ` §${anchor.split("-")[0]}` : "";
+    const shown = file.replace(/^(\.\.\/)+/, "").split("/").pop() + sec;
+    const src = link ? `<a href="${link}" title="${escAttr(n.source)}">${shown}</a>` : `<code>${shown}</code>`;
+    // A sentence that already cites its source gets the link in place, not a second copy after it.
+    const body = inlineMd(n.text);
+    if (body.includes(shown)) return `<li class="node ${cls}">${ev}${body.replace(shown, src)}</li>`;
+    return `<li class="node ${cls}">${ev}${body} <span class="src">${src}</span></li>`;
   }
 
   function renderAdvisor(point) {
@@ -888,9 +891,7 @@
     let html = "";
     const answered = Object.values(flow).some((v) => v !== "dk" && v !== false);
     if (!rep.active.length) {
-      html += `<p class="quiet">${answered || expert
-        ? "Nothing is breaching on these answers, or nothing here can tell."
-        : "Answer what you can. “Don’t know” is an answer: on <code>kind</code> the stub exports no histogram, so the first-word and per-token questions have no reading there."}</p>`;
+      if (answered || expert) html += `<p class="quiet">Nothing is breaching on these answers, or nothing here can tell.</p>`;
     }
     // A missing reading, named as the question that would supply it while the
     // guided flow is in charge, and as the reading itself once the form is.
@@ -902,17 +903,18 @@
       // One section per symptom the answers point to, each with its likeliest cause.
       html += `<section class="symptom"><div class="lab">symptom</div><h3>${e.symptom.title}</h3>`;
       if (e.branch) {
+        // A knob the cause already names in its sentence is not listed twice.
+        const knobs = e.branch.knobs.filter((k) => !e.branch.text.includes(k.name));
         html += `<div class="lab">most likely cause</div><ul class="main">${nodeHtml(e.branch, "branch")}</ul>` +
           `<p class="next"><b>Read next:</b> ${e.branch.next_number}</p>` +
-          (e.branch.knobs.length ? `<p class="knobs"><b>Knobs:</b> ${e.branch.knobs.map((k) => { const l = docLink(k.source); return l ? `<a href="${l}">${k.name}</a>` : `<code>${k.name}</code>`; }).join(" · ")}</p>` : "");
+          (knobs.length ? `<p class="knobs"><b>Knobs:</b> ${knobs.map((k) => { const l = docLink(k.source); return l ? `<a href="${l}">${k.name}</a>` : `<code>${k.name}</code>`; }).join(" · ")}</p>` : "");
       } else {
         const need = e.notEvaluable.filter((x) => x.node.kind === "branch").flatMap((x) => x.missing);
         html += `<p class="quiet">${need.length ? `Which cause it is needs one more reading: ${askFor(need)}.` : "No cause in the map matches these answers."}</p>`;
       }
       const more = e.probes.concat(e.continuations, e.traps);
       if (more.length || e.notEvaluable.length) {
-        html += `<details class="more"><summary>Why this, step by step: ${more.length} node${more.length === 1 ? "" : "s"}` +
-          (e.notEvaluable.length ? `, ${e.notEvaluable.length} it cannot judge from these answers` : "") + `</summary>`;
+        html += `<details class="more"><summary>Step by step</summary>`;
         if (e.probes.length) html += `<ul>${e.probes.map((n) => nodeHtml(n, "probe")).join("")}</ul>`;
         if (e.continuations.length) html += `<ul>${e.continuations.map((n) => nodeHtml(n, "cont")).join("")}</ul>`;
         if (e.traps.length) html += `<div class="traps"><div class="branch-head">Traps</div><ul>${e.traps.map((n) => nodeHtml(n, "trap")).join("")}</ul></div>`;
@@ -924,7 +926,7 @@
     if (rep.unknown.length && (answered || expert)) {
       html += `<p class="quiet">Could not check ${rep.unknown.map((u) => `<b>${u.symptom.title.toLowerCase()}</b> (${askFor(u.missing)})`).join("; ")}.</p>`;
     }
-    html += `<p class="quiet small">Two symptoms have no dashboard probe and are read in the map itself: <em>Cost per 1M tokens too high</em> and <em>Throughput healthy, users angry</em>.</p>`;
+    if (answered || expert) html += `<p class="quiet small">Two symptoms have no dashboard probe and are read in the map itself: <em>Cost per 1M tokens too high</em> and <em>Throughput healthy, users angry</em>.</p>`;
     $("advice").innerHTML = html;
     remark();
   }
@@ -940,12 +942,12 @@
         console.error(rep.failures.slice(0, 3));
       } else {
         b.className = "badge ok";
-        b.textContent = `checked: this page agrees with the Python model on all ${rep.rows} test points`;
+        b.textContent = `✓ agrees with the Python model, ${rep.rows}/${rep.rows} points`;
+        b.title = "calc.js re-checked against bench/roofline.py on every load";
       }
     } catch (e) {
       b.className = "badge bad"; b.textContent = "parity check did not run: " + e.message;
     }
-    $("golden-count").textContent = String(window.GOLDEN.length);
   }
   // Every link into the repository reads the same data-repo the advisor's
   // sources use; without it they stay plain text rather than pointing nowhere.
@@ -955,10 +957,6 @@
       if (href) a.href = href;
     }
     for (const a of document.querySelectorAll("a[data-repo-link]")) if (REPO_OK) a.href = REPO;
-    if (REPO_OK) {
-      const shown = REPO.replace(/^https?:\/\//, "").replace(/\/$/, "");
-      $("source-link").innerHTML = `Source, docs and the runs: <a href="${REPO}">${shown}</a>.`;
-    }
   }
 
   // --- the loop ----------------------------------------------------------------

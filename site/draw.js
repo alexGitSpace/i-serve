@@ -7,7 +7,8 @@
  *   Draw.cost  -- $ per 1M output tokens against the TPOT target, on a log axis.
  *
  * A legend entry is a name of two to four words; the formula goes to `tip`, and
- * what the picture turns out to show comes back as `note` under the chart.
+ * what the picture turns out to show comes back as `note` under the chart, or as
+ * `jump`, a link to the point where the note would read.
  */
 (function (root) {
   "use strict";
@@ -146,7 +147,7 @@
     }
 
     // measured points, only inside the runs' geometry
-    let hidden = null, note = null;
+    let hidden = null, note = null, jump = null;
     if (onMi) {
       let above = 0;
       for (const lv of mi.levels) {
@@ -200,21 +201,20 @@
                     tip: "TPOT p99 measured on 2026-08-30, with 80 % of each prompt already in the prefix cache." });
       legend.push({ swatch: "pt-run1", label: "decode step alone", group: "measured",
                     tip: "Median ITL measured on 2026-08-18: the decode step by itself, with no arriving prompt landing in it." });
-      note = (fit && opts.served !== false)
-        ? (Math.abs(state.hit_rate - 0.8) < 0.05
-            ? (() => {
-                const r3 = run3Check(data);
-                return `The squares sit under the dashed line: the fit has the mechanism right and the seat count low — at ${fmtMs(r3.tpot_s * 1e3)} ms, run 3 measured ${r3.measured.toFixed(1)} seats where the formula, at that run's settings, gives ${r3.formula.toFixed(1)}. The model's honest miss.`;
-              })()
-            : "Set the repeats to 80 % to lay the dashed line over the orange squares: that is the comparison run 3 was rented for.")
-        : null;
+      if (fit && opts.served !== false) {
+        if (Math.abs(state.hit_rate - 0.8) < 0.05) {
+          const r3 = run3Check(data);
+          note = `The squares sit under the dashed line: the fit has the mechanism right and the seat count low — at ${fmtMs(r3.tpot_s * 1e3)} ms, run 3 measured ${r3.measured.toFixed(1)} seats where the formula, at that run's settings, gives ${r3.formula.toFixed(1)}. The model's honest miss.`;
+        } else {
+          jump = { hit_rate: 0.8, label: "Show run 3 (80 % cached)" };   // the comparison run 3 was rented for
+        }
+      }
     } else {
       hidden = state.model && state.model !== data.measured.model
         ? `measured points hidden: every run decoded ${data.models[data.measured.model].name}, and a point measured on one architecture says nothing about another. This model is predicted only.`
         : "measured points hidden: every point drawn here was measured at 4 000-token prompts, 200 output tokens, BF16 KV, on an L40S or an MI300X, the MI300X with nothing cached. Move the sliders there to see them.";
     }
-    return { svg: el("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart", role: "img" }, g), legend, hidden, note,
-             caption: "The more people, the slower each token; where a line meets your promise is the seat count." };
+    return { svg: el("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart", role: "img" }, g), legend, hidden, note, jump };
   }
 
   function cost(data, state, point) {
@@ -280,8 +280,7 @@
       if (t > tMax) continue;
       g += el("text", { class: "axis note", x: sx(t), y: MT + PH - 6, "text-anchor": "middle" }, name);
     }
-    return { svg: el("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart", role: "img" }, g), legend, hidden: null,
-             caption: "Relax the promise and the price falls, until nobody is reading anyway." };
+    return { svg: el("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart", role: "img" }, g), legend, hidden: null };
   }
 
   // Run 3's seat count at h = 0.8 against the formula at that run's own settings --
