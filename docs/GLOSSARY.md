@@ -341,7 +341,14 @@ process and timestamps, which `rocm-smi`'s device-wide figures cannot give.
 
 **MQD** — memory queue descriptor: the record the driver keeps for one hardware
 queue, CU-mask registers included. Root can read every queue's MQD from
-`/sys/kernel/debug/kfd/mqds`.
+`/sys/kernel/debug/kfd/mqds`. On GC 9.4.3 one queue has one MQD per XCC, and
+the mask sits in each one's `COMPUTE_STATIC_THREAD_MGMT_SE0`–`SE3` registers,
+one bit per CU.
+
+**PM4 packet** — the command format the command processor reads; a runlist is a
+sequence of them. `MAP_PROCESS` (opcode `0xA1`) places one process on the
+hardware and `MAP_QUEUES` (`0xA2`) one of its queues, so counting the two in
+`/sys/kernel/debug/kfd/rls` gives the processes and queues mapped.
 
 **`GPU_MAX_HW_QUEUES`** — a HIP environment variable: how many hardware queues a
 process opens per device, 4 by default. Further streams share them.
@@ -795,6 +802,11 @@ overhead to the hardware.
 graphs necessarily shrinks the reported KV pool at a fixed utilisation. vLLM logs
 the amount it took, which is what makes the difference between a derived pool and
 a logged one an accounted quantity rather than a residual.
+
+**Non-torch memory** — device memory a process holds outside PyTorch's
+allocator: the runtime's context, communication buffers, kernel libraries'
+workspaces. vLLM's startup line adds it to the weights as "consumed memory"
+before carving the KV pool.
 
 **Activation memory** — the transient tensors a forward pass needs beyond the
 weights, sized by vLLM at startup by profiling one pass at the largest batch it

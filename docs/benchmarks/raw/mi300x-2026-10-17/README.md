@@ -5,7 +5,7 @@ Verbatim capture, no interpretation. Two runs, one droplet each:
 | Directory | Report | Read-out | Runsheet |
 |---|---|---|---|
 | `run4/` | `docs/benchmarks/mi300x-run4.md` | `bench/measured_mi300x_run4.py` | `docs/benchmarks/runsheets/mi300x-run-4.md` |
-| `run5/` | not yet written | not yet written | `docs/benchmarks/runsheets/mi300x-run-5.md` |
+| `run5/` | `docs/benchmarks/mi300x-run5.md` | `bench/measured_mi300x_run5.py` | `docs/benchmarks/runsheets/mi300x-run-5.md` |
 
 ## Run 4
 
