@@ -701,6 +701,11 @@ output lengths. At `v0.27.1` it samples `[L(1 − r), L(1 + r)]`; older clients,
 InferenceX's among them, sample `[r·L, L]`, so one value gives two different
 distributions.
 
+**EngineCore** — the process `vllm serve` spawns to run the scheduler and the
+model; the API server in front of it only speaks HTTP. It is the process that
+opens the device, so a variable meant for the GPU runtime has to reach it, and
+it can outlive an API server that was killed.
+
 **`max_num_batched_tokens`** — the token budget of one engine step, prefill and
 decode together. It is what chunked prefill spends: a prompt longer than the budget
 is consumed over several steps, so this knob decides how much a long prefill delays

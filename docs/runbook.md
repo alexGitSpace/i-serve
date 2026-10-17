@@ -1,7 +1,7 @@
 # Runbook
 
-> Written alongside the alerting rules and the dashboard. Four of
-> its five procedures exist and two have been run; the fifth is described by what
+> Written alongside the alerting rules and the dashboard. Five of
+> its six procedures exist and two have been run; the sixth is described by what
 > it must contain, so `README.md` does not promise a file that is absent.
 
 Operational procedures. Each one is written to be followed at 03:00 by someone who
@@ -171,6 +171,37 @@ a breach into the two terms of [SLO.md](SLO.md) §4.
 What was seen when this was run on `kind`, with the breach the alerting rules
 were tested on: `deploy/observability/README.md`, "Observed on kind,
 2026-09-07".
+
+## Two engines on one card
+
+Two engine processes share one MI300X whenever a card hosts two replicas. At
+the default, the process that opened the device first serves each token about
+twice as slow as the other at an equal share, and no engine flag or CPU
+placement reaches it ([benchmarks/mi300x-run4.md](benchmarks/mi300x-run4.md) §3).
+
+1. **Set `GPU_MAX_HW_QUEUES=1` in each engine's environment**, before it
+   starts: HIP reads it when the process opens the device. In a Deployment it
+   is an `env` entry on the engine container.
+2. **Confirm it arrived** in every process of the engine, the spawned
+   EngineCore included: `tr '\0' '\n' < /proc/<pid>/environ | grep
+   '^GPU_MAX_HW_QUEUES='`. Print the one variable and never the whole environ,
+   which carries the HF token. On the host, root reads each process's compute
+   queues in `/sys/kernel/debug/kfd/mqds`: two per process at 1, five at the
+   default.
+3. **Read both engines' median ITL under an equal load.** Equal within a few
+   per cent is the pass: measured, 22.21 against 22.19 ms
+   ([benchmarks/mi300x-run5.md](benchmarks/mi300x-run5.md) §3). Unequal with
+   the variable in place is outside what has been measured. Go to
+   [symptom-map.md](symptom-map.md), *TPOT p99 breaching*.
+
+**Not `HSA_CU_MASK`.** Splitting the CUs between the two engines was measured
+and not taken. It removes about half of the decode-step asymmetry, slows each
+engine's prefill, and costs the pair a fifth of its throughput (the same
+report, §3).
+
+Measured once on a droplet, with the pair launched in one order; not run on
+`kind`, where the stub opens no device. What one queue costs an engine alone on
+the card is not measured.
 
 ## Not yet written
 

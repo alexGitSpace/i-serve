@@ -12,8 +12,8 @@ built from. The routes are in [../README.md](../README.md).
 | `docs/model-anatomy.md` | The served model at five zoom levels | ✅ |
 | `docs/accelerator-landscape.md` | Which decode-equation term each vendor attacks | ✅ snapshot, 2026-08-23 |
 | `docs/architecture.md` | Request path, ingress to GPU | ✅ drawn from the running objects |
-| `docs/runbook.md` | Canary rollout, SLO-breach tree, morning triage, OOM | canary run once on `kind`; OOM procedure not written |
-| `docs/symptom-map.md`, `.json` | The decision tree, and the checked subset the site evaluates | 71 nodes; the JSON's 38 nodes held equal by a test |
+| `docs/runbook.md` | Canary rollout, SLO-breach tree, morning triage, two engines on one card, OOM | canary run once on `kind`; two engines on one card measured once on a droplet; OOM procedure not written |
+| `docs/symptom-map.md`, `.json` | The decision tree, and the checked subset the site evaluates | 75 nodes; the JSON's 38 nodes held equal by a test |
 | `docs/running-on-kind.md` | The eleven commands, the two waits, the stub contract | ✅ |
 | `docs/adding-a-run.md` | Why runs accumulate here, and the checklist | first user: MI300X run 1 |
 | `docs/benchmarks/` | Load test reports, cost figures, the chart above | L40S runs 1–3 and MI300X runs 1–4 written up, raw evidence committed; MI300X run 3's arm comparison void, measured by run 4 |
