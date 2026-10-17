@@ -159,9 +159,9 @@
                               "data-tip": `${mi.label}, ${lv.concurrency} seats: median ITL ${lv.median_itl_ms.toFixed(1)} ms -- the decode step itself` });
         }
       }
-      legend.push({ swatch: "pt-h0", label: "measured TPOT p99",
+      legend.push({ swatch: "pt-h0", label: "TPOT p99", group: "measured",
                     tip: `TPOT p99 measured in ${mi.label}, 2026-09-27, prefix caching off.` });
-      legend.push({ swatch: "pt-run1", label: "measured decode step alone",
+      legend.push({ swatch: "pt-run1", label: "decode step alone", group: "measured",
                     tip: `Median ITL on the MI300X, drawn only through ${mi.decode_step_through} seats: above that every step carries a prefill chunk and the median is no longer a decode step.` });
       const lv = mi.levels;
       const cross = lv.findIndex((x) => x.p99_tpot_ms > targetMs);
@@ -194,21 +194,24 @@
         g += el("circle", { class: "pt-run1", cx: sx(lv.ran), cy: sy(lv.decode_step_ms), r: 3.5,
                             "data-tip": `run 1, ${lv.ran} seats: median ITL ${lv.decode_step_ms.toFixed(1)} ms -- the decode step itself` });
       }
-      legend.push({ swatch: "pt-h0", label: "measured, cold cache",
+      legend.push({ swatch: "pt-h0", label: "cold cache", group: "measured",
                     tip: "TPOT p99 measured on 2026-08-30, cold prefix cache." });
-      legend.push({ swatch: "pt-h80", label: "measured, 80 % cached",
+      legend.push({ swatch: "pt-h80", label: "80 % cached", group: "measured",
                     tip: "TPOT p99 measured on 2026-08-30, with 80 % of each prompt already in the prefix cache." });
-      legend.push({ swatch: "pt-run1", label: "measured decode step alone",
+      legend.push({ swatch: "pt-run1", label: "decode step alone", group: "measured",
                     tip: "Median ITL measured on 2026-08-18: the decode step by itself, with no arriving prompt landing in it." });
       note = (fit && opts.served !== false)
         ? (Math.abs(state.hit_rate - 0.8) < 0.05
-            ? "The squares sit under the dashed line: the fit has the mechanism right and the seat count low — run 3 measured 37.8 seats where this line says 24.3. The model's honest miss."
+            ? (() => {
+                const r3 = run3Check(data);
+                return `The squares sit under the dashed line: the fit has the mechanism right and the seat count low — at ${fmtMs(r3.tpot_s * 1e3)} ms, run 3 measured ${r3.measured.toFixed(1)} seats where the formula, at that run's settings, gives ${r3.formula.toFixed(1)}. The model's honest miss.`;
+              })()
             : "Set the repeats to 80 % to lay the dashed line over the orange squares: that is the comparison run 3 was rented for.")
         : null;
     } else {
       hidden = state.model && state.model !== data.measured.model
         ? `measured points hidden: every run decoded ${data.models[data.measured.model].name}, and a point measured on one architecture says nothing about another. This model is predicted only.`
-        : "measured points hidden: every run was at 4 000-token prompts, 200 output tokens, BF16 KV, on an L40S or an MI300X, the MI300X with nothing cached. Move the sliders there to see them.";
+        : "measured points hidden: every point drawn here was measured at 4 000-token prompts, 200 output tokens, BF16 KV, on an L40S or an MI300X, the MI300X with nothing cached. Move the sliders there to see them.";
     }
     return { svg: el("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart", role: "img" }, g), legend, hidden, note,
              caption: "The more people, the slower each token; where a line meets your promise is the seat count." };
@@ -266,7 +269,9 @@
     g += el("line", { class: "limit", x1: sx(t0), x2: sx(t0), y1: MT, y2: MT + PH });
     if (cur) {
       g += el("circle", { class: "pt-now", cx: sx(t0), cy: sy(cur), r: 5 });
-      g += el("text", { class: "axis note", x: sx(t0) + 8, y: sy(cur) - 8 }, `${fmtUsd(cur)} / 1M at ${fmtMs(t0)} ms`);
+      const label = `${fmtUsd(cur)} / 1M at ${fmtMs(t0)} ms`;
+      const flip = sx(t0) + 8 + label.length * 5.6 > ML + PW;
+      g += el("text", { class: "axis note", x: sx(t0) + (flip ? -8 : 8), y: sy(cur) - 8, "text-anchor": flip ? "end" : "start" }, label);
     } else {
       g += el("text", { class: "axis note", x: sx(t0) + 8, y: MT + 14 }, `no operating point at ${fmtMs(t0)} ms`);
     }
@@ -279,5 +284,18 @@
              caption: "Relax the promise and the price falls, until nobody is reading anyway." };
   }
 
-  root.Draw = { seats, cost, measuredGeometryMatches, interferenceFit };
+  // Run 3's seat count at h = 0.8 against the formula at that run's own settings --
+  // fixed, so the comparison does not drift with the reader's promise or card.
+  function run3Check(data) {
+    const r3 = data.measured.run3_seats, c = data.measured.seat_crossings;
+    const tpot = c.tpot_p99_target_ms / 1e3;
+    const p = R.whatIfPoint(data, {
+      accelerator: Object.keys(data.interference).find((k) => data.accelerators[k].measured), model: data.measured.model,
+      prompt_tokens: r3.prompt_tokens, output_tokens: r3.output_tokens, hit_rate: 0.8,
+      tpot_target: tpot, ttft_target: data.slo_classes.interactive.ttft_s,
+      kv_dtype_bytes: r3.kv_dtype_bytes, gpu_memory_utilization: r3.gpu_memory_utilization, hourly_rate: null });
+    return { measured: c.h80, formula: p.service.seats_at_hit_rate, tpot_s: tpot };
+  }
+
+  root.Draw = { seats, cost, measuredGeometryMatches, interferenceFit, run3Check };
 })(typeof self !== "undefined" ? self : this);

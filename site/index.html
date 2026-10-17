@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>i-serve — the price of a promise</title>
+<meta name="description" content="Size, price and debug an LLM served on one rented GPU: describe your model, card, prompts and cache, and the page works out seats, cost per million tokens and the first thing to check when it gets slow.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="i-serve — the price of a promise">
+<meta property="og:description" content="How many people one rented GPU can serve at a given speed, what a million tokens costs, and where to look when it gets slow. Every number traced to a run or a derivation.">
+<meta property="og:url" content="https://alexgitspace.github.io/i-serve/">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%231a1917'/%3E%3Cpath d='M4 12V4m4 8V7m4 5V9' stroke='%23fbfaf7' stroke-width='2'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body data-repo="https://github.com/alexGitSpace/i-serve">
@@ -38,7 +45,7 @@
   <p class="lede">Running an AI model on a rented GPU is a trade between speed, how many people you serve at once, and money. Describe your situation, and the page works out the trade.</p>
   <div class="situation">
     <p class="sentence"><span class="glue">I serve</span>
-      <span class="edit-wrap"><button type="button" class="edit" data-pop="pop-model" aria-expanded="false" id="v-model">—</button>
+      <span class="edit-wrap"><button type="button" class="edit" data-pop="pop-model" aria-controls="pop-model" aria-expanded="false" id="v-model">—</button>
         <span class="badge" id="model-badge"></span>
         <span class="pop" id="pop-model" hidden>
           <label><span class="lab">model</span><select id="model"></select></label>
@@ -46,34 +53,34 @@
           <span class="hint">Pricing a model is not serving it: the second one is arithmetic over its config, never run here.</span>
         </span></span>
       <span class="glue">on one</span>
-      <span class="edit-wrap"><button type="button" class="edit" data-pop="pop-accelerator" aria-expanded="false" id="v-accelerator">—</button>
+      <span class="edit-wrap"><button type="button" class="edit" data-pop="pop-accelerator" aria-controls="pop-accelerator" aria-expanded="false" id="v-accelerator">—</button>
         <span class="badge" id="accel-badge"></span>
         <span class="pop" id="pop-accelerator" hidden>
           <label><span class="lab">card</span><select id="accelerator"></select></label>
           <span class="hint" id="accel-prov"></span>
         </span></span>
       <span class="glue">that costs me</span>
-      <span class="edit-wrap" data-pin-label="$/h"><button type="button" class="edit mono" data-pop="pop-rate" aria-expanded="false" id="v-rate">—</button>
+      <span class="edit-wrap" data-pin-label="$/h"><button type="button" class="edit mono" data-pop="pop-rate" aria-controls="pop-rate" aria-expanded="false" id="v-rate">—</button>
         <span class="pop" id="pop-rate" hidden>
           <label><span class="lab">$ per hour</span><span class="row"><input type="number" id="rate" min="0.01" step="0.01"><button type="button" class="small" id="rate-reset">card default</button></span></label>
           <span class="hint" id="rate-prov"></span>
         </span></span>
       <span class="glue">an hour. A typical prompt is</span>
-      <span class="edit-wrap" data-pin-label="prompt tok"><button type="button" class="edit mono" data-pop="pop-prompt" aria-expanded="false" id="v-prompt">—</button>
+      <span class="edit-wrap" data-pin-label="prompt tok"><button type="button" class="edit mono" data-pop="pop-prompt" aria-controls="pop-prompt" aria-expanded="false" id="v-prompt">—</button>
         <span class="pop" id="pop-prompt" hidden>
-          <label><span class="lab">prompt tokens</span><span class="row"><input type="range" id="prompt-range" min="0" max="1000"><input type="number" id="prompt" min="1" max="32768"></span></label>
-          <span class="hint">Log scale, 128 to 32 768. Everything the model reads before it answers: system prompt, history, the question.</span>
+          <label><span class="lab">prompt tokens</span><span class="row"><input type="range" id="prompt-range" min="0" max="1000"><input type="number" id="prompt" min="1" max="32768" aria-label="prompt tokens"></span></label>
+          <span class="hint">The slider runs 128 to 32 768 on a log scale; type any value from 1. Everything the model reads before it answers: system prompt, history, the question.</span>
         </span></span>
       <span class="glue">tokens and the answer</span>
-      <span class="edit-wrap" data-pin-label="answer tok"><button type="button" class="edit mono" data-pop="pop-output" aria-expanded="false" id="v-output">—</button>
+      <span class="edit-wrap" data-pin-label="answer tok"><button type="button" class="edit mono" data-pop="pop-output" aria-controls="pop-output" aria-expanded="false" id="v-output">—</button>
         <span class="pop" id="pop-output" hidden>
-          <label><span class="lab">output tokens</span><span class="row"><input type="range" id="output-range" min="1" max="4096"><input type="number" id="output" min="1"></span></label>
-          <span class="hint">A seat reserves room for prompt plus answer.</span>
+          <label><span class="lab">output tokens</span><span class="row"><input type="range" id="output-range" min="1" max="4096"><input type="number" id="output" min="1" max="8192" aria-label="output tokens"></span></label>
+          <span class="hint">The slider runs to 4 096; type up to 8 192. A seat reserves room for prompt plus answer.</span>
         </span></span><span class="glue">;</span>
       <span class="glue">about</span>
-      <span class="edit-wrap" data-pin-label="cached"><button type="button" class="edit mono" data-pop="pop-hit" aria-expanded="false" id="v-hit">—</button>
+      <span class="edit-wrap" data-pin-label="cached"><button type="button" class="edit mono" data-pop="pop-hit" aria-controls="pop-hit" aria-expanded="false" id="v-hit">—</button>
         <span class="pop" id="pop-hit" hidden>
-          <label><span class="lab">prefix cache hit rate, %</span><span class="row"><input type="range" id="hit-range" min="0" max="100" step="5"><input type="number" id="hit" min="0" max="100" step="5"></span></label>
+          <label><span class="lab">prefix cache hit rate, %</span><span class="row"><input type="range" id="hit-range" min="0" max="100" step="5"><input type="number" id="hit" min="0" max="100" step="5" aria-label="prefix cache hit rate, %"></span></label>
           <span class="hint">The share of each prompt the card has already seen: a shared system prompt, the same examples. A property of your traffic, not of the card.</span>
         </span></span>
       <span class="glue">of each prompt repeats something the card has already seen.</span></p>
@@ -92,7 +99,7 @@
         <div class="radios"><span class="lab">KV cache dtype</span>
           <label><input type="radio" name="kv" value="2"> BF16</label><label><input type="radio" name="kv" value="1"> FP8</label>
           <span class="hint">FP8 stores each seat's memory in half the bytes: twice the room, twice the time limit, the same gap between them</span></div>
-        <label><span class="lab">gpu_memory_utilization, %</span><span class="row"><input type="range" id="gmu-range" min="30" max="98"><input type="number" id="gmu" min="5" max="99"></span>
+        <label><span class="lab">gpu_memory_utilization, %</span><span class="row"><input type="range" id="gmu-range" min="30" max="98"><input type="number" id="gmu" min="5" max="99" aria-label="gpu_memory_utilization, %"></span>
           <span class="hint">the share of the card the engine may use; its startup log outranks this</span></label>
       </form>
       <div class="detail-grid" id="outputs"></div>
@@ -106,7 +113,7 @@
   <div class="step-head">
     <div class="lab">1 · Speed</div>
     <h2 id="slo-question">How fast should each word appear?</h2>
-    <p class="why" id="slo-why">People reading a chat notice anything slower than about 50 ms per token. A batch job only needs its deadline, so it can trade speed for seats.</p>
+    <p class="why" id="slo-why">At 50 ms per token the answer stays well ahead of a person reading it. A batch job only needs its deadline, so it can trade speed for seats.</p>
   </div>
   <div class="controls">
     <div class="seg">
@@ -183,31 +190,43 @@
   <div class="step-head">
     <div class="lab">3 · Trouble</div>
     <h2>It got slow. Where do you look first?</h2>
-    <p class="why">Answer what your dashboard shows; <i>don't know</i> is fine. The page names the one cause that fits your operating point, and the knob for it.</p>
+    <p class="why">Answer what your dashboard shows; <i>don't know</i> is fine. For each symptom your answers point to, the page names the likeliest cause at your operating point, and the knob for it.</p>
   </div>
   <div class="flow" id="flow">
     <div class="q">
-      <span class="qtext">Are people queuing up? <small>row 3 · waiting</small></span>
+      <span class="qtext">Are people queuing up? <small>vllm:num_requests_waiting</small></span>
       <div class="choices" data-q="queue">
         <button type="button" data-v="yes">yes</button><button type="button" data-v="no">no</button><button type="button" data-v="dk">don't know</button>
       </div>
     </div>
     <div class="q">
-      <span class="qtext">Is every seat taken? <small>row 3 · running = max_num_seqs</small></span>
+      <span class="qtext">Is every seat taken? <small>vllm:num_requests_running at max_num_seqs</small></span>
       <div class="choices" data-q="seats">
         <button type="button" data-v="yes">yes</button><button type="button" data-v="no">no</button><button type="button" data-v="dk">don't know</button>
       </div>
     </div>
     <div class="q">
-      <span class="qtext">Is the first word late? <small id="q-ttft-small">row 2 · TTFT p99 against its floor</small></span>
+      <span class="qtext">Is the first word late? <small id="q-ttft-small">TTFT p99 against its floor</small></span>
       <div class="choices" data-q="ttft">
-        <button type="button" data-v="far">very</button><button type="button" data-v="near">a little</button><button type="button" data-v="ok">no</button><button type="button" data-v="dk">don't know</button>
+        <button type="button" data-v="near">a little, near the floor</button><button type="button" data-v="far">a lot</button><button type="button" data-v="ok">no</button><button type="button" data-v="dk">don't know</button>
       </div>
     </div>
     <div class="q">
-      <span class="qtext">Are the words slow? <small id="q-tpot-small">row 2 · TPOT p99 against the promise</small></span>
+      <span class="qtext">Are the words slow? <small id="q-tpot-small">TPOT p99 against the promise</small></span>
       <div class="choices" data-q="tpot">
-        <button type="button" data-v="physics">a little, near the floor</button><button type="button" data-v="far">very</button><button type="button" data-v="ok">no</button><button type="button" data-v="dk">don't know</button>
+        <button type="button" data-v="physics">a little, near the floor</button><button type="button" data-v="far">a lot</button><button type="button" data-v="ok">no</button><button type="button" data-v="dk">don't know</button>
+      </div>
+    </div>
+    <div class="q">
+      <span class="qtext">Is a replica down? <small>Prometheus shows a scrape target down</small></span>
+      <div class="choices" data-q="down">
+        <button type="button" data-v="yes">yes</button><button type="button" data-v="no">no</button><button type="button" data-v="dk">don't know</button>
+      </div>
+    </div>
+    <div class="q">
+      <span class="qtext">Is the KV cache full? <small>vllm:num_preemptions_total rising, or vllm:kv_cache_usage_perc near 1</small></span>
+      <div class="choices" data-q="oom">
+        <button type="button" data-v="yes">yes</button><button type="button" data-v="no">no</button><button type="button" data-v="dk">don't know</button>
       </div>
     </div>
     <label class="changed"><input type="checkbox" id="changed"> something was changed recently: a config, a model version, a card</label>
@@ -215,7 +234,7 @@
   <div id="advice"></div>
   <details class="expert">
     <summary>I have the numbers, let me type them</summary>
-    <p class="hint">Leave a field empty for <em>No data</em>. On <code>kind</code> that is most of them: the stub exports the two queue gauges and no histogram.</p>
+    <p class="hint">Leave a field empty for <em>No data</em>. On <code>kind</code> that is most of them: the stub exports the waiting and running gauges and no histogram.</p>
     <form class="readings" id="readings" onsubmit="return false"></form>
     <div class="derived" id="derived"></div>
   </details>
@@ -234,7 +253,7 @@
   </div>
   <div class="fine">
     <span id="selftest" class="badge">parity check pending</span>
-    <span>Formulas: a port of <code>bench/roofline.py</code>, held equal to it by <span id="golden-count"></span> golden operating points on every load.</span>
+    <span>The formulas are a port of <code>bench/roofline.py</code>, re-checked against it at <span id="golden-count"></span> operating points on every load.</span>
     <span id="source-link"></span>
     <span>Apache-2.0.</span>
   </div>

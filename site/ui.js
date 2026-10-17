@@ -13,7 +13,8 @@
   const $ = (id) => document.getElementById(id);
   const REPO = document.body.dataset.repo || "";
   const REPO_OK = Boolean(REPO) && !REPO.startsWith("<");
-  const repoLink = (path) => REPO_OK ? REPO.replace(/\/$/, "") + "/blob/main/" + path : null;
+  // GitHub serves a directory under /tree/ and a file under /blob/.
+  const repoLink = (path) => REPO_OK ? REPO.replace(/\/$/, "") + (path.endsWith("/") ? "/tree/main/" : "/blob/main/") + path : null;
   const docLink = (target) => repoLink("docs/" + target);
 
   // --- state -----------------------------------------------------------------
@@ -35,7 +36,14 @@
                       "ttft_target", "kv_dtype_bytes", "gpu_memory_utilization", "hourly_rate"];
   // The guided flow's four answers, and the expert form's raw readings. The
   // flow wins while the expert form is closed; the form wins once opened.
-  const flow = { queue: "dk", seats: "dk", ttft: "dk", tpot: "dk", changed: false };
+  const flow = { queue: "dk", seats: "dk", ttft: "dk", tpot: "dk", down: "dk", oom: "dk", changed: false };
+  // Which question supplies a reading, so a branch that needs one can name it.
+  const QUESTION_OF = {
+    waiting: "Are people queuing up?", running: "Is every seat taken?",
+    ttft_p99_ms: "Is the first word late?", ttft_gap_ratio: "Is the first word late?",
+    tpot_p99_ms: "Are the words slow?", tpot_gap_ratio: "Are the words slow?",
+    targets_down: "Is a replica down?", preemptions_per_s: "Is the KV cache full?", kv_usage: "Is the KV cache full?",
+  };
   const readings = {
     alert: "none", track: "stable", waiting: 0, running: 0, max_num_seqs: 256,
     kv_usage: null, preemptions_per_s: null, ttft_p99_ms: null, tpot_p99_ms: null,
@@ -45,6 +53,29 @@
   // named is scrolled to once, so an old link still lands where it pointed.
   let landing = null;
   const OLD_TABS = { slo: "step-speed", cost: "step-cost", spike: "step-trouble" };
+
+  // What a value may be, wherever it comes from: a control, a link, a kept point.
+  // [min, max, integer]; a value outside is clamped, a non-number refused.
+  const LIMITS = {
+    prompt_tokens: [1, 32768, true], output_tokens: [1, 8192, true], hit_rate: [0, 1],
+    tpot_target: [0.001, 1], ttft_target: [0.001, 60], gpu_memory_utilization: [0.05, 0.99],
+  };
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  // One field of an operating point from text: its value, or undefined if it cannot be one.
+  function parseField(k, v) {
+    if (k === "accelerator") return own(data.accelerators, v) ? v : undefined;
+    if (k === "model") return own(data.models, v) ? v : undefined;
+    if (k === "kv_dtype_bytes") return Number(v) === 1 ? 1 : 2;
+    if (k === "hourly_rate") {
+      if (v === "") return null;
+      const x = Number(v);
+      return x > 0 && isFinite(x) ? x : undefined;
+    }
+    const lim = LIMITS[k], x = Number(v);
+    if (!lim || v === "" || !isFinite(x)) return undefined;
+    const y = Math.min(lim[1], Math.max(lim[0], x));
+    return lim[2] ? Math.round(y) : y;
+  }
 
   function readHash() {
     const h = new URLSearchParams(location.hash.replace(/^#/, ""));
@@ -61,20 +92,25 @@
     for (const k of Object.keys(state)) {
       if (!h.has(k)) continue;
       const v = h.get(k);
-      if (k === "slo_class") { if (data.slo_classes[v]) state.slo_class = v; }
+      if (k === "slo_class") { if (own(data.slo_classes, v) && typeof data.slo_classes[v] === "object") state.slo_class = v; }
       else if (k === "pin") state.pin = v || null;
-      else if (k === "accelerator") { if (data.accelerators[v]) state[k] = v; }
-      else if (k === "model") { if (data.models[v]) state[k] = v; }
-      else if (k === "hourly_rate") state[k] = v === "" ? null : Number(v);
-      else if (k === "kv_dtype_bytes") state[k] = Number(v) === 1 ? 1 : 2;
-      else state[k] = Number(v);
+      else { const x = parseField(k, v); if (x !== undefined) state[k] = x; }
     }
   }
-  function writeHash() {
+  const hashOf = () => {
     const h = new URLSearchParams();
     for (const [k, v] of Object.entries(state)) if (v !== null) h.set(k, String(v));
-    const next = "#" + h.toString();
-    if (location.hash !== next) history.replaceState(null, "", next);
+    return "#" + h.toString();
+  };
+  // Written once the reader pauses: a slider drag fires hundreds of events, and
+  // Chrome throttles replaceState past that, leaving the address bar stale.
+  let hashTimer = 0;
+  function writeHash() {
+    clearTimeout(hashTimer);
+    hashTimer = setTimeout(() => {
+      const next = hashOf();
+      if (location.hash !== next) history.replaceState(null, "", next);
+    }, 250);
   }
 
   // --- formatting --------------------------------------------------------------
@@ -82,7 +118,7 @@
     const x = s * 1e3;
     return Math.abs(x - Math.round(x)) < 1e-6 ? String(Math.round(x)) : (x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2));
   };
-  const ms = (s) => msNum(s) + " ms";
+  const ms = (s) => msNum(s) + " ms";   // never "350" at a line's end and "ms" on the next
   const ordinal = (n) => { const r = n % 100; if (r >= 11 && r <= 13) return n + "th"; return n + ({1: "st", 2: "nd", 3: "rd"}[n % 10] || "th"); };
   const usd = (x) => "$" + x.toFixed(2);
   const int = (x) => Math.round(x).toLocaleString("en-US");
@@ -91,7 +127,14 @@
   const P_MIN = 128, P_MAX = 32768;
   const promptToSlider = (p) => Math.round(1000 * Math.log2(p / P_MIN) / Math.log2(P_MAX / P_MIN));
   const sliderToPrompt = (v) => Math.round(P_MIN * Math.pow(2, (v / 1000) * Math.log2(P_MAX / P_MIN)));
-  const cardShort = (key) => data.accelerators[key].name.replace(" (run 1 coefficients)", "").replace("NVIDIA ", "").replace("AMD Instinct ", "");
+  // "L40S (run 1)", "MI300X (spec sheet)": two entries for one card must not
+  // read the same in the sentence or in a comparison.
+  const cardShort = (key) => {
+    const c = data.accelerators[key];
+    const base = c.name.replace(/ \(.*\)$/, "").replace(/^(NVIDIA|AMD Instinct) /, "");
+    const run = c.name.match(/\((run \d+) coefficients\)/);
+    return run ? `${base} (${run[1]})` : c.measured ? base : `${base} (spec sheet)`;
+  };
   const rateOf = (st) => st.hourly_rate === null ? data.accelerators[st.accelerator].hourly_rate : st.hourly_rate;
   // The batch class reads the same point as throughput and time to a million,
   // not milliseconds (docs/SLO.md sections 1-2); these helpers are the difference.
@@ -123,8 +166,9 @@
 
   // --- the rail: three steps, one page ----------------------------------------
   function bindSteps() {
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)");
     for (const b of document.querySelectorAll("[data-step]")) {
-      b.addEventListener("click", () => $(b.dataset.step).scrollIntoView({ behavior: "smooth", block: "start" }));
+      b.addEventListener("click", () => $(b.dataset.step).scrollIntoView({ behavior: still.matches ? "auto" : "smooth", block: "start" }));
     }
     let raf = 0;
     const mark = () => {
@@ -147,6 +191,12 @@
       pop.hidden = true; b.setAttribute("aria-expanded", "false");
     }
   }
+  // A popover opens under its value and is pushed left until it fits the screen.
+  function placePop(pop) {
+    pop.style.left = "";
+    const over = pop.getBoundingClientRect().right - (document.documentElement.clientWidth - 16);
+    if (over > 0) pop.style.left = -over + "px";
+  }
   function bindPops() {
     for (const b of document.querySelectorAll("[data-pop]")) {
       b.addEventListener("click", (e) => {
@@ -155,16 +205,30 @@
         const open = pop.hidden;
         closePops(pop);
         pop.hidden = !open; b.setAttribute("aria-expanded", String(open));
-        if (open) { const f = pop.querySelector("select, input"); if (f) f.focus({ preventScroll: true }); }
+        if (open) { placePop(pop); const f = pop.querySelector("select, input"); if (f) f.focus({ preventScroll: true }); }
+      });
+      // Tabbing out of an open popover closes it rather than leaving it over the next control.
+      b.closest(".edit-wrap").addEventListener("focusout", (e) => {
+        // Its own popover only: focus may be landing in another one that just opened.
+        if (e.relatedTarget && !b.closest(".edit-wrap").contains(e.relatedTarget)) {
+          $(b.dataset.pop).hidden = true; b.setAttribute("aria-expanded", "false");
+        }
       });
     }
     document.addEventListener("click", (e) => { if (!e.target.closest || !e.target.closest(".edit-wrap")) closePops(null); });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePops(null); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      const wrap = document.activeElement && document.activeElement.closest && document.activeElement.closest(".edit-wrap");
+      closePops(null);
+      if (wrap) wrap.querySelector("[data-pop]").focus();   // back to the value that opened it
+    });
+    // Re-placed, not closed: a phone's keyboard opening is a resize too.
+    window.addEventListener("resize", () => { for (const p of document.querySelectorAll(".pop:not([hidden])")) placePop(p); });
   }
   function bindCopy() {
     const b = $("copy-link");
     b.addEventListener("click", async () => {
-      const url = location.href;
+      const url = location.href.replace(/#.*$/, "") + hashOf();   // the state now, not the last hash written
       let ok = false;
       try { await navigator.clipboard.writeText(url); ok = true; }
       catch (e) {
@@ -181,9 +245,14 @@
   // Links inside the answers that move the sliders: "Try it", "Switch card".
   function bindAnswerLinks() {
     document.addEventListener("click", (e) => {
-      const a = e.target.closest && e.target.closest("a[data-set-hit], a[data-set-card]");
+      const a = e.target.closest && e.target.closest("a[data-set-hit], a[data-set-card], a[data-open-ttft]");
       if (!a) return;
       e.preventDefault();
+      if (a.dataset.openTtft !== undefined) {
+        $("assumptions").open = true;
+        $("ttft").focus();
+        return;
+      }
       if (a.dataset.setHit !== undefined) state.hit_rate = Number(a.dataset.setHit);
       if (a.dataset.setCard !== undefined) { state.accelerator = a.dataset.setCard; state.hourly_rate = null; }
       update();
@@ -194,8 +263,9 @@
   function bindPromise() {
     $("tpot-range").addEventListener("input", () => { state.tpot_target = Number($("tpot-range").value) / 1e3; update(); });
     $("tpot-num").addEventListener("change", () => {
-      const v = Math.round(Number($("tpot-num").value));
-      if (v >= 1 && v <= 1000) state.tpot_target = v / 1e3;
+      const raw = $("tpot-num").value.trim();
+      const v = raw === "" ? undefined : parseField("tpot_target", String(Math.round(Number(raw)) / 1e3));
+      if (v !== undefined) state.tpot_target = v;
       update();
     });
     for (const b of document.querySelectorAll("[data-preset]")) {
@@ -217,7 +287,7 @@
       : "How fast should each word appear?";
     $("slo-why").textContent = isBatch()
       ? "Nobody is watching a token arrive, so the per-token threshold is only a guard against a stall. What matters is tokens per second, and how long a million takes."
-      : `People reading a chat notice anything slower than about ${tight} per token. A batch job only needs its deadline, so it can trade speed for seats.`;
+      : `At ${tight} per token the answer stays well ahead of a person reading it. A batch job only needs its deadline, so it can trade speed for seats.`;
     $("cost-question").textContent = isBatch()
       ? "What does a million tokens cost, and how long do they take?"
       : "What does a million tokens cost at that speed?";
@@ -259,7 +329,15 @@
     if (!point.seats) {
       setStat("hw", "—", "", `On an ${card} this model does not fit at all: ${point.error}`);
     } else if (point.seats.max_num_seqs === 0) {
-      setStat("hw", "0", seatsUnit, `Even one person alone would get tokens slower than ${t} on this card. Relax the promise, or take a card with a faster memory bus.`);
+      // Name the limit that binds: room, time, or both.
+      const s = point.seats;
+      const room = `${int(state.prompt_tokens + state.output_tokens)} tokens of prompt plus answer do not fit the KV pool's ${(point.kv_pool_tokens / 1e6).toFixed(2)} M tokens`;
+      const time = `even one person alone would get tokens slower than ${t} on this card`;
+      setStat("hw", "0", seatsUnit, s.by_capacity === 0 && s.by_latency > 0
+        ? `Not one seat fits: ${room}. A shorter context, FP8 KV, a higher gpu_memory_utilization, or a card with more memory.`
+        : s.by_capacity === 0
+          ? `Neither limit leaves a seat: ${room}, and ${time}.`
+          : `${time[0].toUpperCase()}${time.slice(1)}. Relax the promise, or take a card with a faster memory bus.`);
     } else {
       const s = point.seats;
       const why = s.bound_by === "latency"
@@ -276,16 +354,17 @@
     // the service
     const sv = point.service;
     if (!point.seats || point.error) {
-      setStat("svc", "—", "", "");
+      setStat("svc", "—", "", point.seats ? "Nothing to promise: the card holds no seat at this point." : "");
     } else if (sv === null) {
       const text = state.model !== data.measured.model
         ? `Not derivable for this model: the interference fit was measured decoding ${data.models[data.measured.model].name}, and prefill lands differently in another architecture's decode step.`
         : data.accelerators[state.accelerator].measured
           ? `Not derivable on this card yet: its run measured the interference, but the model written from it (two rows, after the fact) is not registered as a fit here.`
           : `Not derivable on this card yet: it needs a run to measure how much of each newcomer's prefill lands in the other seats' steps.`;
-      setStat("svc", "?", data.accelerators[state.accelerator].measured ? "needs a fit" : "needs a run", text, null);
+      setStat("svc", "?", state.model === data.measured.model && data.accelerators[state.accelerator].measured ? "needs a fit" : "needs a run", text, null);
     } else {
-      const badge = { cls: "measured", text: "measured", tip: sv.fit ? sv.fit.provenance : "" };
+      // The seat count is predicted; what was measured is the fit it is predicted from.
+      const badge = { cls: "measured", text: "measured fit", tip: sv.fit ? sv.fit.provenance : "" };
       if (sv.seats_shipped === 0) {
         setStat("svc", "0", seatsUnit, `Once newcomers' prefill is priced in, no seat meets the promise: the interference alone eats the budget.`, badge);
       } else if (isBatch()) {
@@ -300,7 +379,10 @@
           const alt = R.whatIfPoint(data, Object.assign({}, state, { hit_rate: 0.8 }));
           if (alt.service && alt.service.seats_shipped > 0) text += ` With 80 % repeats: ${alt.service.seats_shipped}.`;
         }
-        if (sv.note) text += ` A floor, not an estimate: run 3 measured 37.8 seats where this line said 24.3.`;
+        if (sv.note) {
+          const r3 = window.Draw.run3Check(data);
+          text += ` A floor, not an estimate: at 80 % cached and ${ms(r3.tpot_s)}, run 3 measured ${r3.measured.toFixed(1)} seats where this formula, at that run's settings, gives ${r3.formula.toFixed(1)}.`;
+        }
         setStat("svc", String(sv.seats_shipped), seatsUnit, text, badge);
       }
     }
@@ -310,21 +392,22 @@
     // the first token
     const tf = point.ttft_floor, tu = point.ttft_floor_uncached;
     const target = ms(state.ttft_target);
-    const asked = `ms · you asked ${target}`;
+    const asked = `ms · target ${target}`;
+    const change = ` <a href="#assumptions" data-open-ttft>Change the target</a>`;
     if (tf.seconds > state.ttft_target) {
       if (state.hit_rate > 0 && tu.seconds <= state.ttft_target) {
         setStat("ttft", msNum(tu.seconds), asked,
-          `Reading a ${prompt}-token prompt cold would take ${ms(tf.seconds)}, over the target; with ${pct(state.hit_rate)} cached only ${int(tu.uncached_tokens)} tokens are left to read, and that fits.`, null);
+          `Reading a ${prompt}-token prompt cold would take ${ms(tf.seconds)}, over the target; with ${pct(state.hit_rate)} cached only ${int(tu.uncached_tokens)} tokens are left to read, and that fits.${change}`, null);
       } else {
         setStat("ttft", msNum(tf.seconds), asked,
-          `Reading a ${prompt}-token prompt takes at least this long on this card: the prompt alone does not fit. Shorter prompts, or a cache serving most of them.`,
+          `Reading a ${prompt}-token prompt takes at least this long on this card, past the ${target} target. Shorter prompts, a cache serving most of them, or a looser target.${change}`,
           { cls: "over", text: "too slow" });
       }
     } else {
-      setStat("ttft", msNum(tf.seconds), asked, `Reading the ${prompt}-token prompt fits inside the first-word target.`, null);
+      setStat("ttft", msNum(tf.seconds), asked, `Reading the ${prompt}-token prompt fits inside the first-word target.${change}`, null);
     }
-    $("q-ttft-small").textContent = `row 2 · TTFT p99 against its floor, ${ms(tu.seconds)}`;
-    $("q-tpot-small").textContent = `row 2 · TPOT p99 against the promise, ${t}`;
+    $("q-ttft-small").textContent = `TTFT p99 against its floor, ${ms(tu.seconds)}`;
+    $("q-tpot-small").textContent = `TPOT p99 against the promise, ${t}`;
   }
 
   // --- step 2: cost -----------------------------------------------------------------
@@ -335,7 +418,8 @@
     const unit = "per million tokens";
     if (!point.seats || point.error) {
       setStat("cost", "—", "", `No operating point to price at ${t} on an ${card}${point.error ? `: ${point.error}` : "."}`);
-      $("alt1-lab").textContent = "hardware alone"; setStat("alt1", "—", "", "");
+      $("alt1-lab").textContent = "hardware alone";
+      setStat("alt1", "—", "", point.seats ? "The card holds no seat at this point, so there is nothing to divide the hourly bill by." : "");
     } else {
       const sv = point.service, hw = point.cost_per_1m_output_tokens;
       const useSvc = sv && sv.seats_shipped > 0;
@@ -399,8 +483,13 @@
   function renderFigure(id, result) {
     const fig = $(id);
     fig.querySelector(".plot").innerHTML = result.svg;
-    fig.querySelector(".legend").innerHTML = result.legend.map((l) =>
-      `<li${l.tip ? ` data-tip="${escAttr(l.tip)}" tabindex="0"` : ""}><span class="swatch ${l.swatch}"></span><span class="lbl">${l.label}</span></li>`).join("") +
+    // The model's lines first, then the run's points under their own heading.
+    let group = null;
+    fig.querySelector(".legend").innerHTML = result.legend.map((l) => {
+      const head = l.group && l.group !== group ? `<li class="legend-group">${l.group}:</li>` : "";
+      group = l.group || null;
+      return head + `<li${l.tip ? ` data-tip="${escAttr(l.tip)}" tabindex="0"` : ""}><span class="swatch ${l.swatch}"></span><span class="lbl">${l.label}</span></li>`;
+    }).join("") +
       (result.caption ? `<li class="caption">${result.caption}</li>` : "");
     const note = fig.querySelector(".hidden-note");
     note.hidden = !result.hidden;
@@ -431,6 +520,18 @@
       show(t, e.pageX, e.pageY); pinnedUntil = Date.now() + 4000;
       setTimeout(() => { if (Date.now() >= pinnedUntil) tip.hidden = true; }, 4100);
     });
+    // A keyboard has no hover either: focus shows the explanation under the word.
+    document.addEventListener("focusin", (e) => {
+      const t = e.target.closest && e.target.closest("[data-tip]");
+      if (!t) return;
+      const r = t.getBoundingClientRect();
+      show(t, r.left + window.scrollX - 12, r.bottom + window.scrollY - 8);
+      t.setAttribute("aria-describedby", "tooltip");
+    });
+    document.addEventListener("focusout", (e) => {
+      if (e.target.closest && e.target.closest("[data-tip]")) tip.hidden = true;
+    });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") tip.hidden = true; });
   }
 
   // --- plain-language terms on hover -----------------------------------------
@@ -448,6 +549,10 @@
   const SKIP = new Set(["CODE", "BUTTON", "SELECT", "OPTION", "INPUT", "OUTPUT", "SVG", "A", "SCRIPT", "STYLE", "H1", "H2", "H3"]);
   const SKIP_CLASS = ["term", "rname", "legend", "num", "lab", "lede"];
   function markTerms(root) {
+    // A focused term is rebuilt like the rest; remember it, so focus can return to its twin.
+    const act = document.activeElement;
+    const focused = act && act.classList && act.classList.contains("term") && root.contains(act)
+      ? { text: act.textContent, block: act.parentElement } : null;
     for (const old of root.querySelectorAll("span.term")) old.replaceWith(document.createTextNode(old.textContent));
     root.normalize();
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -486,6 +591,10 @@
       frag.appendChild(document.createTextNode(text.slice(last)));
       node.replaceWith(frag);
     }
+    if (focused && focused.block.isConnected) {
+      const twin = [...focused.block.querySelectorAll("span.term")].find((s) => s.textContent === focused.text);
+      if (twin) twin.focus({ preventScroll: true });
+    }
   }
 
   // --- keep one operating point, compare with the current one -----------------
@@ -495,10 +604,9 @@
     for (const part of text.split(";")) {
       const [k, v] = part.split("=");
       if (!POINT_KEYS.includes(k)) return null;
-      if (k === "accelerator") { if (!data.accelerators[v]) return null; out[k] = v; }
-      else if (k === "model") { if (!data.models[v]) return null; out[k] = v; }
-      else if (k === "hourly_rate") out[k] = v === "" ? null : Number(v);
-      else out[k] = Number(v);
+      const x = parseField(k, v === undefined ? "" : v);
+      if (x === undefined) return null;
+      out[k] = x;
     }
     return POINT_KEYS.every((k) => k in out) ? out : null;
   }
@@ -508,7 +616,7 @@
     }
   }
   function describe(st) {
-    return `${data.models[st.model].name} · ${cardShort(st.accelerator)} · ${int(st.prompt_tokens)} + ${int(st.output_tokens)} tokens · cache ${Math.round(st.hit_rate * 100)} % · ${st.kv_dtype_bytes === 1 ? "FP8" : "BF16"} KV · ${ms(st.tpot_target)} · $${rateOf(st).toFixed(2)}/h`;
+    return `${data.models[st.model].name} · ${cardShort(st.accelerator)} · ${int(st.prompt_tokens)} + ${int(st.output_tokens)} tokens · cache ${Math.round(st.hit_rate * 100)} % · ${st.kv_dtype_bytes === 1 ? "FP8" : "BF16"} KV · gmu ${Math.round(st.gpu_memory_utilization * 100)} % · ${ms(st.tpot_target)} per token · first word ${ms(st.ttft_target)} · $${rateOf(st).toFixed(2)}/h`;
   }
   function renderCompare(point) {
     const pinned = state.pin ? decodePin(state.pin) : null;
@@ -524,7 +632,7 @@
       return usd(v) + (p.service && p.service.seats_shipped ? "" : " (hardware floor)");
     };
     const ttft = (p) => `${ms(p.ttft_floor.seconds)}${p.inputs.hit_rate > 0 ? ` / ${ms(p.ttft_floor_uncached.seconds)} cached` : ""}`;
-    const same = describe(pinned) === describe(state);
+    const same = POINT_KEYS.every((k) => pinned[k] === state[k]);
     const rows = [
       ["the card can hold", seats(a), seats(b)],
       ["you can safely promise", svc(a), svc(b)],
@@ -555,16 +663,28 @@
       mod.appendChild(o);
     }
     mod.addEventListener("change", () => { state.model = mod.value; update(); });
-    const pair = (rangeId, numId, key, fromRange, parse) => {
+    // A number field shows `scale` times the state's value (percent for shares).
+    // An emptied field changes nothing: update() writes the old value back.
+    const pair = (rangeId, numId, key, fromRange, scale) => {
       const r = $(rangeId), n = $(numId);
       r.addEventListener("input", () => { state[key] = fromRange(Number(r.value)); update(); });
-      n.addEventListener("change", () => { const v = parse(n.value); if (isFinite(v)) state[key] = v; update(); });
+      n.addEventListener("change", () => {
+        const raw = n.value.trim();
+        const v = raw === "" ? undefined : parseField(key, String(Number(raw) / scale));
+        if (v !== undefined) state[key] = v;
+        update();
+      });
     };
-    pair("prompt-range", "prompt", "prompt_tokens", sliderToPrompt, (s) => Math.min(P_MAX, Math.max(1, Math.round(Number(s)))));
-    pair("output-range", "output", "output_tokens", (v) => v, (s) => Math.min(8192, Math.max(1, Math.round(Number(s)))));
-    pair("hit-range", "hit", "hit_rate", (v) => v / 100, (s) => Math.min(1, Math.max(0, Number(s) / 100)));
-    pair("gmu-range", "gmu", "gpu_memory_utilization", (v) => v / 100, (s) => Math.min(0.99, Math.max(0.05, Number(s) / 100)));
-    $("ttft").addEventListener("change", () => { const v = Number($("ttft").value); if (v > 0) state.ttft_target = v / 1e3; update(); });
+    pair("prompt-range", "prompt", "prompt_tokens", sliderToPrompt, 1);
+    pair("output-range", "output", "output_tokens", (v) => v, 1);
+    pair("hit-range", "hit", "hit_rate", (v) => v / 100, 100);
+    pair("gmu-range", "gmu", "gpu_memory_utilization", (v) => v / 100, 100);
+    $("ttft").addEventListener("change", () => {
+      const raw = $("ttft").value.trim();
+      const v = raw === "" ? undefined : parseField("ttft_target", String(Number(raw) / 1e3));
+      if (v !== undefined) state.ttft_target = v;
+      update();
+    });
     for (const radio of document.querySelectorAll("input[name=kv]")) {
       radio.addEventListener("change", () => { state.kv_dtype_bytes = Number(radio.value); update(); });
     }
@@ -653,7 +773,7 @@
       } else if (spec.type === "bool") {
         html += `<label class="reading"><span class="rname">${name}</span><input type="checkbox" data-reading="${name}"><span class="panel">${spec.panel}</span></label>`;
       } else {
-        html += `<label class="reading"><span class="rname">${name}</span><input type="number" step="any" data-reading="${name}" placeholder="No data">` +
+        html += `<label class="reading"><span class="rname">${name}</span><input type="number" step="any" min="0" data-reading="${name}" placeholder="No data">` +
           `<span class="panel">${spec.panel} ${kind}</span></label>`;
       }
     }
@@ -665,7 +785,13 @@
       el.addEventListener("input", () => {
         if (el.type === "checkbox") readings[name] = el.checked;
         else if (el.tagName === "SELECT") readings[name] = el.value;
-        else readings[name] = el.value === "" ? null : Number(el.value);
+        else {
+          // A reading is a count, a share or a time: never negative, never infinite.
+          const x = Number(el.value);
+          const ok = el.value !== "" && isFinite(x) && x >= 0 && x < 1e9;
+          el.setAttribute("aria-invalid", String(el.value !== "" && !ok));
+          readings[name] = ok ? x : null;
+        }
         renderAdvisor(current);
       });
     }
@@ -682,16 +808,26 @@
   // representative, not measured -- "a little" is 1.2x the floor -- and
   // they are only ever compared against thresholds, never shown as numbers.
   function readingsFromFlow(point) {
+    // The seat cap is the one step 1 computed for this card, not vLLM's default.
+    const cap = point.seats && point.seats.max_num_seqs > 0 ? point.seats.max_num_seqs : 256;
+    const yesNo = (answer, yes, no) => answer === "yes" ? yes : answer === "no" ? no : null;
     const r = {
-      alert: "none", track: "stable", max_num_seqs: 256, replicas: 1, max_replicas: 4, targets_down: 0,
-      kv_usage: null, preemptions_per_s: null, median_itl_ms: null,
+      alert: "none", track: "stable", max_num_seqs: cap, replicas: 1, max_replicas: 4,
+      median_itl_ms: null,
       changed_recently: flow.changed,
-      waiting: flow.queue === "yes" ? 1 : flow.queue === "no" ? 0 : null,
-      running: flow.seats === "yes" ? 256 : flow.seats === "no" ? 1 : null,
+      waiting: yesNo(flow.queue, 1, 0),
+      running: yesNo(flow.seats, cap, 1),
+      targets_down: yesNo(flow.down, 1, 0),
+      preemptions_per_s: yesNo(flow.oom, 1, 0),
+      kv_usage: yesNo(flow.oom, 0.97, 0.5),
     };
+    // "Late" is measured from the floor, which picks the branch; "no" means under
+    // the target, whatever the floor -- a floor above the target is not a breach
+    // the reader has just denied.
     const ttftFloor = point.ttft_floor_uncached.seconds * 1e3;
-    r.ttft_p99_ms = { far: 2.0, near: 1.2, ok: 0.95 }[flow.ttft] !== undefined
-      ? ttftFloor * { far: 2.0, near: 1.2, ok: 0.95 }[flow.ttft] : null;
+    r.ttft_p99_ms = flow.ttft === "far" ? ttftFloor * 2.0
+      : flow.ttft === "near" ? ttftFloor * 1.2
+      : flow.ttft === "ok" ? state.ttft_target * 1e3 * 0.95 : null;
     // A queue standing on a replica is what QueueBeyondTTFTBudget fires on,
     // so "people are queuing up" is that alert; a late first token with no
     // queue is the burn-rate rule.
@@ -714,7 +850,8 @@
     r.tpot_target_ms = state.tpot_target * 1e3;
     r.ttft_floor_ms = point.ttft_floor_uncached.seconds * 1e3;
     r.prompt_fits_budget = point.ttft_floor.seconds <= state.ttft_target;
-    r.tpot_floor_at_running_ms = base.running > 0 ? R.tpotFloor(m, a, base.running, ctx).seconds * 1e3 : null;
+    const step = base.running > 0 ? R.tpotFloor(m, a, base.running, ctx).seconds * 1e3 : null;
+    r.tpot_floor_at_running_ms = step !== null && isFinite(step) ? step : null;
     r.ttft_gap_ratio = base.ttft_p99_ms !== null ? base.ttft_p99_ms / r.ttft_floor_ms : null;
     r.tpot_gap_ratio = base.__tpot_gap_override ?? ((base.tpot_p99_ms !== null && r.tpot_floor_at_running_ms) ? base.tpot_p99_ms / r.tpot_floor_at_running_ms : null);
     r.itl_ratio = (base.tpot_p99_ms !== null && base.median_itl_ms) ? base.tpot_p99_ms / base.median_itl_ms : null;
@@ -755,14 +892,22 @@
         ? "Nothing is breaching on these answers, or nothing here can tell."
         : "Answer what you can. “Don’t know” is an answer: on <code>kind</code> the stub exports no histogram, so the first-word and per-token questions have no reading there."}</p>`;
     }
+    // A missing reading, named as the question that would supply it while the
+    // guided flow is in charge, and as the reading itself once the form is.
+    const askFor = (fields) => {
+      const qs = [...new Set(fields.map((f) => QUESTION_OF[f]).filter(Boolean))];
+      return !expert && qs.length ? `answer “${qs.join("” and “")}”` : `needs ${fields.join(", ")}`;
+    };
     for (const e of rep.active) {
-      html += `<section class="symptom"><div class="lab">most likely</div><h3>${e.symptom.title}</h3>`;
+      // One section per symptom the answers point to, each with its likeliest cause.
+      html += `<section class="symptom"><div class="lab">symptom</div><h3>${e.symptom.title}</h3>`;
       if (e.branch) {
-        html += `<ul class="main">${nodeHtml(e.branch, "branch")}</ul>` +
+        html += `<div class="lab">most likely cause</div><ul class="main">${nodeHtml(e.branch, "branch")}</ul>` +
           `<p class="next"><b>Read next:</b> ${e.branch.next_number}</p>` +
           (e.branch.knobs.length ? `<p class="knobs"><b>Knobs:</b> ${e.branch.knobs.map((k) => { const l = docLink(k.source); return l ? `<a href="${l}">${k.name}</a>` : `<code>${k.name}</code>`; }).join(" · ")}</p>` : "");
       } else {
-        html += `<p class="quiet">${e.notEvaluable.some((x) => x.node.kind === "branch") ? "Which branch needs a reading you do not have." : "No branch matches these answers."}</p>`;
+        const need = e.notEvaluable.filter((x) => x.node.kind === "branch").flatMap((x) => x.missing);
+        html += `<p class="quiet">${need.length ? `Which cause it is needs one more reading: ${askFor(need)}.` : "No cause in the map matches these answers."}</p>`;
       }
       const more = e.probes.concat(e.continuations, e.traps);
       if (more.length || e.notEvaluable.length) {
@@ -771,13 +916,13 @@
         if (e.probes.length) html += `<ul>${e.probes.map((n) => nodeHtml(n, "probe")).join("")}</ul>`;
         if (e.continuations.length) html += `<ul>${e.continuations.map((n) => nodeHtml(n, "cont")).join("")}</ul>`;
         if (e.traps.length) html += `<div class="traps"><div class="branch-head">Traps</div><ul>${e.traps.map((n) => nodeHtml(n, "trap")).join("")}</ul></div>`;
-        if (e.notEvaluable.length) html += `<ul class="cannot">` + e.notEvaluable.map((x) => `<li><span class="need">needs ${x.missing.join(", ")}</span> ${inlineMd(x.node.text)}</li>`).join("") + `</ul>`;
+        if (e.notEvaluable.length) html += `<ul class="cannot">` + e.notEvaluable.map((x) => `<li><span class="need">${askFor(x.missing)}</span> ${inlineMd(x.node.text)}</li>`).join("") + `</ul>`;
         html += `</details>`;
       }
       html += `</section>`;
     }
     if (rep.unknown.length && (answered || expert)) {
-      html += `<p class="quiet">Could not check ${rep.unknown.map((u) => `<b>${u.symptom.title.toLowerCase()}</b> (needs ${u.missing.join(", ")})`).join("; ")}: readings the <code>kind</code> stub does not export.</p>`;
+      html += `<p class="quiet">Could not check ${rep.unknown.map((u) => `<b>${u.symptom.title.toLowerCase()}</b> (${askFor(u.missing)})`).join("; ")}.</p>`;
     }
     html += `<p class="quiet small">Two symptoms have no dashboard probe and are read in the map itself: <em>Cost per 1M tokens too high</em> and <em>Throughput healthy, users angry</em>.</p>`;
     $("advice").innerHTML = html;
@@ -795,7 +940,7 @@
         console.error(rep.failures.slice(0, 3));
       } else {
         b.className = "badge ok";
-        b.textContent = `parity: ${rep.rows}/${rep.rows} golden rows agree with bench/predictions.py`;
+        b.textContent = `checked: this page agrees with the Python model on all ${rep.rows} test points`;
       }
     } catch (e) {
       b.className = "badge bad"; b.textContent = "parity check did not run: " + e.message;
@@ -840,11 +985,16 @@
     sit.parentNode.insertBefore(spacer, sit);
     let pinned = false;
     const restTop = () => spacer.getBoundingClientRect().top + window.scrollY;
+    // The bar wraps to two or three lines on a phone; the sticky controls ride
+    // under however tall it is (style.css reads --pin-h).
+    const measure = () => { if (pinned) document.documentElement.style.setProperty("--pin-h", sit.offsetHeight + "px"); };
+    if (window.ResizeObserver) new ResizeObserver(measure).observe(sit);
     function check() {
       if (!pinned && window.scrollY > restTop()) {
         spacer.style.height = sit.offsetHeight + "px";   // measured before it leaves the flow
         document.body.classList.add("pinned");
         pinned = true;
+        measure();
       } else if (pinned && window.scrollY <= restTop()) {
         document.body.classList.remove("pinned");
         spacer.style.height = "0px";
@@ -875,7 +1025,8 @@
   bindTooltips();
   renderSelftest();
   renderNav();
+  // Bound before the first render, so a link that still breaks it can be mended by hand.
+  window.addEventListener("hashchange", () => { readHash(); update(); });
   update();
   if (landing) $(landing).scrollIntoView({ block: "start" });
-  window.addEventListener("hashchange", () => { readHash(); update(); });
 })();

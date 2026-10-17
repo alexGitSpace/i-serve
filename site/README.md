@@ -8,6 +8,7 @@ contributor needs Python and, for the one check that must run JavaScript, the
 | Path | Written by | What it is |
 |---|---|---|
 | `index.html`, `style.css` | hand | the page: one sentence for the situation, three steps under it, light theme only |
+| `404.html` | hand | what Pages serves for an address that is not the page: one link back to it |
 | `fonts/` | Google Fonts, latin subsets | Newsreader, IBM Plex Sans and IBM Plex Mono as woff2 with their OFL licences, so the page looks the same from `file://` with no network |
 | `terms.js` | hand | the plain-language explanations shown on hover; every term is registered in `docs/GLOSSARY.md` (a test holds that) |
 | `calc.js` | hand | `bench/roofline.py` and `predictions.what_if_point()`, ported in the same order of operations |
@@ -25,7 +26,7 @@ double-clicks `index.html` gets the same page as one on Pages.
 ## Run it
 
     python3 bench/export_site_data.py        # after any change under bench/
-    node site/selftest.js                    # "211/211 rows agree", exit 0
+    node site/selftest.js                    # "golden: N/N rows agree ...", exit 0
     python3 -m http.server -d site 8000      # then open http://localhost:8000/
 
 `open site/index.html` works too. The parity badge in the footer is the same
