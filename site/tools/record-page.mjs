@@ -75,8 +75,8 @@ for (const y of [120, 260, 400]) await act(to(y), 2, 240);
 await act(to(560), 4);
 
 // 3. the seats chart, with the knobs that move it still on screen
-await act(to(760), 1);
-await act(to(900), 4);
+await act(to(610), 1);
+await act(to(750), 4);
 for (const v of [40, 30]) await act(slide("tpot-range", v), 2);
 await act(slide("tpot-range", 20), 5);
 await act(slide("tpot-range", 50), 4);
@@ -84,14 +84,14 @@ await act(card("mi300x"), 5);
 await act(card("l40s-run1"), 4);
 
 // 4. cost: a stricter promise, priced
-for (const y of [1200, 1480, 1750]) await act(to(y), 1);
-await act(to(1750), 3);
+for (const y of [1030, 1310, 1580]) await act(to(y), 1);
+await act(to(1580), 3);
 await act(slide("tpot-range", 20), 5);
 await act(slide("tpot-range", 50), 4);
 
 // 5. trouble: one symptom answered, and the advice it produces
-for (const y of [2050, 2350, 2600]) await act(to(y), 1);
-await act(to(2600), 5);
+for (const y of [1840, 2140, 2390]) await act(to(y), 1);
+await act(to(2390), 5);
 await act(`document.querySelector('[data-q="queue"] button[data-v="yes"]').click()`, 10, 320);
 
 console.log(`${n} frames in ${OUT}`);
