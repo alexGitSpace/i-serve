@@ -1,0 +1,3 @@
+plain-8000first: 8000 51.19 ms, 8001 26.69 ms, slow 8000, ratio 1.92
+masked-8000first: 8000 25.33 ms, 8001 18.31 ms, slow 8000, ratio 1.38
+q1-8000first: 8000 22.21 ms, 8001 22.19 ms, slow 8000, ratio 1.00

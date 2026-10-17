@@ -145,7 +145,7 @@ number, `docs/benchmarks/` wins.
       - `s3.sh`'s mask verdict reads run 4's two unmasked checks as
         `MASK_NOT_TAKEN`, ratio 1.00.
       - `bench/harness.py --dry-run` exits 0 on both harness lines.
-- [ ] The droplet's price on the create page at creation, written into §6.
+- [x] The droplet's price on the create page at creation, written into §6.
 
 ---
 
@@ -336,7 +336,7 @@ Each level appends one line to `claim.txt`.
 | Hard stop | **2.5 h ≈ $5**, and **23:00 UTC** on 2026-10-17, whichever comes first |
 | Drop order | B2 first, then c = 16, **decided before `s5.sh` starts**, because a later drop relaunches the 70B: `bash /workspace/i-serve/run5/s5.sh 4 64`. **Never B0, B1 or c = 4**: B0 is B1's control, and c = 4 is where the per-user ceiling is faced |
 | Done | B0 and B1 read against §3's tables, with the mask verdict; c = 4 and c = 64 read against §5's ceiling |
-| Price at creation | _read off the create page_ |
+| Price at creation | **$1.99/h**, 1 × MI300X, read off the create page on 2026-10-17 at ≈ 14:10 UTC |
 
 Everything lands in `docs/benchmarks/raw/mi300x-2026-10-17/run5/` beside the
 scripts, with its README. The README is read once for a credential before

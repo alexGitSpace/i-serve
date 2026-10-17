@@ -1,0 +1,1 @@
+TTFT 154.8 -> 260.3 ms, ratio 1.68: MASK_TAKEN

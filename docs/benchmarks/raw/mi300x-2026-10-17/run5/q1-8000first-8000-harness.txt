@@ -1,0 +1,12 @@
+startup log: {'kv_cache_tokens': 506525.0, 'kv_cache_gib': 69.62, 'max_concurrency': 56.28, 'max_num_batched_tokens': 2048.0, 'enable_prefix_caching': 'True', 'kv_cache_dtype': 'auto', 'attention_backend': 'ROCM_ATTN'}
+  -> NOT FOUND in the log: max_num_seqs
+  -> a gate that reads a missing fact does not fire and does not complain; fix the pattern in bench/vllm_metrics.py before spending a level on it
+KV pool 506,525 tokens against reference 506,525 (1.000x, gate +-5%): PASS
+
+level                  load     ok/f      h  TTFT p50  TTFT p99  TPOT p50  TPOT p99   medITL   interf  good/s    tok/s
+fleet-c032-h00           32   96/0    0.000     605.7   12250.9     64.30     76.90    22.21    42.10    0.00    442.1
+  INVALID  ttft-not-a-service-metric: closed loop
+
+seats: none -- TPOT p99 exceeds 50 ms at every concurrency measured
+
+artefacts: /workspace/run5/results/q1-8000first-8000/

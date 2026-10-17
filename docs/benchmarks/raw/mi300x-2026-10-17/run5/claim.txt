@@ -1,0 +1,3 @@
+c = 4: 20 done, 110 tok/s per GPU, 29.8 tok/s per user (median TPOT 33.5 ms), median TTFT 2110 ms
+c = 16: 80 done, 172 tok/s per GPU, 11.5 tok/s per user (median TPOT 87.2 ms), median TTFT 4832 ms
+c = 64: 320 done, 310 tok/s per GPU, 5.5 tok/s per user (median TPOT 180.5 ms), median TTFT 21622 ms

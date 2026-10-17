@@ -1,10 +1,11 @@
-# Raw evidence — MI300X run 4, 2026-10-17
+# Raw evidence — MI300X runs 4 and 5, 2026-10-17
 
-Verbatim capture, no interpretation. One run, one droplet:
+Verbatim capture, no interpretation. Two runs, one droplet each:
 
 | Directory | Report | Read-out | Runsheet |
 |---|---|---|---|
 | `run4/` | `docs/benchmarks/mi300x-run4.md` | `bench/measured_mi300x_run4.py` | `docs/benchmarks/runsheets/mi300x-run-4.md` |
+| `run5/` | not yet written | not yet written | `docs/benchmarks/runsheets/mi300x-run-5.md` |
 
 ## Run 4
 
@@ -50,3 +51,52 @@ Verbatim capture, no interpretation. One run, one droplet:
   typed: window 0 the container, window 1 `hostrec.sh`, window 2 `blockb.sh`.
 - The host's `rocm` container, Jupyter Lab on port 8888, which the image starts
   at boot, was stopped before anything else ran, as in run 1.
+
+## Run 5
+
+| Path | What it is |
+|---|---|
+| `run5/s1.sh` … `run5/s5.sh`, `run5/lib.sh`, `run5/hostrec.sh`, `run5/ceiling.py` | the scripts and block C's ceiling, committed before the card and run unedited; every stage ran, B2 included, and `s5.sh` ran all three levels |
+| `run5/engine-warm.log` | one engine alone on an empty `torch.compile` cache, stopped once it answered: the compile step |
+| `run5/engine-8000.log`, `run5/engine-8001.log` | the plain pair, 8000 first, both loading the compiled graph: the droplet check and B0 |
+| `run5/engine-800x-masked.log` | B1's pair, `HSA_CU_MASK=0:0-151` on 8000 and `0:152-303` on 8001 |
+| `run5/engine-800x-q1.log` | B2's pair, `GPU_MAX_HW_QUEUES=1` on both |
+| `run5/engine-70b.log` | block C's server, `amd/Llama-3.3-70B-Instruct-FP8-KV` at TP = 1 |
+| `run5/checkpoint-a.txt`, `run5/checkpoint-c.txt`, `run5/reset-gate.txt` | the checkpoint lines of every Qwen3-8B pair launch and of the 70B launch; the idle `POST /reset_prefix_cache` answer per engine per launch |
+| `run5/env-<tag>.txt` | `HSA_CU_MASK` and `GPU_MAX_HW_QUEUES` as each process of each engine held them; `plain` holds neither |
+| `run5/droplet-check*.txt`, `run5/results/droplet-check*/` | `fleet-bill`'s c = 1 level against 8001, plain and masked, stopped once the level was written, so no `run.json` |
+| `run5/mask-verdict.txt` | the two c = 1 TTFTs, their ratio and the verdict |
+| `run5/pairs.txt` | one line per paired call: both median ITLs at c = 32, the slow port, the ratio |
+| `run5/results/<tag>-800x/` | `fleet-bill-half` on both engines at once; `<tag>` is `plain`, `masked` or `q1`, each with 8000 launched first |
+| `run5/results/*/<level>.json`, `-metrics.json`, `-requests.jsonl`, `run.json` | the harness's per-level summary, Prometheus increments, one record per measured request, and the call |
+| `run5/*-harness.txt` | what each harness call printed |
+| `run5/top-<tag>.txt`, `run5/ps-<tag>.txt` | `top -b -H -d 5` over both engines' process trees during that call; `ps -eo pid,ppid,args` at its start |
+| `run5/rocm-smi-<tag>.txt` | the host's `rocm-smi --showuse --showpower --showclocks` every 5 s during that call; device-wide |
+| `run5/mqds-<tag>.txt`, `run5/rls-<tag>.txt` | the host's `/sys/kernel/debug/kfd/mqds` and `/rls` at that call's start: each queue's MQD, and the runlist |
+| `run5/dmesg-<tag>.txt` | the KFD and runlist lines the kernel logged during that call; all three are empty |
+| `run5/card-empty-<step>.txt` | the host's `rocm-smi` read that released B1, B2 and block C |
+| `run5/claim.txt`, `run5/claim-c<c>.txt`, `run5/results/claim/c<c>.json` | block C: one line per level, `vllm bench serve`'s output, and its `--save-detailed` result less `generated_texts` |
+| `run5/claim-c<c>-metrics-{before,after}.txt` | `vllm:num_preemptions` off `/metrics` around each level |
+| `run5/metrics-70b-end.txt` | the 70B server's whole `/metrics` after the last level |
+| `run5/host.txt` | date, CPU model, `nproc`, kernel, amdgpu version, `sched_policy`, `hws_max_conc_proc` |
+| `run5/vllm-version.txt`, `run5/hf-download*.txt`, `run5/pull.txt`, `run5/image-digest.txt` | `vllm --version`, the weights' snapshot paths, the image pull and its digest |
+| `run5/droplet-up.txt`, `run5/harvest-start.txt` | the host clock when the work directory was made, and at the harvest |
+| `run5/stage`, `run5/*.pid` | the scripts' handshakes: the last stage marker and the engines' PIDs |
+
+## What differs from run 5's runsheet
+
+- The commands were sent from a laptop over SSH into the `tmux` session, not
+  typed: window 0 the container, window 1 `hostrec.sh`, window 2 the image
+  pull. Each `card-empty` was touched after `rocm-smi` read no KFD process and
+  under 0.4 GB of VRAM in use (`card-empty-<step>.txt`).
+- The host's `rocm` container, Jupyter Lab, which the image starts at boot, was
+  stopped before anything else ran, as in runs 1 and 4.
+- Not asked for by the sheet: `pull.txt`, `image-digest.txt`,
+  `metrics-70b-end.txt` and `harvest-start.txt`. The 70B server was stopped by
+  hand with `lib.sh`'s `stop` after `/metrics` was read, which wrote
+  `C_STOPPED` into `stage`.
+- `generated_texts` was removed from the three `results/claim/c<c>.json`: the
+  model's continuations of random-token prompts, no timing in them, and words
+  in them the repository's commit gate refuses. Every other key is as written,
+  and `bench/measured_mi300x_run5.py` prints the same output with or without
+  the field.

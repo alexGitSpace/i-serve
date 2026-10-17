@@ -1,0 +1,10 @@
+    PID    PPID COMMAND
+      1       0 bash
+   1582       1 bash /workspace/i-serve/run5/s3.sh mi300x-run2
+   1603    1582 /usr/bin/python /usr/local/bin/vllm serve Qwen/Qwen3-8B --host 127.0.0.1 --port 8000 --dtype auto --gpu-memory-utilization 0.45 --max-model-len 9000 --max-num-batched-tokens 2048
+   1687    1603 /usr/bin/python -c from multiprocessing.resource_tracker import main;main(33)
+   1688    1603 /usr/bin/python -c from multiprocessing.spawn import spawn_main; spawn_main(tracker_fd=34, pipe_handle=36) --multiprocessing-fork
+   1878    1582 /usr/bin/python /usr/local/bin/vllm serve Qwen/Qwen3-8B --host 127.0.0.1 --port 8001 --dtype auto --gpu-memory-utilization 0.45 --max-model-len 9000 --max-num-batched-tokens 2048
+   1962    1878 /usr/bin/python -c from multiprocessing.resource_tracker import main;main(33)
+   1963    1878 /usr/bin/python -c from multiprocessing.spawn import spawn_main; spawn_main(tracker_fd=34, pipe_handle=36) --multiprocessing-fork
+   2227    1582 ps -eo pid,ppid,args

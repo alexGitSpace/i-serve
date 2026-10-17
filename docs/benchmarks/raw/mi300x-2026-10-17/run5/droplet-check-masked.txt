@@ -1,0 +1,1 @@
+droplet-check-masked: median ITL 5.73 ms, median TTFT 260.3 ms

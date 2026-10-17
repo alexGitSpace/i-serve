@@ -1,0 +1,3 @@
+===================================== KFD Processes ======================================
+No KFD PIDs currently running
+GPU[0]		: VRAM Total Used Memory (B): 299687936
