@@ -897,6 +897,12 @@ window.MODEL_DATA = {
    "date": "2026-09-29",
    "label": "MI300X run 3",
    "report": "docs/benchmarks/mi300x-run3.md"
+  },
+  "7": {
+   "card": "AMD Instinct MI300X",
+   "date": "2026-10-17",
+   "label": "MI300X run 4",
+   "report": "docs/benchmarks/mi300x-run4.md"
   }
  },
  "slo_classes": {

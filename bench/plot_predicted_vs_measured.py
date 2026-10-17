@@ -27,6 +27,7 @@ RUN3 = "docs/benchmarks/l40s-run3.md"
 MI300X_RUN1 = "docs/benchmarks/mi300x-run1.md"
 MI300X_RUN2 = "docs/benchmarks/mi300x-run2.md"
 MI300X_RUN3 = "docs/benchmarks/mi300x-run3.md"
+MI300X_RUN4 = "docs/benchmarks/mi300x-run4.md"
 
 OUT = ROOT / "docs/benchmarks/predicted-vs-measured.svg"
 
@@ -221,6 +222,26 @@ PREDICTIONS: tuple[Prediction, ...] = (
     # Left out: the zeros of the rotation model cannot be drawn as a ratio, the
     # uniform model's miss is read against the same measurement as a zero, and
     # every second-arm level and round robin at N = 63 are defects, not faced.
+
+    # --- MI300X run 4, 2026-10-17 --------------------------------------------
+    Prediction(7, "KV pool, each engine at 0.45", 506525, 506525,
+               "| 506 525 (run 3) |", "| 506 525 / 506 525 |", MI300X_RUN4),
+    Prediction(7, "KV pool, first launch, cold compile cache", 506525, 492074,
+               "| 506 525 (run 3) |", "| 492 074 (8000) |", MI300X_RUN4),
+    Prediction(7, "median ITL, one engine alone, c=32", 12.46, 12.43,
+               "| 12.46 ms |", "| 12.43 ms (8000)", MI300X_RUN4),
+    Prediction(7, "median ITL, pair together, fast engine", 24.9, 27.5,
+               "| ≈ 24.9 ms |", "| 27.5 ms (fast)", MI300X_RUN4),
+    Prediction(7, "h, round robin, N = 63", 0.800, 0.800,
+               "| 0.800 |", "| 0.800, 256 of 256 |", MI300X_RUN4),
+    Prediction(7, "h, affinity, N = 31", 0.800, 0.738,
+               "| 0.800 |", "| 0.738 |", MI300X_RUN4),
+    Prediction(7, "h, affinity, N = 127", 0.800, 0.713,
+               "| 0.800 |", "| 0.713 |", MI300X_RUN4),
+    Prediction(7, "h, affinity, N = 127, bound off", 0.800, 0.800,
+               "| 0.800 |", "| 0.800 (bound off) |", MI300X_RUN4),
+    # Left out: the zeros of the rotation model, the slow engine's 52.2 ms (the
+    # first measured value is the dot), tests, and the TTFT bound.
 )
 
 @dataclass(frozen=True)
@@ -239,6 +260,7 @@ RUNS: dict[int, Run] = {
     4: Run("MI300X run 1", "2026-09-27", "AMD Instinct MI300X"),
     5: Run("MI300X run 2", "2026-09-27", "AMD Instinct MI300X"),
     6: Run("MI300X run 3", "2026-09-29", "AMD Instinct MI300X"),
+    7: Run("MI300X run 4", "2026-10-17", "AMD Instinct MI300X"),
 }
 
 # --- geometry ----------------------------------------------------------------

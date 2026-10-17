@@ -111,7 +111,7 @@ the map for the 70 nodes of the tree.
 
 ## The proof
 
-![Measured divided by predicted, for every prediction L40S runs 1-3 and MI300X runs 1-2 made](docs/benchmarks/predicted-vs-measured.svg)
+![Measured divided by predicted, for every prediction L40S runs 1-3 and MI300X runs 1-4 made](docs/benchmarks/predicted-vs-measured.svg)
 
 One row per prediction naming a point or a range, not a bound. What a miss cost
 the drawing cannot show: run 3's seat count under prefix caching came out

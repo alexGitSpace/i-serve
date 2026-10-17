@@ -16,10 +16,10 @@ built from. The routes are in [../README.md](../README.md).
 | `docs/symptom-map.md`, `.json` | The decision tree, and the checked subset the site evaluates | 70 nodes; the JSON's 37 nodes held equal by a test |
 | `docs/running-on-kind.md` | The eleven commands, the two waits, the stub contract | ✅ |
 | `docs/adding-a-run.md` | Why runs accumulate here, and the checklist | first user: MI300X run 1 |
-| `docs/benchmarks/` | Load test reports, cost figures, the chart above | L40S runs 1–3 and MI300X runs 1–3 written up, raw evidence committed; MI300X run 3's arm comparison void, re-run as run 4 |
-| `docs/benchmarks/runsheets/` | The sheet written **before** each run | five for L40S runs 1–3; four for MI300X — runs 1–3 taken, run 4 written and not yet reviewed |
+| `docs/benchmarks/` | Load test reports, cost figures, the chart above | L40S runs 1–3 and MI300X runs 1–4 written up, raw evidence committed; MI300X run 3's arm comparison void, measured by run 4 |
+| `docs/benchmarks/runsheets/` | The sheet written **before** each run | five for L40S runs 1–3; four for MI300X, all four taken |
 | `docs/instrument-vllm-bench-sweep.md` | What `vllm bench sweep` does at `v0.27.1` | verified off-card against that tag |
-| `bench/` | Load harness, `roofline.py`, chart generator, site export; tests in `bench/tests/` | model calibrated; the harness ran run 3 on a card |
+| `bench/` | Load harness, `roofline.py`, chart generator, site export; tests in `bench/tests/` | model calibrated; the harness ran MI300X runs 3 and 4 on a card |
 | `site/` | Calculator and advisor as one static page for Pages | live; parity 333/333 rows |
 | `.github/workflows/` | Tests on Python 3.10 and 3.14, the quick-start commands, the chart, the parity check | installs nothing, which is the claim it tests |
 | `.githooks/` | Pre-commit: regenerates the chart and `site/data/`; refuses a status glyph on the map, non-English content, a credential | opt-in: `git config core.hooksPath .githooks`; CI runs the three refusals on a branch no hook saw |
