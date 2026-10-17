@@ -17,7 +17,7 @@ built from. The routes are in [../README.md](../README.md).
 | `docs/running-on-kind.md` | The eleven commands, the two waits, the stub contract | ✅ |
 | `docs/adding-a-run.md` | Why runs accumulate here, and the checklist | first user: MI300X run 1 |
 | `docs/benchmarks/` | Load test reports, cost figures, the chart above | L40S runs 1–3 and MI300X runs 1–4 written up, raw evidence committed; MI300X run 3's arm comparison void, measured by run 4 |
-| `docs/benchmarks/runsheets/` | The sheet written **before** each run | five for L40S runs 1–3; four for MI300X, all four taken |
+| `docs/benchmarks/runsheets/` | The sheet written **before** each run | five for L40S runs 1–3; five for MI300X — runs 1–4 taken, run 5 written on the day the credits expire |
 | `docs/instrument-vllm-bench-sweep.md` | What `vllm bench sweep` does at `v0.27.1` | verified off-card against that tag |
 | `bench/` | Load harness, `roofline.py`, chart generator, site export; tests in `bench/tests/` | model calibrated; the harness ran MI300X runs 3 and 4 on a card |
 | `site/` | Calculator and advisor as one static page for Pages | live; parity 333/333 rows |

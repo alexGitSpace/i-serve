@@ -190,6 +190,15 @@ it while dividing `1 / TPOT`, the rate one user sees. Maximising it alone is
 misleading: a server can have excellent throughput while every individual user is
 far outside their latency target.
 
+**Interactivity (tok/s per user)** — `1 / TPOT`, the decode rate one request sees,
+paired with throughput per GPU to place an operating point. Published frontiers
+such as InferenceX plot one against the other; this repository computes it from
+the median TPOT.
+
+**InferenceX** — SemiAnalysis's public benchmark of inference engines across
+accelerators: per model and card, a frontier of throughput per GPU against
+interactivity, each point the best configuration found in a sweep.
+
 **`$/1M tokens`** — the unit customers are quoted in and the denominator that makes
 throughput matter: `hourly_rate / (aggregate tok/s × 3600) × 1e6`. Derived from a
 floor it is a *lower bound* on cost, since a real run sits above the floor. The
@@ -295,6 +304,47 @@ digest cannot, so it is what says two runs pulled the same bytes.
 ROCm kernels are compiled for; gfx950 is the MI350 series'. Both are **CDNA 3** or
 later, CDNA being AMD's data-centre GPU architecture line, and several ROCm code
 paths are gated on that generation rather than on the ISA name.
+
+**Compute unit (CU)** — AMD's unit of a GPU's arithmetic, the counterpart of an
+NVIDIA SM. MI300X has 304, which `rocminfo` reports.
+
+**XCD** — one of the MI300X's eight compute dies, 38 CUs each with its own L2;
+the driver calls the same block an XCC. All eight share the I/O dies, the Infinity
+Cache and the HBM.
+
+**ROCr** — the ROCm runtime underneath HIP: it opens the device and creates the
+process's queues, so a variable it reads applies to every library above it.
+
+**AQL queue** — the user-space ring a ROCm process writes kernel dispatches into,
+one per HIP hardware queue; the command processor reads it.
+
+**GC 9.4.3** — the graphics-and-compute IP version of the MI300 series, the
+driver's name for what the compiler calls gfx942.
+
+**CU mask (`HSA_CU_MASK`)** — a ROCr environment variable, `GPU_list:CU_list`,
+that restricts every queue a process creates to the listed CUs. On gfx942 the
+driver deals mask bits round-robin over the XCDs, so a contiguous range takes CUs
+from every die. `rocminfo` reports the physical count with or without it.
+
+**HWS and the runlist** — on MI300X the command processor's firmware schedules
+the queues of all processes from one list the KFD driver writes, a *runlist*;
+there is no MES on this generation. The runlist is *oversubscribed* when it holds
+more processes or queues than the hardware maps at once; the processes are then
+time-sliced, and `dmesg` reads "Runlist is getting oversubscribed".
+`hws_max_conc_proc` is the amdgpu module parameter that caps the processes mapped
+at once, and `sched_policy` the one that picks HWS, HWS without oversubscription,
+or no HWS; both are fixed at module load. A *quantum* is the share of time one
+process gets before the firmware switches.
+
+**`rocprofv3`** — ROCm's tracer and profiler: kernel dispatches with their
+process and timestamps, which `rocm-smi`'s device-wide figures cannot give.
+
+**MQD** — memory queue descriptor: the record the driver keeps for one hardware
+queue, CU-mask registers included. Root can read every queue's MQD from
+`/sys/kernel/debug/kfd/mqds`.
+
+**`GPU_MAX_HW_QUEUES`** — a HIP environment variable: how many hardware queues a
+process opens per device, 4 by default. Further streams share them.
 
 **Coefficient provenance** — whether an empirical coefficient is *measured* on
 the card it is used for or is a *prior* carried from a spec sheet. A property of
@@ -421,6 +471,11 @@ The rule of thumb `2 × P × B` gives forward-pass FLOPs for `B` tokens.
 **BF16 / FP16 / FP8** — numeric formats: 2, 2 and 1 bytes per value. BF16 and FP16
 differ in exponent range, not size. Serving in FP8 halves both weight bytes and KV
 bytes, moving the memory-bound floor down.
+
+**e4m3fn / e4m3fnuz** — two FP8 encodings with 4 exponent and 3 mantissa bits.
+NVIDIA and checkpoints use e4m3fn; gfx942 computes in e4m3fnuz, which has no
+negative zero and a different exponent bias, so vLLM rescales e4m3fn weights at
+load.
 
 **KV cache** — the stored keys and values of every previous token, so each decode
 step does not recompute the whole prefix. Grows linearly with
@@ -624,6 +679,20 @@ the client and change per run.
 generation. It is the per-sequence claim on the KV cache, so the concurrency the
 startup log reports is the KV pool divided by it: doubling it roughly halves the
 sequences that fit, at an unchanged pool.
+
+**Tensor parallelism (TP)** — one model's layers split across several GPUs, each
+holding a slice of every weight matrix and exchanging partial results every layer.
+At TP = 2 each GPU reads half the weights per decode step. `--tensor-parallel-size`
+sets it; every run here so far used 1.
+
+**`custom_ops`** — a key of vLLM's `--compilation-config`: which of vLLM's own
+kernels (`rms_norm`, `silu_and_mul`, `quant_fp8`, …) run as written, `+op`, or
+are left to `torch.compile` to generate, `-op`.
+
+**`--random-range-ratio`** — the spread of `vllm bench serve`'s random prompt and
+output lengths. At `v0.27.1` it samples `[L(1 − r), L(1 + r)]`; older clients,
+InferenceX's among them, sample `[r·L, L]`, so one value gives two different
+distributions.
 
 **`max_num_batched_tokens`** — the token budget of one engine step, prefill and
 decode together. It is what chunked prefill spends: a prompt longer than the budget
