@@ -1,0 +1,1 @@
+droplet check: median ITL 5.04 ms -- 5.04 run 3, 5.22 run 2, 6.61 run 1

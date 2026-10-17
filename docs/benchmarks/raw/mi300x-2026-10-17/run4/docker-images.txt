@@ -1,0 +1,6 @@
+REPOSITORY                     TAG       DIGEST                                                                    IMAGE ID       CREATED          SIZE
+prefix-router                  dev       sha256:6ddbb2e35d054bee46ef545ce3c3974220870854e67cb1ea84f060f0d334e41a   6ddbb2e35d05   57 minutes ago   7.73MB
+rocm                           latest    sha256:a21d7f1febf1eeb2925dbc819aae513c5f3100a5f4d55ff97883cd4e6d276cf5   a21d7f1febf1   7 weeks ago      12.3GB
+ubuntu                         24.04     sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517   33ceb71981b6   2 months ago     119MB
+vllm/vllm-openai-rocm          v0.27.1   sha256:bb44b39aea26798cce43030a98bf48efd0322ca7147367db86e38b96bd80f0e7   bb44b39aea26   2 months ago     46.5GB
+rocm/device-metrics-exporter   v1.5.0    sha256:73f3978ad439c24a45560ad1ee56a759ddfd213ce1f7e0e0503cf91e67205c5e   73f3978ad439   5 months ago     1.32GB

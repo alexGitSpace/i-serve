@@ -1,0 +1,23 @@
+ARMDONE prefix-n031 0
+  prefix N=31: h 0.738, cache_reset 1, warmup_passes 2
+ARMDONE round_robin-n031 0
+  round_robin N=31: h 0.800, cache_reset 1, warmup_passes 2
+ARMDONE round_robin-n063 0
+  round_robin N=63: h 0.800, cache_reset 1, warmup_passes 2
+ARMDONE prefix-n063 0
+  prefix N=63: h 0.731, cache_reset 1, warmup_passes 2
+ARMDONE prefix-n127 0
+  prefix N=127: h 0.713, cache_reset 1, warmup_passes 2
+ARMDONE round_robin-n127 0
+  round_robin N=127: h 0.467, cache_reset 1, warmup_passes 2
+ARMDONE round_robin-n255 0
+  round_robin N=255: h 0.026, cache_reset 1, warmup_passes 2
+ARMDONE prefix-n255 0
+  prefix N=255: h 0.352, cache_reset 1, warmup_passes 2
+ARMDONE prefix-n511 0
+  prefix N=511: h 0.000, cache_reset 1, warmup_passes 2
+ARMDONE round_robin-n511 0
+  round_robin N=511: h 0.000, cache_reset 1, warmup_passes 2
+ARMDONE prefix-n127-bl1 0
+  prefix N=127: h 0.800, cache_reset 1, warmup_passes 2
+BLOCKB_DONE

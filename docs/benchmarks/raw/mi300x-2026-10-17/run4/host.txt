@@ -1,0 +1,6 @@
+Sat Oct 17 09:37:54 UTC 2026
+Model name:                              INTEL(R) XEON(R) PLATINUM 8568Y+
+BIOS Model name:                         pc-q35-6.1  CPU @ 2.0GHz
+20
+6.8.0-138-generic
+6.19.14.31400000
