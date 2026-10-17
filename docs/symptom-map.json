@@ -716,6 +716,26 @@
    ]
   },
   {
+   "id": "tpot.trap.launch-order",
+   "symptom": "tpot",
+   "kind": "trap",
+   "text": "Trap: one of two engines sharing a card serves each token about twice as slow at an equal share, with the same flags, pool and graphs → not that engine's config. Alone, each served 12.4 ms; together, the one launched first served 52 ms against 27, and swapping the launch order moved the slowness. Run each alone, then swap the order, before touching a flag. **measured** (MI300X run 4 §3)",
+   "evidence": "measured",
+   "source": "benchmarks/mi300x-run4.md#3-block-0--why-the-pair-was-unequal",
+   "when": {
+    "all": [
+     {
+      "field": "replicas",
+      "op": "gte",
+      "value": 2
+     }
+    ]
+   },
+   "requires": [
+    "replicas"
+   ]
+  },
+  {
    "id": "tpot.cause.context-growth",
    "symptom": "tpot",
    "kind": "trap",

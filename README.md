@@ -107,7 +107,7 @@ to read first, its branches, and the traps that make a right number read wrong.
 
 Page, step 3: four questions about your dashboard, *don't know* allowed; back
 comes one symptom's branch and its knobs. Docs: the runbook from alert to map;
-the map for the 70 nodes of the tree.
+the map for the 71 nodes of the tree.
 
 ## The proof
 
