@@ -528,7 +528,16 @@ asks for its prefixes in strict rotation measures the worst case — each one is
 evicted exactly before it is next needed. vLLM's block pool is LRU, read at the
 pinned tag: a finished request's hashed blocks — body and output as well as the
 prefix — go to the tail, eviction takes the head
-([runsheet, MI300X run 3 §0](benchmarks/runsheets/mi300x-run-3.md)).
+([runsheet, MI300X run 3 §0](benchmarks/runsheets/mi300x-run-3.md)). They go
+tail-first, so a request's output and body are evicted before its prefix, and a
+prefix's last blocks before its first: a prefix can be partly cached
+([benchmarks/mi300x-run4.md](benchmarks/mi300x-run4.md) §5).
+
+**Reuse window** — the requests one engine admits between two visits of the same
+prefix, the prefix's own included. Under strict rotation it is the working set
+on that engine. A prefix survives only if the whole window fits the pool, live
+seats included, since the live seats are the window's newest members
+([benchmarks/mi300x-run4.md](benchmarks/mi300x-run4.md) §5).
 
 **Zipf distribution** — the popularity shape real prompt traffic has: a few
 prefixes carry most requests and a long tail carries the rest. Between a uniform
