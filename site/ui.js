@@ -242,6 +242,8 @@
       setTimeout(() => { b.textContent = "Copy link"; }, 1800);
     });
   }
+  // Set by bindStickySituation: puts the situation back in the flow, so a link can reach its controls.
+  let unpinSituation = () => {};
   // Links inside the answers that move the sliders: "Try it", "Switch card".
   function bindAnswerLinks() {
     document.addEventListener("click", (e) => {
@@ -249,6 +251,7 @@
       if (!a) return;
       e.preventDefault();
       if (a.dataset.openTtft !== undefined) {
+        unpinSituation();   // pinned, the bar hides the assumptions and the field cannot take focus
         $("assumptions").open = true;
         $("ttft").focus();
         return;
@@ -982,18 +985,20 @@
     spacer.className = "sit-spacer";
     sit.parentNode.insertBefore(spacer, sit);
     let pinned = false;
-    const restTop = () => spacer.getBoundingClientRect().top + window.scrollY;
+    // Pinned once the whole situation has scrolled away, open assumptions included:
+    // the bar hides them, so pinning at the sentence's top would take them mid-edit.
+    const restEnd = () => spacer.getBoundingClientRect().top + window.scrollY + (pinned ? spacer.offsetHeight : sit.offsetHeight);
     // The bar wraps to two or three lines on a phone; the sticky controls ride
     // under however tall it is (style.css reads --pin-h).
     const measure = () => { if (pinned) document.documentElement.style.setProperty("--pin-h", sit.offsetHeight + "px"); };
     if (window.ResizeObserver) new ResizeObserver(measure).observe(sit);
     function check() {
-      if (!pinned && window.scrollY > restTop()) {
+      if (!pinned && window.scrollY > restEnd()) {
         spacer.style.height = sit.offsetHeight + "px";   // measured before it leaves the flow
         document.body.classList.add("pinned");
         pinned = true;
         measure();
-      } else if (pinned && window.scrollY <= restTop()) {
+      } else if (pinned && window.scrollY <= restEnd()) {
         document.body.classList.remove("pinned");
         spacer.style.height = "0px";
         pinned = false;
@@ -1005,8 +1010,10 @@
       spacer.style.height = "0px";
       pinned = false;
     }
+    unpinSituation = unpin;
     window.addEventListener("scroll", check, { passive: true });
     window.addEventListener("resize", () => { unpin(); check(); });
+    $("assumptions").addEventListener("toggle", check);
     check();
   }
 
