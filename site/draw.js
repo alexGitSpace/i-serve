@@ -1,14 +1,11 @@
 /* draw.js -- the two pictures, as hand-built SVG strings whose classes the
  * stylesheet colours, so they follow the reader's theme.
  *
- *   Draw.seats -- seats against ms: step(n) solid, the served step dashed where a
- *     card has an interference fit, the target and both limits as rules; measured
- *     points only inside a run's geometry (4 000 in, 200 out, BF16 KV, per card).
+ *   Draw.seats -- ms per token against seats; measured points only inside a run's geometry.
  *   Draw.cost  -- $ per 1M output tokens against the TPOT target, on a log axis.
  *
- * A legend entry is a name of two to four words; the formula goes to `tip`, and
- * what the picture turns out to show comes back as `note` under the chart, or as
- * `jump`, a link to the point where the note would read.
+ * A legend entry is two to four words, its formula in `tip`; what the picture shows
+ * comes back as `note`, or as `jump`, a link to the point where the note would read.
  */
 (function (root) {
   "use strict";

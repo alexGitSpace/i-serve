@@ -1,10 +1,9 @@
 /* terms.js -- the page's vocabulary, explained in plain words on hover.
  *
  * Every term here is registered in docs/GLOSSARY.md (bench/tests/test_site_terms.py
- * holds that), and `glossary` names the entry it maps to. The `plain` text is
- * not a copy of the glossary's definition and is not meant to be one: the
- * glossary is written for an engineer looking a term up, this is written for
- * a reader meeting it for the first time. Two jobs, two texts, one registry.
+ * holds that), and `glossary` names the entry it maps to. `plain` is not the
+ * glossary's definition: that one is for an engineer looking a term up, this
+ * one for a reader meeting it for the first time.
  * `match` lists the spellings ui.js highlights; longest wins where they nest.
  */
 window.TERMS = [
