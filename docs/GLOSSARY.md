@@ -1525,6 +1525,12 @@ only*. The names come from the `MODELS` registry in `bench/predictions.py`, and
 every model in it must be dense, GQA and full-attention, because the formulas
 above assume exactly that (*Architectures that break the standard arithmetic*).
 
+**Checkpoint snapshot** (`bench/models/`) — a model's `config.json` and its
+parameter counts split by role (embedding, `lm_head`, decoder, routed experts,
+vision tower, MTP head), read from the safetensors headers at a pinned
+revision by `bench/models/snapshot.py`. It needs the network, so it is run by
+hand when a model is added.
+
 **`--what-if`** (`bench/predictions.py`) — prints one operating point of the
 reader's choosing — card, context length, prompt length, TPOT and TTFT targets,
 `gpu_memory_utilization`, KV dtype, hourly rate — instead of the twelve fixed
