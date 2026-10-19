@@ -1,3 +1,13 @@
+---
+card: mi300x
+run: 1
+date: 2026-09-27
+asked: Does the arithmetic transfer to the card the SLO was derived for?
+found: eff_mem 0.46 and mfu 0.166, a third and nearly two thirds below the priors, and latency rather than room ends the seat curve
+predicted_with: mi300x
+fitted: mi300x-run1
+---
+
 # MI300X run 1 — 2026-09-27
 
 The first run on the card `docs/SLO.md` was derived for. It did for the MI300X

@@ -1,3 +1,12 @@
+---
+card: mi300x
+run: 3
+date: 2026-09-29
+asked: Do two engines on one card, behind the prefix router, beat one engine?
+found: the memory bill held and the pair out-produced one engine, but the router comparison was void and the two engines were unequal
+predicted_with: mi300x-run2
+---
+
 # MI300X run 3 — 2026-09-29
 
 Two engines of one model on one card, and the prefix router in front of them.

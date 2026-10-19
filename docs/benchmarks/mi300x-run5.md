@@ -1,3 +1,12 @@
+---
+card: mi300x
+run: 5
+date: 2026-10-17
+asked: What makes two engines on one card equal, and does a 70B obey run 2's coefficient?
+found: one hardware queue per process ends the asymmetry, and the 70B's decode step held to run 2's eff_mem at TP = 1
+predicted_with: mi300x-run2
+---
+
 # MI300X run 5 — 2026-10-17
 
 Two engines of one model on one card, first with the card's compute units split

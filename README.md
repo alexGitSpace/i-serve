@@ -30,14 +30,24 @@ stub — is [docs/GLOSSARY.md](docs/GLOSSARY.md). §N is a section of
 Numbers come in three kinds, never mixed:
 
 - **measured** — by a run on a rented card, raw evidence in
-  [docs/benchmarks/raw/](docs/benchmarks/raw/). Three L40S runs and two MI300X
-  runs so far; two coefficients fitted on L40S run 1 survived runs 2 and 3, and
-  the MI300X's first fit did not survive its second run, on another droplet.
+  [docs/benchmarks/raw/](docs/benchmarks/raw/). Two coefficients fitted on L40S
+  run 1 survived runs 2 and 3, and the MI300X's first fit did not survive its
+  second run, on another droplet.
 - **derived** — in [docs/SLO.md](docs/SLO.md); a prediction until measured, and
   outranked by vLLM's own startup log ([§9](docs/SLO.md)).
 - **prior** — spec-sheet coefficients, kept beside a card's fit for contrast.
   On the MI300X its first run came in a third and nearly two thirds below the
   0.70 / 0.45 ([the report](docs/benchmarks/mi300x-run1.md)).
+
+The runs so far, by card; every run, what it asked and what it found:
+[docs/benchmarks/README.md](docs/benchmarks/README.md).
+
+<!-- runs:begin -->
+| Card | Runs | Coefficients in use | Latest run |
+|---|---|---|---|
+| NVIDIA L40S | [3](docs/benchmarks/README.md#nvidia-l40s) | eff_mem 0.83, mfu 0.439: run 1's fit, faced by runs 2–3 | [run 3](docs/benchmarks/l40s-run3.md), 2026-08-30: 3× the seats, 12–14 to 32–40, because the decode step itself fell where the derivation said it could not |
+| AMD Instinct MI300X | [5](docs/benchmarks/README.md#amd-instinct-mi300x) | eff_mem 0.57, mfu 0.247: run 2's fit, faced by runs 3–5 | [run 5](docs/benchmarks/mi300x-run5.md), 2026-10-17: one hardware queue per process ends the asymmetry, and the 70B's decode step held to run 2's eff_mem at TP = 1 |
+<!-- runs:end -->
 
 `kind` runs the stack against a stub and shows what the system *does*, never
 what the numbers *are*, and no card has ever been sent these manifests. What it
@@ -111,7 +121,7 @@ the map for the 75 nodes of the tree.
 
 ## The proof
 
-![Measured divided by predicted, for every prediction L40S runs 1-3 and MI300X runs 1-4 made](docs/benchmarks/predicted-vs-measured.svg)
+![Measured divided by predicted, for every two-sided prediction the runs made](docs/benchmarks/predicted-vs-measured.svg)
 
 One row per prediction naming a point or a range, not a bound. What a miss cost
 the drawing cannot show: run 3's seat count under prefix caching came out

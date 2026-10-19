@@ -20,6 +20,7 @@ import json
 import re
 
 import export_site_data as export
+import runs
 from predictions import INTERFERENCE_MODEL, MODELS
 from roofline import ACCELERATORS
 
@@ -78,7 +79,14 @@ def test_every_number_the_page_needs_is_in_model_json():
     for key, m in data["models"].items():
         assert m["provenance"] and m["kv_bytes_per_token"] > 0, key
         assert m["served_by_this_stack"] == (key == data["defaults"]["model"]), key
-    assert set(data["runs"]) == {"1", "2", "3", "4", "5", "6", "7"}
+    assert list(data["runs"]) == sorted(r.id for r in runs.runs())
+    # Every set of coefficients is reachable from exactly one card, the one in use first.
+    reachable = [k for card in data["cards"].values() for k in card["options"]]
+    assert sorted(reachable) == sorted(ACCELERATORS), reachable
+    for name, card in data["cards"].items():
+        assert card["options"][0] == card["fit"], name
+        assert all(data["accelerators"][k]["card"] == name for k in card["options"]), name
+    assert data["defaults"]["accelerator"] == data["cards"]["l40s"]["fit"]
     assert "generated_at" not in data and "sha" not in data, "byte-stability"
 
 

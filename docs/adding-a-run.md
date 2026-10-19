@@ -106,6 +106,29 @@ with both cells copied verbatim from the table, and run the generator. The test
 asserts each row still matches one line of the report, and CI diffs the
 committed SVG against what the generator produces.
 
+And the registration: the report opens with its front matter, which is how the
+run reaches the chart, the site and the run journal. The shape, from
+[benchmarks/mi300x-run5.md](benchmarks/mi300x-run5.md):
+
+```yaml
+---
+card: mi300x
+run: 5
+date: 2026-10-17
+asked: What makes two engines on one card equal, and does a 70B obey run 2's coefficient?
+found: one hardware queue per process ends the asymmetry, and the 70B's decode step held to run 2's eff_mem at TP = 1
+predicted_with: mi300x-run2
+---
+```
+
+`card` is the card's prior key, `predicted_with` and `fitted` are
+`ACCELERATORS` keys, and `fitted` is there only if the run produced
+coefficients. `asked` and `found` are one sentence each, in a reader's words:
+they are what the site and the front page show for the run. Plain text only —
+GitHub reads the block as YAML, so a value may not contain `: ` or ` #`, and
+`bench/runs.py` refuses one that does. Then `python3 bench/runs.py` rewrites
+[benchmarks/README.md](benchmarks/README.md) and the front page's runs table.
+
 ## 5. The registry edit
 
 One `Accelerator(...)` in `bench/roofline.py` and one key in `ACCELERATORS`:
@@ -166,5 +189,6 @@ export and a select on the site — and a run per model, because `eff_mem` and
 - [ ] `eff_mem` from the median ITL, `mfu` from one uncontended prefill, both reported against the prior
 - [ ] `bench/measured_<run>.py` reads the raw files; the report's §9 table quotes it
 - [ ] two-sided rows added to `bench/plot_predicted_vs_measured.py`; chart regenerated
+- [ ] the report's front matter written; `python3 bench/runs.py` run
 - [ ] `Accelerator(...)` and `ACCELERATORS` key added; `HOURLY_RATES` entry; `site/data/` regenerated
 - [ ] symptom-map nodes, §10 items and glossary entries the run touched

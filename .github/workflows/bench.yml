@@ -90,6 +90,30 @@ jobs:
             exit 1
           fi
 
+  runs:
+    runs-on: ubuntu-latest
+    name: every report is a run, and the pages that list runs are what the journal produces
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      # Same shape again: `bench/tests/test_runs.py` asserts this against the
+      # strings the generator returns, and this against the bytes on disk. A
+      # report without front matter fails the generator itself, by name.
+      - name: regenerate and diff
+        run: |
+          python3 bench/runs.py
+          if ! git diff --exit-code --stat docs/benchmarks/README.md README.md; then
+            echo
+            echo "The run journal or README.md's runs block is stale. Regenerate and commit:"
+            echo "    python3 bench/runs.py"
+            echo
+            git --no-pager diff docs/benchmarks/README.md README.md | head -60
+            exit 1
+          fi
+
   site-data:
     runs-on: ubuntu-latest
     name: the committed site data is what bench/ produces, and the JS agrees with it

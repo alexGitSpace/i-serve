@@ -1,3 +1,13 @@
+---
+card: l40s
+run: 1
+date: 2026-08-18
+asked: What does the card really deliver against the spec-sheet coefficients?
+found: eff_mem 0.83 and mfu 0.439 replace the guesses, and TPOT p99 allows 12 seats where the arithmetic said 32
+predicted_with: l40s
+fitted: l40s-run1
+---
+
 # L40S baseline — run 1, 2026-08-18
 
 The first measurements this repository has. Everything in `docs/SLO.md` was a

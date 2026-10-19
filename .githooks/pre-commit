@@ -1,6 +1,6 @@
 #!/bin/sh
-# Redraw the front-page chart and regenerate the site's data before every
-# commit, and stage both results.
+# Redraw the front-page chart, regenerate the site's data and the run journal
+# before every commit, and stage the results.
 #
 # The picture is generated from `bench/plot_predicted_vs_measured.py` and the
 # site's numbers from `bench/export_site_data.py`, so a commit that edits a
@@ -24,6 +24,17 @@ git add "$root/docs/benchmarks/predicted-vs-measured.svg"
 
 python3 "$root/bench/export_site_data.py" >/dev/null
 git add "$root/site/data"
+
+# The run journal is generated whole and staged like the two above. README.md
+# is hand-written around its runs block, so it is regenerated but never staged
+# here -- that would sweep in edits nobody chose -- and a commit whose staged
+# README carries a stale block is refused instead.
+python3 "$root/bench/runs.py" >/dev/null
+git add "$root/docs/benchmarks/README.md"
+if ! git show :README.md | python3 "$root/bench/runs.py" --check-readme; then
+    printf 'pre-commit: the runs block in README.md is stale; regenerated in the working tree, stage it\n' >&2
+    exit 1
+fi
 
 # --- what a commit may not carry -----------------------------------------
 #

@@ -1,3 +1,12 @@
+---
+card: mi300x
+run: 4
+date: 2026-10-17
+asked: Why was the pair unequal, and where does affinity routing beat round robin?
+found: the engine launched first is the slow one, and with the instrument fixed the two routings part at 127 prefixes
+predicted_with: mi300x-run2
+---
+
 # MI300X run 4 — 2026-10-17
 
 Two engines of one model on one card, the prefix router in front of them, and

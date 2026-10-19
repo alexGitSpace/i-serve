@@ -15,6 +15,8 @@ import math
 import pathlib
 from dataclasses import dataclass
 
+import runs
+
 # Resolved from this file, not from the working directory: the generator and its
 # test are run from both the repository root and from bench/.
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -32,7 +34,7 @@ OUT = ROOT / "docs/benchmarks/predicted-vs-measured.svg"
 
 @dataclass(frozen=True)
 class Prediction:
-    run: int
+    run: str                # a journal id, bench/runs.py: "l40s-1"
     label: str
     predicted: float
     measured: float
@@ -51,215 +53,200 @@ PREDICTIONS: tuple[Prediction, ...] = (
     # other: a bare "2.00" is a substring of "2.000×" on the same line.
 
     # --- run 1, 2026-08-18 ---------------------------------------------------
-    Prediction(1, "KV pool", 181749, 168985,
+    Prediction("l40s-1", "KV pool", 181749, 168985,
                "| 181 749 |", "| 168 985 |", BASELINE),
-    Prediction(1, "seats by capacity, 4 000 ctx", 45, 41,
+    Prediction("l40s-1", "seats by capacity, 4 000 ctx", 45, 41,
                "| 45 |", "| 41 |", BASELINE),
-    Prediction(1, "decode step c=1, eff_mem 0.70", 28.12, 22.70,
+    Prediction("l40s-1", "decode step c=1, eff_mem 0.70", 28.12, 22.70,
                "| 28.12 ms |", "| 22.70 ms |", BASELINE),
-    Prediction(1, "decode step c=1, eff_mem 0.83", 23.71, 22.70,
+    Prediction("l40s-1", "decode step c=1, eff_mem 0.83", 23.71, 22.70,
                "| 23.71 ms |", "| 22.70 ms |", BASELINE, fitted=True),
-    Prediction(1, "decode step c=32, eff_mem 0.70", 59.10, 50.69,
+    Prediction("l40s-1", "decode step c=32, eff_mem 0.70", 59.10, 50.69,
                "| 59.10 ms |", "| 50.69 ms |", BASELINE),
-    Prediction(1, "decode step c=32, eff_mem 0.83", 49.85, 50.69,
+    Prediction("l40s-1", "decode step c=32, eff_mem 0.83", 49.85, 50.69,
                "| 49.85 ms |", "| 50.69 ms |", BASELINE, fitted=True),
-    Prediction(1, "TTFT c=1, 4 000-token prompt", 341.3, 350.1,
+    Prediction("l40s-1", "TTFT c=1, 4 000-token prompt", 341.3, 350.1,
                "| 341.3 ms |", "| 350.1 ms |", BASELINE),
-    Prediction(1, "max_num_seqs by latency, eff_mem 0.70", 23, 31,
+    Prediction("l40s-1", "max_num_seqs by latency, eff_mem 0.70", 23, 31,
                "| 23 |", "| ~31 (decode step) |", BASELINE),
-    Prediction(1, "max_num_seqs by latency, eff_mem 0.83", 32, 31,
+    Prediction("l40s-1", "max_num_seqs by latency, eff_mem 0.83", 32, 31,
                "| 32 |", "| ~31 (decode step) |", BASELINE, fitted=True),
-    Prediction(1, "max_num_seqs against TPOT p99", 32, 12,
+    Prediction("l40s-1", "max_num_seqs against TPOT p99", 32, 12,
                "| 32 |", "| 12 (TPOT p99) |", BASELINE, fitted=True),
 
     # --- run 2, 2026-08-23 ---------------------------------------------------
-    Prediction(2, "KV pool", 168985, 169833,
+    Prediction("l40s-2", "KV pool", 168985, 169833,
                "| 168 985 ± 500 |", "| 169 833 |", RUN2),
-    Prediction(2, "seats by capacity, 4 100 ctx", 41, 41,
+    Prediction("l40s-2", "seats by capacity, 4 100 ctx", 41, 41,
                "| 41 | 41 |", "| 41 | 41 |", RUN2),
-    Prediction(2, "seats by capacity, 1 600 ctx", 106.1, 106,
+    Prediction("l40s-2", "seats by capacity, 1 600 ctx", 106.1, 106,
                "| 106.1 |", "| 106 running |", RUN2),
-    Prediction(2, "decode step c=13", 33.83, 33.83,
+    Prediction("l40s-2", "decode step c=13", 33.83, 33.83,
                "| **33.83 ms** |", "**33.83 ms** (mean of six launches", RUN2),
-    Prediction(2, "decode step c=32", 49.85, 50.61,
+    Prediction("l40s-2", "decode step c=32", 49.85, 50.61,
                "| **49.85 ms** |", "50.61 ms (mean of the two uncontaminated", RUN2),
-    Prediction(2, "decode step, Poisson 0.5 req/s", 23.70, 24.07,
+    Prediction("l40s-2", "decode step, Poisson 0.5 req/s", 23.70, 24.07,
                "| 23.70–30.28 ms |", "| 24.07–30.94 ms |", RUN2),
-    Prediction(2, "decode step, Poisson 2.5 req/s", 30.28, 30.94,
+    Prediction("l40s-2", "decode step, Poisson 2.5 req/s", 30.28, 30.94,
                "| 23.70–30.28 ms |", "| 24.07–30.94 ms |", RUN2),
-    Prediction(2, "decode step, Poisson 3.0 req/s", 33.91, 36.85,
+    Prediction("l40s-2", "decode step, Poisson 3.0 req/s", 33.91, 36.85,
                "| 33.91 / 51.25 ms |", "| 36.85 / 55.76 ms |", RUN2),
-    Prediction(2, "decode step, Poisson 4.0 req/s", 51.25, 55.76,
+    Prediction("l40s-2", "decode step, Poisson 4.0 req/s", 51.25, 55.76,
                "| 33.91 / 51.25 ms |", "| 36.85 / 55.76 ms |", RUN2),
-    Prediction(2, "worst step, chunk 1", 77.5, 70.6,
+    Prediction("l40s-2", "worst step, chunk 1", 77.5, 70.6,
                "| 77.5 / 122.2 / 211.8 / 390.9 ms |",
                "| 70.6 / 114.2 / 198.2 / 364.9 ms |", RUN2),
-    Prediction(2, "worst step, chunk 2", 122.2, 114.2,
+    Prediction("l40s-2", "worst step, chunk 2", 122.2, 114.2,
                "| 77.5 / 122.2 / 211.8 / 390.9 ms |",
                "| 70.6 / 114.2 / 198.2 / 364.9 ms |", RUN2),
-    Prediction(2, "worst step, chunk 3", 211.8, 198.2,
+    Prediction("l40s-2", "worst step, chunk 3", 211.8, 198.2,
                "| 77.5 / 122.2 / 211.8 / 390.9 ms |",
                "| 70.6 / 114.2 / 198.2 / 364.9 ms |", RUN2),
-    Prediction(2, "worst step, chunk 4", 390.9, 364.9,
+    Prediction("l40s-2", "worst step, chunk 4", 390.9, 364.9,
                "| 77.5 / 122.2 / 211.8 / 390.9 ms |",
                "| 70.6 / 114.2 / 198.2 / 364.9 ms |", RUN2),
-    Prediction(2, "FP8 KV pool multiplier", 2.00, 2.000,
+    Prediction("l40s-2", "FP8 KV pool multiplier", 2.00, 2.000,
                "| 2.00× |", "| 2.000× |", RUN2),
-    Prediction(2, "FP8 decode step, n=13", 28.35, 28.91,
+    Prediction("l40s-2", "FP8 decode step, n=13", 28.35, 28.91,
                "| 28.35 ms |", "| 28.91 ms |", RUN2),
-    Prediction(2, "FP8 decode step, n=26", 33.83, 35.41,
+    Prediction("l40s-2", "FP8 decode step, n=26", 33.83, 35.41,
                "| 33.83 ms |", "| 35.41 ms |", RUN2),
-    Prediction(2, "TPOT p99 crossing", 1.75, 2.25,
+    Prediction("l40s-2", "TPOT p99 crossing", 1.75, 2.25,
                "| 1.5–2.0 req/s |", "| 2.0–2.5 req/s |", RUN2),
-    Prediction(2, "TTFT p99 crossing 300 ms", 2.0, 0.75,
+    Prediction("l40s-2", "TTFT p99 crossing 300 ms", 2.0, 0.75,
                "| 1.5–2.5 req/s |", "| 0.5–1.0 req/s |", RUN2),
-    Prediction(2, "goodput peak", 1.4, 1.87,
+    Prediction("l40s-2", "goodput peak", 1.4, 1.87,
                "| 1.2–1.6 req/s |", "| 1.87 req/s |", RUN2),
-    Prediction(2, "max_num_seqs by TPOT p99", 20, 14,
+    Prediction("l40s-2", "max_num_seqs by TPOT p99", 20, 14,
                "| 18–22, or 31 |", "| **14** |", RUN2),
 
     # --- run 3, 2026-08-30 ---------------------------------------------------
-    Prediction(3, "seat count, h = 0", 13, 12.5,
+    Prediction("l40s-3", "seat count, h = 0", 13, 12.5,
                "| 12–14 |", "| **12–14** (12.5) |", RUN3),
-    Prediction(3, "seat count, h = 0.8", 23, 37.8,
+    Prediction("l40s-3", "seat count, h = 0.8", 23, 37.8,
                "| 22–24 |", "| **32–40** (37.8) |", RUN3),
-    Prediction(3, "decode step at c=24, cascade", 27.97, 29.76,
+    Prediction("l40s-3", "decode step at c=24, cascade", 27.97, 29.76,
                "| 27.97 |", "| 29.76 |", RUN3),
-    Prediction(3, "measured h at cached levels", 0.800, 0.800,
+    Prediction("l40s-3", "measured h at cached levels", 0.800, 0.800,
                "| 0.800 ± 0.02 |", "| **0.800** |", RUN3),
-    Prediction(3, "ITL p99 under caching", 106, 199,
+    Prediction("l40s-3", "ITL p99 under caching", 106, 199,
                "| ~106 ms |", "| **199 ms** |", RUN3),
-    Prediction(3, "interference scales by (1 - h)", 0.200, 0.194,
+    Prediction("l40s-3", "interference scales by (1 - h)", 0.200, 0.194,
                "| 0.200 |", "| **0.194** |", RUN3),
-    Prediction(3, "TPOT p50 crossing 50 ms", 5.5, 8,
+    Prediction("l40s-3", "TPOT p50 crossing 50 ms", 5.5, 8,
                "| 5–6 req/s |", "| **7–9** |", RUN3),
-    Prediction(3, "TTFT p99 crossing 300 ms", 3.25, 8,
+    Prediction("l40s-3", "TTFT p99 crossing 300 ms", 3.25, 8,
                "| 2.5–4 req/s |", "| **7–9** |", RUN3),
     # Two measured pools; the dot is the first, the launch the prediction was
     # made for. Both travel in the cell text so the choice stays visible.
-    Prediction(3, "KV pool", 169833, 168985,
+    Prediction("l40s-3", "KV pool", 169833, 168985,
                "| 169 833 ± 5 % |", "| 168 985 / 176 227 |", RUN3),
-    Prediction(3, "startup-log keys present", 7, 6,
+    Prediction("l40s-3", "startup-log keys present", 7, 6,
                "| 7 of 8 |", "| **6 of 8** |", RUN3),
 
     # --- MI300X run 1, 2026-09-27 --------------------------------------------
-    Prediction(4, "KV pool", 1060655, 1123065,
+    Prediction("mi300x-1", "KV pool", 1060655, 1123065,
                "| 1 060 655 |", "| 1 123 065 (printed; 1 124 064 in blocks) |", MI300X_RUN1),
-    Prediction(4, "KV pool after the L40S's 7 %", 986410, 1123065,
+    Prediction("mi300x-1", "KV pool after the L40S's 7 %", 986410, 1123065,
                "| ~986 000 |", "| 1 123 065 (launch 1) |", MI300X_RUN1),
-    Prediction(4, "decode step c=1, eff_mem 0.70", 4.58, 6.61,
+    Prediction("mi300x-1", "decode step c=1, eff_mem 0.70", 4.58, 6.61,
                "| 4.58 ms |", "| 6.61 ms |", MI300X_RUN1),
-    Prediction(4, "decode step c=32, eff_mem 0.70", 9.51, 14.90,
+    Prediction("mi300x-1", "decode step c=32, eff_mem 0.70", 9.51, 14.90,
                "| 9.51 ms |", "| 14.90 ms |", MI300X_RUN1),
-    Prediction(4, "decode step c=1, eff_mem 0.46", 6.97, 6.61,
+    Prediction("mi300x-1", "decode step c=1, eff_mem 0.46", 6.97, 6.61,
                "| 6.97 ms |", "| 6.61 ms (c001) |", MI300X_RUN1, fitted=True),
-    Prediction(4, "decode step c=8, eff_mem 0.46", 8.71, 9.72,
+    Prediction("mi300x-1", "decode step c=8, eff_mem 0.46", 8.71, 9.72,
                "| 8.71 ms |", "| 9.72 ms (c008) |", MI300X_RUN1, fitted=True),
-    Prediction(4, "decode step c=32, eff_mem 0.46", 14.66, 14.90,
+    Prediction("mi300x-1", "decode step c=32, eff_mem 0.46", 14.66, 14.90,
                "| 14.66 ms |", "| 14.90 ms (c032) |", MI300X_RUN1, fitted=True),
-    Prediction(4, "TTFT c=1, 2 000-token prompt", 47.3, 116.4,
+    Prediction("mi300x-1", "TTFT c=1, 2 000-token prompt", 47.3, 116.4,
                "| 47.3 ms |", "| 116.4 ms |", MI300X_RUN1),
-    Prediction(4, "TTFT c=1, 4 000-token prompt", 94.5, 256.9,
+    Prediction("mi300x-1", "TTFT c=1, 4 000-token prompt", 94.5, 256.9,
                "| 94.5 ms |", "| 256.9 ms |", MI300X_RUN1),
-    Prediction(4, "TTFT c=1, 8 000-token prompt", 189.1, 642.6,
+    Prediction("mi300x-1", "TTFT c=1, 8 000-token prompt", 189.1, 642.6,
                "| 189.1 ms |", "| 642.6 ms |", MI300X_RUN1),
-    Prediction(4, "TTFT doubling, 2 000 to 4 000", 2.00, 2.21,
+    Prediction("mi300x-1", "TTFT doubling, 2 000 to 4 000", 2.00, 2.21,
                "| 2.00× / 2.00× |", "| 2.21× / 2.50× |", MI300X_RUN1),
-    Prediction(4, "TTFT doubling, 4 000 to 8 000", 2.00, 2.50,
+    Prediction("mi300x-1", "TTFT doubling, 4 000 to 8 000", 2.00, 2.50,
                "| 2.00× / 2.00× |", "| 2.21× / 2.50× |", MI300X_RUN1),
     # Left out: the seats row is the pool row divided by 4 200, not a second
     # test; running at c = 288 was a bound (it held); and the latency limit was
     # measured as a range, 8-32 -- a midpoint would invent a measured value.
 
     # --- MI300X run 2, 2026-09-27 --------------------------------------------
-    Prediction(5, "KV pool", 1122983, 1123065,
+    Prediction("mi300x-2", "KV pool", 1122983, 1123065,
                "| ~1 123 000 |", "| 1 123 065 |", MI300X_RUN2),
-    Prediction(5, "decode step c=1, eff_mem 0.46", 6.97, 5.22,
+    Prediction("mi300x-2", "decode step c=1, eff_mem 0.46", 6.97, 5.22,
                "| 6.97 ms |", "| 5.22 ms |", MI300X_RUN2),
-    Prediction(5, "decode step c=8, eff_mem 0.46", 8.71, 7.64,
+    Prediction("mi300x-2", "decode step c=8, eff_mem 0.46", 8.71, 7.64,
                "| 8.71 ms |", "| 7.64 ms |", MI300X_RUN2),
-    Prediction(5, "decode step c=32, eff_mem 0.46", 14.66, 12.46,
+    Prediction("mi300x-2", "decode step c=32, eff_mem 0.46", 14.66, 12.46,
                "| 14.66 ms |", "| 12.46 ms |", MI300X_RUN2),
-    Prediction(5, "TTFT c=1, 2 000-token prompt", 128.1, 80.9,
+    Prediction("mi300x-2", "TTFT c=1, 2 000-token prompt", 128.1, 80.9,
                "| 128.1 ms |", "| 80.9 ms |", MI300X_RUN2),
-    Prediction(5, "TTFT c=1, 4 000-token prompt", 256.3, 172.0,
+    Prediction("mi300x-2", "TTFT c=1, 4 000-token prompt", 256.3, 172.0,
                "| 256.3 ms |", "| 172.0 ms |", MI300X_RUN2),
-    Prediction(5, "TTFT c=1, 8 000-token prompt", 512.5, 410.8,
+    Prediction("mi300x-2", "TTFT c=1, 8 000-token prompt", 512.5, 410.8,
                "| 512.5 ms |", "| 410.8 ms |", MI300X_RUN2),
-    Prediction(5, "TPOT p50 c=8, with interference", 17.68, 12.82,
+    Prediction("mi300x-2", "TPOT p50 c=8, with interference", 17.68, 12.82,
                "| 17.68 ms |", "| 12.82 ms |", MI300X_RUN2),
-    Prediction(5, "TPOT p50 c=32, with interference", 54.38, 37.37,
+    Prediction("mi300x-2", "TPOT p50 c=32, with interference", 54.38, 37.37,
                "| 54.38 ms |", "| 37.37 ms |", MI300X_RUN2),
-    Prediction(5, "running at c=256, budget 2 048", 98, 99,
+    Prediction("mi300x-2", "running at c=256, budget 2 048", 98, 99,
                "| 98 |", "| 99 (98–100) |", MI300X_RUN2),
-    Prediction(5, "running at c=256, budget 4 096", 195, 196,
+    Prediction("mi300x-2", "running at c=256, budget 4 096", 195, 196,
                "| 195 |", "| 196 (183–200) |", MI300X_RUN2),
-    Prediction(5, "output at c=256, budget 4 096", 531.7, 709.5,
+    Prediction("mi300x-2", "output at c=256, budget 4 096", 531.7, 709.5,
                "| 531.7 ± 5 % |", "| 709.5 tok/s |", MI300X_RUN2),
-    Prediction(5, "decode step c=1, eff_mem 0.57", 5.63, 5.22,
+    Prediction("mi300x-2", "decode step c=1, eff_mem 0.57", 5.63, 5.22,
                "| 5.63 ms |", "| 5.22 ms |", MI300X_RUN2, fitted=True),
-    Prediction(5, "decode step c=32, eff_mem 0.57", 11.83, 12.46,
+    Prediction("mi300x-2", "decode step c=32, eff_mem 0.57", 11.83, 12.46,
                "| 11.83 ms |", "| 12.46 ms |", MI300X_RUN2, fitted=True),
-    Prediction(5, "TTFT c=1, 4 000 tokens, mfu 0.247", 172.2, 172.0,
+    Prediction("mi300x-2", "TTFT c=1, 4 000 tokens, mfu 0.247", 172.2, 172.0,
                "| 172.2 ms |", "| 172.0 ms |", MI300X_RUN2, fitted=True),
     # Left out: the b8192 running row is a tie of two caps, the ratio rows are
     # tests or ratios, and the p99 crossing and the plateau bound are not
     # two-sided values.
 
     # --- MI300X run 3, 2026-09-29 --------------------------------------------
-    Prediction(6, "KV pool, solo at 0.90", 1123065, 1119644,
+    Prediction("mi300x-3", "KV pool, solo at 0.90", 1123065, 1119644,
                "| 1 123 065 (logged, runs 1–2) |", "| 1 119 644 |", MI300X_RUN3),
-    Prediction(6, "KV pool, each engine at 0.45", 507050, 506525,
+    Prediction("mi300x-3", "KV pool, each engine at 0.45", 507050, 506525,
                "| ~507 050 |", "| 506 525 |", MI300X_RUN3),
-    Prediction(6, "the second copy of the weights", 111220, 106594,
+    Prediction("mi300x-3", "the second copy of the weights", 111220, 106594,
                "| 111 220 |", "| 106 594 |", MI300X_RUN3),
-    Prediction(6, "h, affinity, N = 31", 0.800, 0.784,
+    Prediction("mi300x-3", "h, affinity, N = 31", 0.800, 0.784,
                "| 0.800 |", "| 0.784 | +1.99 % |", MI300X_RUN3),
-    Prediction(6, "h, affinity, N = 127", 0.800, 0.748,
+    Prediction("mi300x-3", "h, affinity, N = 127", 0.800, 0.748,
                "| 0.800 (both models) |", "| 0.748 |", MI300X_RUN3),
     # Left out: the zeros of the rotation model cannot be drawn as a ratio, the
     # uniform model's miss is read against the same measurement as a zero, and
     # every second-arm level and round robin at N = 63 are defects, not faced.
 
     # --- MI300X run 4, 2026-10-17 --------------------------------------------
-    Prediction(7, "KV pool, each engine at 0.45", 506525, 506525,
+    Prediction("mi300x-4", "KV pool, each engine at 0.45", 506525, 506525,
                "| 506 525 (run 3) |", "| 506 525 / 506 525 |", MI300X_RUN4),
-    Prediction(7, "KV pool, first launch, cold compile cache", 506525, 492074,
+    Prediction("mi300x-4", "KV pool, first launch, cold compile cache", 506525, 492074,
                "| 506 525 (run 3) |", "| 492 074 (8000) |", MI300X_RUN4),
-    Prediction(7, "median ITL, one engine alone, c=32", 12.46, 12.43,
+    Prediction("mi300x-4", "median ITL, one engine alone, c=32", 12.46, 12.43,
                "| 12.46 ms |", "| 12.43 ms (8000)", MI300X_RUN4),
-    Prediction(7, "median ITL, pair together, fast engine", 24.9, 27.5,
+    Prediction("mi300x-4", "median ITL, pair together, fast engine", 24.9, 27.5,
                "| ≈ 24.9 ms |", "| 27.5 ms (fast)", MI300X_RUN4),
-    Prediction(7, "h, round robin, N = 63", 0.800, 0.800,
+    Prediction("mi300x-4", "h, round robin, N = 63", 0.800, 0.800,
                "| 0.800 |", "| 0.800, 256 of 256 |", MI300X_RUN4),
-    Prediction(7, "h, affinity, N = 31", 0.800, 0.738,
+    Prediction("mi300x-4", "h, affinity, N = 31", 0.800, 0.738,
                "| 0.800 |", "| 0.738 |", MI300X_RUN4),
-    Prediction(7, "h, affinity, N = 127", 0.800, 0.713,
+    Prediction("mi300x-4", "h, affinity, N = 127", 0.800, 0.713,
                "| 0.800 |", "| 0.713 |", MI300X_RUN4),
-    Prediction(7, "h, affinity, N = 127, bound off", 0.800, 0.800,
+    Prediction("mi300x-4", "h, affinity, N = 127, bound off", 0.800, 0.800,
                "| 0.800 |", "| 0.800 (bound off) |", MI300X_RUN4),
     # Left out: the zeros of the rotation model, the slow engine's 52.2 ms (the
     # first measured value is the dot), tests, and the TTFT bound.
+
 )
 
-@dataclass(frozen=True)
-class Run:
-    """One rented card on one date; the card is named per band, not in the title."""
-
-    label: str
-    date: str
-    card: str
-
-
-RUNS: dict[int, Run] = {
-    1: Run("run 1", "2026-08-18", "NVIDIA L40S"),
-    2: Run("run 2", "2026-08-23", "NVIDIA L40S"),
-    3: Run("run 3", "2026-08-30", "NVIDIA L40S"),
-    4: Run("MI300X run 1", "2026-09-27", "AMD Instinct MI300X"),
-    5: Run("MI300X run 2", "2026-09-27", "AMD Instinct MI300X"),
-    6: Run("MI300X run 3", "2026-09-29", "AMD Instinct MI300X"),
-    7: Run("MI300X run 4", "2026-10-17", "AMD Instinct MI300X"),
-}
+# The journal's runs, oldest first; a run with no two-sided row draws no band.
+RUNS = {r.id: r for r in runs.runs() if any(p.run == r.id for p in PREDICTIONS)}
 
 # --- geometry ----------------------------------------------------------------
 # One named row per prediction: GitHub renders the picture inside an <img>, so a
@@ -314,11 +301,11 @@ def x_of(ratio: float) -> float:
     return PLOT_L + t * (PLOT_R - PLOT_L)
 
 
-def layout() -> tuple[list[tuple[int, float, list[tuple[Prediction, float]]]], float]:
+def layout() -> tuple[list[tuple[str, float, list[tuple[Prediction, float]]]], float]:
     """Where every header and row sits, rows sorted by ratio inside their run."""
-    groups: list[tuple[int, float, list[tuple[Prediction, float]]]] = []
+    groups: list[tuple[str, float, list[tuple[Prediction, float]]]] = []
     y = float(PLOT_TOP)
-    for run in sorted(RUNS):
+    for run in RUNS:
         rows = sorted((p for p in PREDICTIONS if p.run == run),
                       key=lambda p: p.ratio)
         if groups:
@@ -357,14 +344,16 @@ def svg() -> str:
 
     hits = sum(1 for p in PREDICTIONS if is_hit(p))
     fitted = sum(1 for p in PREDICTIONS if p.fitted)
+    drawn = "; ".join(f"{runs.short(card)} {runs.span([r.number for r in RUNS.values() if r.card == card])}"
+                      for card in dict.fromkeys(r.card for r in RUNS.values()))
 
     parts: list[str] = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {height:.0f}" '
         f'width="{W}" height="{height:.0f}" font-family="system-ui,-apple-system,'
         f'Segoe UI,Roboto,sans-serif" role="img" '
-        f'aria-label="One row per prediction of L40S runs 1 to 3 and MI300X runs 1 and 2, '
+        f'aria-label="One row per prediction of {escape(drawn)}, '
         f'each drawn as measured divided by predicted on a logarithmic axis">',
-        '<title>Predicted vs measured — L40S runs 1–3, MI300X runs 1–2</title>',
+        f'<title>Predicted vs measured — {escape(drawn)}</title>',
         text(MARGIN, TITLE_Y, "Every prediction the runs made, against what the "
              "card did", size=15.5, fill=INK, weight="600"),
         text(MARGIN, SUBTITLE_Y,
@@ -428,15 +417,15 @@ def svg() -> str:
                       anchor="middle"))
 
     # --- the runs --------------------------------------------------------
-    for run, head_y, placed in groups:
+    for i_group, (run, head_y, placed) in enumerate(groups):
         meta = RUNS[run]
-        if run != min(RUNS):
+        if i_group:
             parts.append(
                 f'<line x1="{MARGIN}" y1="{head_y - 4:.1f}" x2="{VALUE_R}" '
                 f'y2="{head_y - 4:.1f}" stroke="{DIM}" stroke-width="1" '
                 f'opacity="0.45"/>')
         parts.append(text(MARGIN, head_y + 18,
-                          f"{meta.label} · {meta.date} · {meta.card}",
+                          f"{meta.label} · {meta.date}",
                           size=11.5, fill=INK, weight="600"))
         inside = sum(1 for p, _ in placed if is_hit(p))
         parts.append(text(VALUE_R, head_y + 18,

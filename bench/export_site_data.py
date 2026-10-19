@@ -18,7 +18,7 @@ import measured_mi300x_run1
 import measured_mi300x_run2
 import measured_run2
 import measured_run3
-import plot_predicted_vs_measured as plot
+import runs
 from predictions import (DEFAULT_MODEL, GMU, HOURLY_RATES, INTERFERENCE_FITS,
                          INTERFERENCE_MODEL, MODELS, SLO_CLASSES,
                          TPOT_TARGET, TTFT_TARGET, what_if_point)
@@ -28,9 +28,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SITE_DATA = ROOT / "site" / "data"
 SYMPTOM_MAP = ROOT / "docs" / "symptom-map.json"
 
-REPORTS = {1: plot.BASELINE, 2: plot.RUN2, 3: plot.RUN3, 4: plot.MI300X_RUN1,
-           5: plot.MI300X_RUN2, 6: plot.MI300X_RUN3,
-           7: plot.MI300X_RUN4}
+# The card the page opens on; its coefficients are whichever the journal has in use.
+DEFAULT_CARD = "l40s"
 
 # The point every one-factor-at-a-time row departs from: this repository's own
 # operating point, 4 000 in, 200 out, at the cached hit rate run 3 measured.
@@ -50,11 +49,16 @@ def _point(**inputs) -> dict:
 
 def model_data() -> dict:
     """Every constant the page needs, from the modules that own them."""
+    journal = runs.runs()
+    cards = runs.cards(journal)
     accelerators = {}
     for key, accel in ACCELERATORS.items():
         rate, rate_provenance = HOURLY_RATES[key]
+        fitted_by = next((r.number for r in journal if r.fitted == key), None)
         accelerators[key] = {
             "name": accel.name,
+            "card": runs.card_of(key),
+            "fitted_by": fitted_by,
             "memory_bytes": accel.memory_bytes,
             "peak_bandwidth": accel.peak_bandwidth,
             "peak_flops": accel.peak_flops,
@@ -99,7 +103,7 @@ def model_data() -> dict:
         "interference": interference,
         "slo_classes": dict(SLO_CLASSES, source="docs/SLO.md#2-targets"),
         "defaults": {
-            "accelerator": "l40s-run1",
+            "accelerator": cards[DEFAULT_CARD]["fit"],
             "model": DEFAULT_MODEL,
             "prompt_tokens": 4000,
             "output_tokens": 200,
@@ -108,10 +112,12 @@ def model_data() -> dict:
             "hit_rate": 0.0,
         },
         "constants": {"FLOPS_PER_MAC": FLOPS_PER_MAC},
+        "cards": cards,
         "runs": {
-            str(n): {"label": run.label, "date": run.date, "card": run.card,
-                     "report": REPORTS[n]}
-            for n, run in plot.RUNS.items()
+            r.id: {"card": r.card, "number": r.number, "label": r.label, "date": r.date,
+                   "asked": r.asked, "found": r.found, "report": r.report,
+                   "predicted_with": r.predicted_with, "fitted": r.fitted}
+            for r in journal
         },
         "measured": measured_points(),
         "generated_by": "bench/export_site_data.py",
@@ -145,7 +151,7 @@ def measured_points() -> dict:
     return {
         "model": INTERFERENCE_MODEL,
         "run1_decode": {
-            "run": 1, "mode": "closed", "accelerator": "l40s",
+            "run": "l40s-1", "mode": "closed", "accelerator": "l40s",
             "prompt_tokens": 4000, "output_tokens": 200, "kv_dtype_bytes": 2,
             "gpu_memory_utilization": GMU, "hit_rate": 0.0,
             "max_num_batched_tokens": 2048,
@@ -157,7 +163,7 @@ def measured_points() -> dict:
             } for lv in run1],
         },
         "run2_rates": {
-            "run": 2, "mode": "poisson", "accelerator": "l40s",
+            "run": "l40s-2", "mode": "poisson", "accelerator": "l40s",
             "prompt_tokens": 1500, "output_tokens": 200, "kv_dtype_bytes": 2,
             "gpu_memory_utilization": GMU, "hit_rate": 0.0,
             "max_num_batched_tokens": 2048,
@@ -169,7 +175,7 @@ def measured_points() -> dict:
             } for lv in run2_a],
         },
         "run3_seats": {
-            "run": 3, "mode": "closed", "accelerator": "l40s",
+            "run": "l40s-3", "mode": "closed", "accelerator": "l40s",
             "prompt_tokens": 4000, "output_tokens": 200, "kv_dtype_bytes": 2,
             "gpu_memory_utilization": GMU, "max_num_batched_tokens": 2048,
             "series": [
@@ -178,7 +184,7 @@ def measured_points() -> dict:
             ],
         },
         "run3_rates": {
-            "run": 3, "mode": "poisson", "accelerator": "l40s",
+            "run": "l40s-3", "mode": "poisson", "accelerator": "l40s",
             "prompt_tokens": 1500, "output_tokens": 200, "kv_dtype_bytes": 2,
             "gpu_memory_utilization": GMU, "hit_rate": 0.8,
             "max_num_batched_tokens": 2048,
@@ -195,7 +201,7 @@ def measured_points() -> dict:
         # Prefix caching off, so one cold series; the median ITL is a decode
         # step only through c = 32 (docs/benchmarks/mi300x-run1.md section 3).
         "mi300x_run1_seats": {
-            "run": 4, "label": "MI300X run 1", "mode": "closed", "accelerator": "mi300x",
+            "run": "mi300x-1", "label": "MI300X run 1", "mode": "closed", "accelerator": "mi300x",
             "prompt_tokens": 4000, "output_tokens": 200, "kv_dtype_bytes": 2,
             "gpu_memory_utilization": GMU, "hit_rate": 0.0,
             "max_num_batched_tokens": measured_mi300x_run1.MAX_NUM_BATCHED_TOKENS,
@@ -210,7 +216,7 @@ def measured_points() -> dict:
         # The b2048 serve row only: run 1's server line on a second droplet, the
         # row MI300X_RUN2 was fitted to (docs/benchmarks/mi300x-run2.md section 3).
         "mi300x_run2_seats": {
-            "run": 5, "label": "MI300X run 2", "mode": "closed", "accelerator": "mi300x-run2",
+            "run": "mi300x-2", "label": "MI300X run 2", "mode": "closed", "accelerator": "mi300x-run2",
             "prompt_tokens": 4000, "output_tokens": 200, "kv_dtype_bytes": 2,
             "gpu_memory_utilization": GMU, "hit_rate": 0.0,
             "max_num_batched_tokens": measured_mi300x_run2.SERVE["b2048"]["max_num_batched_tokens"],

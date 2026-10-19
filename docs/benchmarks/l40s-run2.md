@@ -1,3 +1,12 @@
+---
+card: l40s
+run: 2
+date: 2026-08-23
+asked: Do run 1's coefficients hold on another pod, under real arrivals, other chunk sizes and FP8 KV?
+found: eff_mem 0.83 held to 0.01 %, FP8 KV doubles the pool exactly, and past the goodput peak a useful token costs 15× more
+predicted_with: l40s-run1
+---
+
 # L40S run 2 — the scheduler, the arrival rate, and FP8 KV
 
 Run 1 calibrated the card. This run is the first that faced those coefficients

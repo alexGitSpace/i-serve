@@ -1,3 +1,12 @@
+---
+card: l40s
+run: 3
+date: 2026-08-30
+asked: How many seats is an 80 % prefix cache hit rate worth?
+found: 3× the seats, 12–14 to 32–40, because the decode step itself fell where the derivation said it could not
+predicted_with: l40s-run1
+---
+
 # L40S run 3 — prefix caching, priced in seats
 
 Runs 1 and 2 measured a card and a service with the feature **off**. This run is

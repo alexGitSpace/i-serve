@@ -2,6 +2,8 @@ window.MODEL_DATA = {
  "accelerators": {
   "l40s": {
    "achieved_bandwidth": 0.7,
+   "card": "l40s",
+   "fitted_by": null,
    "hourly_rate": 0.99,
    "hourly_rate_provenance": "RunPod console, 2026-08-15, On-Demand, 1x L40S 48 GB (48 GB VRAM, 62 GB RAM, 16 vCPU)",
    "measured": false,
@@ -14,6 +16,8 @@ window.MODEL_DATA = {
   },
   "l40s-run1": {
    "achieved_bandwidth": 0.83,
+   "card": "l40s",
+   "fitted_by": 1,
    "hourly_rate": 0.99,
    "hourly_rate_provenance": "RunPod console, 2026-08-15, On-Demand, 1x L40S 48 GB (48 GB VRAM, 62 GB RAM, 16 vCPU)",
    "measured": true,
@@ -26,6 +30,8 @@ window.MODEL_DATA = {
   },
   "mi300x": {
    "achieved_bandwidth": 0.7,
+   "card": "mi300x",
+   "fitted_by": null,
    "hourly_rate": 1.99,
    "hourly_rate_provenance": "AMD Developer Cloud console, 2026-09-27, on-demand, 1x MI300X; paid from credits",
    "measured": false,
@@ -38,6 +44,8 @@ window.MODEL_DATA = {
   },
   "mi300x-run1": {
    "achieved_bandwidth": 0.46,
+   "card": "mi300x",
+   "fitted_by": 1,
    "hourly_rate": 1.99,
    "hourly_rate_provenance": "AMD Developer Cloud console, 2026-09-27, on-demand, 1x MI300X; paid from credits",
    "measured": true,
@@ -50,6 +58,8 @@ window.MODEL_DATA = {
   },
   "mi300x-run2": {
    "achieved_bandwidth": 0.57,
+   "card": "mi300x",
+   "fitted_by": 2,
    "hourly_rate": 1.99,
    "hourly_rate_provenance": "AMD Developer Cloud console, 2026-09-27, on-demand, 1x MI300X; paid from credits",
    "measured": true,
@@ -59,6 +69,52 @@ window.MODEL_DATA = {
    "peak_bandwidth": 5300000000000.0,
    "peak_flops": 1307000000000000.0,
    "provenance": "measured (MI300X run 2, 2026-09-27), on a second droplet; every later MI300X run predicted from it"
+  }
+ },
+ "cards": {
+  "l40s": {
+   "faced_by": [
+    2,
+    3
+   ],
+   "fit": "l40s-run1",
+   "fitted_by": 1,
+   "journal": "docs/benchmarks/README.md#nvidia-l40s",
+   "name": "NVIDIA L40S",
+   "options": [
+    "l40s-run1",
+    "l40s"
+   ],
+   "runs": [
+    "l40s-1",
+    "l40s-2",
+    "l40s-3"
+   ],
+   "short": "L40S"
+  },
+  "mi300x": {
+   "faced_by": [
+    3,
+    4,
+    5
+   ],
+   "fit": "mi300x-run2",
+   "fitted_by": 2,
+   "journal": "docs/benchmarks/README.md#amd-instinct-mi300x",
+   "name": "AMD Instinct MI300X",
+   "options": [
+    "mi300x-run2",
+    "mi300x-run1",
+    "mi300x"
+   ],
+   "runs": [
+    "mi300x-1",
+    "mi300x-2",
+    "mi300x-3",
+    "mi300x-4",
+    "mi300x-5"
+   ],
+   "short": "MI300X"
   }
  },
  "constants": {
@@ -180,7 +236,7 @@ window.MODEL_DATA = {
    "mode": "closed",
    "output_tokens": 200,
    "prompt_tokens": 4000,
-   "run": 4
+   "run": "mi300x-1"
   },
   "mi300x_run2_seats": {
    "accelerator": "mi300x-run2",
@@ -243,7 +299,7 @@ window.MODEL_DATA = {
    "mode": "closed",
    "output_tokens": 200,
    "prompt_tokens": 4000,
-   "run": 5
+   "run": "mi300x-2"
   },
   "model": "qwen3-8b",
   "run1_decode": {
@@ -365,7 +421,7 @@ window.MODEL_DATA = {
    "mode": "closed",
    "output_tokens": 200,
    "prompt_tokens": 4000,
-   "run": 1
+   "run": "l40s-1"
   },
   "run2_rates": {
    "accelerator": "l40s",
@@ -458,7 +514,7 @@ window.MODEL_DATA = {
    "mode": "poisson",
    "output_tokens": 200,
    "prompt_tokens": 1500,
-   "run": 2
+   "run": "l40s-2"
   },
   "run3_rates": {
    "accelerator": "l40s",
@@ -581,7 +637,7 @@ window.MODEL_DATA = {
    "mode": "poisson",
    "output_tokens": 200,
    "prompt_tokens": 1500,
-   "run": 3
+   "run": "l40s-3"
   },
   "run3_seats": {
    "accelerator": "l40s",
@@ -591,7 +647,7 @@ window.MODEL_DATA = {
    "mode": "closed",
    "output_tokens": 200,
    "prompt_tokens": 4000,
-   "run": 3,
+   "run": "l40s-3",
    "series": [
     {
      "hit_rate": 0.0,
@@ -862,47 +918,93 @@ window.MODEL_DATA = {
   }
  },
  "runs": {
-  "1": {
-   "card": "NVIDIA L40S",
+  "l40s-1": {
+   "asked": "What does the card really deliver against the spec-sheet coefficients?",
+   "card": "l40s",
    "date": "2026-08-18",
-   "label": "run 1",
+   "fitted": "l40s-run1",
+   "found": "eff_mem 0.83 and mfu 0.439 replace the guesses, and TPOT p99 allows 12 seats where the arithmetic said 32",
+   "label": "L40S run 1",
+   "number": 1,
+   "predicted_with": "l40s",
    "report": "docs/benchmarks/l40s-baseline.md"
   },
-  "2": {
-   "card": "NVIDIA L40S",
+  "l40s-2": {
+   "asked": "Do run 1's coefficients hold on another pod, under real arrivals, other chunk sizes and FP8 KV?",
+   "card": "l40s",
    "date": "2026-08-23",
-   "label": "run 2",
+   "fitted": null,
+   "found": "eff_mem 0.83 held to 0.01 %, FP8 KV doubles the pool exactly, and past the goodput peak a useful token costs 15\u00d7 more",
+   "label": "L40S run 2",
+   "number": 2,
+   "predicted_with": "l40s-run1",
    "report": "docs/benchmarks/l40s-run2.md"
   },
-  "3": {
-   "card": "NVIDIA L40S",
+  "l40s-3": {
+   "asked": "How many seats is an 80 % prefix cache hit rate worth?",
+   "card": "l40s",
    "date": "2026-08-30",
-   "label": "run 3",
+   "fitted": null,
+   "found": "3\u00d7 the seats, 12\u201314 to 32\u201340, because the decode step itself fell where the derivation said it could not",
+   "label": "L40S run 3",
+   "number": 3,
+   "predicted_with": "l40s-run1",
    "report": "docs/benchmarks/l40s-run3.md"
   },
-  "4": {
-   "card": "AMD Instinct MI300X",
+  "mi300x-1": {
+   "asked": "Does the arithmetic transfer to the card the SLO was derived for?",
+   "card": "mi300x",
    "date": "2026-09-27",
+   "fitted": "mi300x-run1",
+   "found": "eff_mem 0.46 and mfu 0.166, a third and nearly two thirds below the priors, and latency rather than room ends the seat curve",
    "label": "MI300X run 1",
+   "number": 1,
+   "predicted_with": "mi300x",
    "report": "docs/benchmarks/mi300x-run1.md"
   },
-  "5": {
-   "card": "AMD Instinct MI300X",
+  "mi300x-2": {
+   "asked": "Which server lever moves the card, one at a time, and does run 1's fit hold?",
+   "card": "mi300x",
    "date": "2026-09-27",
+   "fitted": "mi300x-run2",
+   "found": "a second droplet ran the decode step 16\u201322 % faster, so run 1's fit did not hold, and the card was refitted at 0.57 / 0.247",
    "label": "MI300X run 2",
+   "number": 2,
+   "predicted_with": "mi300x-run1",
    "report": "docs/benchmarks/mi300x-run2.md"
   },
-  "6": {
-   "card": "AMD Instinct MI300X",
+  "mi300x-3": {
+   "asked": "Do two engines on one card, behind the prefix router, beat one engine?",
+   "card": "mi300x",
    "date": "2026-09-29",
+   "fitted": null,
+   "found": "the memory bill held and the pair out-produced one engine, but the router comparison was void and the two engines were unequal",
    "label": "MI300X run 3",
+   "number": 3,
+   "predicted_with": "mi300x-run2",
    "report": "docs/benchmarks/mi300x-run3.md"
   },
-  "7": {
-   "card": "AMD Instinct MI300X",
+  "mi300x-4": {
+   "asked": "Why was the pair unequal, and where does affinity routing beat round robin?",
+   "card": "mi300x",
    "date": "2026-10-17",
+   "fitted": null,
+   "found": "the engine launched first is the slow one, and with the instrument fixed the two routings part at 127 prefixes",
    "label": "MI300X run 4",
+   "number": 4,
+   "predicted_with": "mi300x-run2",
    "report": "docs/benchmarks/mi300x-run4.md"
+  },
+  "mi300x-5": {
+   "asked": "What makes two engines on one card equal, and does a 70B obey run 2's coefficient?",
+   "card": "mi300x",
+   "date": "2026-10-17",
+   "fitted": null,
+   "found": "one hardware queue per process ends the asymmetry, and the 70B's decode step held to run 2's eff_mem at TP = 1",
+   "label": "MI300X run 5",
+   "number": 5,
+   "predicted_with": "mi300x-run2",
+   "report": "docs/benchmarks/mi300x-run5.md"
   }
  },
  "slo_classes": {

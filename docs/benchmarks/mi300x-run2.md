@@ -1,3 +1,13 @@
+---
+card: mi300x
+run: 2
+date: 2026-09-27
+asked: Which server lever moves the card, one at a time, and does run 1's fit hold?
+found: a second droplet ran the decode step 16–22 % faster, so run 1's fit did not hold, and the card was refitted at 0.57 / 0.247
+predicted_with: mi300x-run1
+fitted: mi300x-run2
+---
+
 # MI300X run 2 — 2026-09-27
 
 The card configured for itself, one lever at a time: five server configurations

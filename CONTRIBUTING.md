@@ -42,6 +42,9 @@ one; the shape of the work is fixed, and this page says what it is.
   3.14 with no `pip install`, and a dependency that became necessary is what
   the workflow fails on;
 - the committed front-page chart is what its data produces;
+- every report in `docs/benchmarks/` registers its run in its front matter,
+  and the run journal and the front page's runs table are what `bench/runs.py`
+  produces;
 - the committed `site/data/` is what `bench/export_site_data.py` produces, and
   `site/calc.js` agrees with Python on every golden row;
 - every node of `docs/symptom-map.json` is a line of `docs/symptom-map.md`, and
@@ -77,8 +80,8 @@ from going quietly inert.
    template.
 2. **The results and the report as a second pull request**, with the raw
    evidence under `docs/benchmarks/raw/`, the §9 rows, the coefficient fit, the
-   registry edit, and the regenerated chart and site data (`.githooks/pre-commit`
-   does both if enabled).
+   registry edit, the report's front matter, and the regenerated chart, site
+   data and run journal (`.githooks/pre-commit` does all three if enabled).
 
 ## Licence
 

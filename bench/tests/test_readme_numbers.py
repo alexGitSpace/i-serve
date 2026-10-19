@@ -67,7 +67,7 @@ def _claims() -> list[tuple[str, int, str]]:
     # The same miss against the runsheet's two-sided prediction, which is where
     # the drawing takes it from.
     seat_pred = next(p for p in plot.PREDICTIONS
-                     if p.run == 3 and p.label == "seat count, h = 0.8")
+                     if p.run == "l40s-3" and p.label == "seat count, h = 0.8")
     over_midpoint = round((seat_pred.ratio - 1) * 100)
     lo, hi = re.findall(r"\d+", seat_pred.pred_text)
 
