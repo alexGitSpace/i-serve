@@ -206,6 +206,12 @@
           jump = { hit_rate: 0.8, label: "Show run 3 (80 % cached)" };   // the comparison run 3 was rented for
         }
       }
+    } else if (measuredGeometryMatches(Object.assign({}, state, { hit_rate: 0 }), data)) {
+      // Only the cache hides them: name the run, and offer the one move that shows it.
+      const run = measuredGeometryMatches(Object.assign({}, state, { hit_rate: 0 }), data) === "mi300x-run2"
+        ? data.measured.mi300x_run2_seats : data.measured.mi300x_run1_seats;
+      hidden = `measured points hidden: ${run.label} ran with prefix caching off, so its points say nothing about a card with ${Math.round(state.hit_rate * 100)} % of each prompt cached.`;
+      jump = { hit_rate: 0, label: `Show ${run.label} (nothing cached)` };
     } else {
       hidden = state.model && state.model !== data.measured.model
         ? `measured points hidden: every run decoded ${data.models[data.measured.model].name}, and a point measured on one architecture says nothing about another. This model is predicted only.`
