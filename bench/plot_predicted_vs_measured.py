@@ -28,6 +28,7 @@ MI300X_RUN1 = "docs/benchmarks/mi300x-run1.md"
 MI300X_RUN2 = "docs/benchmarks/mi300x-run2.md"
 MI300X_RUN3 = "docs/benchmarks/mi300x-run3.md"
 MI300X_RUN4 = "docs/benchmarks/mi300x-run4.md"
+MI300X_RUN5 = "docs/benchmarks/mi300x-run5.md"
 
 OUT = ROOT / "docs/benchmarks/predicted-vs-measured.svg"
 
@@ -243,6 +244,17 @@ PREDICTIONS: tuple[Prediction, ...] = (
     # Left out: the zeros of the rotation model, the slow engine's 52.2 ms (the
     # first measured value is the dot), tests, and the TTFT bound.
 
+    # --- MI300X run 5, 2026-10-17 --------------------------------------------
+    Prediction("mi300x-5", "KV pool, each engine of three pairs", 506525, 506525,
+               "| 506 525 (runs 3–4) |", "| 506 525 × 6 |", MI300X_RUN5),
+    Prediction("mi300x-5", "KV pool, masked launch", 506525, 506525,
+               "| 506 525: a mask changes no allocation |", "| 506 525 / 506 525 |", MI300X_RUN5),
+    Prediction("mi300x-5", "droplet check, median ITL c=1", 5.04, 5.02,
+               "| 5.04 ms (runs 3–4) |", "| 5.02 ms |", MI300X_RUN5),
+    Prediction("mi300x-5", "first launched over the other, ITL", 1.93, 1.92,
+               "| 1.90–1.96 (run 4) |", "| 1.92, 8000 slow |", MI300X_RUN5),
+    # Left out: the 70B's decode steps and every per-user and per-GPU rate were
+    # written as bounds, B1 and B2 against a decision table, and the rest as tests.
 )
 
 # The journal's runs, oldest first; a run with no two-sided row draws no band.
