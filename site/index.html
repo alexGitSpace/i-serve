@@ -17,7 +17,7 @@
 <header class="top">
   <h1>i-serve</h1>
   <nav id="nav">
-    <a data-doc="docs/benchmarks/">How it was measured</a>
+    <a data-doc="docs/benchmarks/README.md">How it was measured</a>
     <a data-doc="docs/running-on-kind.md">Run it yourself</a>
     <a data-repo-link>GitHub</a>
   </nav>
@@ -54,8 +54,9 @@
       <span class="edit-wrap"><button type="button" class="edit" data-pop="pop-accelerator" aria-controls="pop-accelerator" aria-expanded="false" id="v-accelerator">—</button>
         <span class="badge" id="accel-badge"></span>
         <span class="pop" id="pop-accelerator" hidden>
-          <label><span class="lab">card</span><select id="accelerator"></select></label>
-          <span class="hint" id="accel-prov"></span>
+          <label><span class="lab">card</span><select id="card"></select></label>
+          <span class="hint" id="card-runs"></span>
+          <span class="hint" id="card-links"></span>
         </span></span>
       <span class="glue">that costs me</span>
       <span class="edit-wrap" data-pin-label="$/h"><button type="button" class="edit mono" data-pop="pop-rate" aria-controls="pop-rate" aria-expanded="false" id="v-rate">—</button>
@@ -91,6 +92,8 @@
     <details class="more-assumptions" id="assumptions">
       <summary>More assumptions, and the numbers behind the answers</summary>
       <form class="inputs" id="inputs" onsubmit="return false">
+        <label><span class="lab">coefficients</span><select id="fit"></select>
+          <span class="hint" id="fit-prov"></span></label>
         <label><span class="lab">first-token target (TTFT p99), ms</span><input type="number" id="ttft" min="1" step="1">
           <span class="hint">how long a person may wait for the first word</span></label>
         <div class="radios"><span class="lab">KV cache dtype</span>
@@ -243,7 +246,7 @@
   <div class="grid">
     <div class="lab">Where the numbers come from</div>
     <div class="lines">
-      <p><a data-doc="docs/benchmarks/">The runs</a> · <a data-doc="docs/adding-a-run.md">Add a run</a> · <a data-doc="docs/audience.md">Where to start</a>, by how much time you have</p>
+      <p><a data-doc="docs/benchmarks/README.md">The runs</a> · <a data-doc="docs/adding-a-run.md">Add a run</a> · <a data-doc="docs/audience.md">Where to start</a>, by how much time you have</p>
     </div>
   </div>
   <div class="fine">

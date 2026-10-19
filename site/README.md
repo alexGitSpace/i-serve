@@ -15,7 +15,7 @@ contributor needs Python and, for the one check that must run JavaScript, the
 | `selftest.js` | hand | runs every row of `data/golden.json` through `calc.js` and compares — the page's badge and CI's step |
 | `draw.js` | hand | the two SVG pictures |
 | `advisor.js` | hand | evaluates `docs/symptom-map.json` as rules over the readings |
-| `ui.js` | hand | the sentence's popovers and the sliders ↔ state ↔ URL hash ↔ render; the answers written in plain words, the glossary term small beside them |
+| `ui.js` | hand | the sentence's popovers and the sliders ↔ state ↔ URL hash ↔ render; the answers written in plain words, the glossary term small beside them; a card picked by name, its coefficients chosen under *More assumptions* |
 | `data/model.{json,js}` | `python3 bench/export_site_data.py` | every constant: cards with provenance, each card's runs and coefficients in use from the run journal, the models and which one a run measured, fits, rates, presets, measured points |
 | `data/golden.{json,js}` | the same | the parity grid |
 | `data/symptom-map.js` | the same | a `window.SYMPTOM_MAP = …` twin of `docs/symptom-map.json` |

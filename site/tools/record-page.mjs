@@ -58,14 +58,16 @@ async function shot(times) {
 
 // hold repeats the frame: identical frames are free in a GIF, motion is not.
 const act = async (expr, hold = 1, settle = 200) => { await evaluate(expr); await wait(settle); await shot(hold); };
-const card = (v) => `(() => { const e = document.getElementById('accelerator'); e.value='${v}'; e.dispatchEvent(new Event('change',{bubbles:true})); })()`;
+const card = (v) => `(() => { const e = document.getElementById('card'); e.value='${v}'; e.dispatchEvent(new Event('change',{bubbles:true})); })()`;
 const slide = (id, v) => `(() => { const e = document.getElementById('${id}'); e.value=${v}; e.dispatchEvent(new Event('input',{bubbles:true})); e.dispatchEvent(new Event('change',{bubbles:true})); })()`;
 const to = (y) => `window.scrollTo(0, ${y})`;
 
-// 1. the first screen: the card, then the cache
+// 1. the first screen: the card and the runs behind it, then the cache
 await act(to(0), 4);
-await act(card("mi300x"), 5);
-await act(card("l40s-run1"), 4);
+await act(card("mi300x"), 3);
+await act(`document.getElementById('v-accelerator').click()`, 9, 320);
+await act(`document.body.click()`, 1);
+await act(card("l40s"), 4);
 for (const v of [20, 40, 60]) await act(slide("hit-range", v), 1);
 await act(slide("hit-range", 80), 5);
 await act(slide("hit-range", 30), 4);
@@ -81,7 +83,7 @@ for (const v of [40, 30]) await act(slide("tpot-range", v), 2);
 await act(slide("tpot-range", 20), 5);
 await act(slide("tpot-range", 50), 4);
 await act(card("mi300x"), 5);
-await act(card("l40s-run1"), 4);
+await act(card("l40s"), 4);
 
 // 4. cost: a stricter promise, priced
 for (const y of [1030, 1310, 1580]) await act(to(y), 1);

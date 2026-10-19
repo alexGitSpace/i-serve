@@ -127,13 +127,19 @@
   const P_MIN = 128, P_MAX = 32768;
   const promptToSlider = (p) => Math.round(1000 * Math.log2(p / P_MIN) / Math.log2(P_MAX / P_MIN));
   const sliderToPrompt = (v) => Math.round(P_MIN * Math.pow(2, (v / 1000) * Math.log2(P_MAX / P_MIN)));
-  // "L40S (run 1)", "MI300X (spec sheet)": two entries for one card must not
-  // read the same in the sentence or in a comparison.
+  // The reader picks a card; which coefficients it runs on is the journal's
+  // choice (data.cards[..].fit), and another set is a choice under the assumptions.
+  const cardOf = (key) => data.cards[data.accelerators[key].card];
+  const fitName = (key) => data.accelerators[key].fitted_by ? `run ${data.accelerators[key].fitted_by}'s fit` : "spec sheet";
+  // [3, 4, 5] -> "runs 3–5", [2] -> "run 2": bench/runs.py's span(), for the same sentences.
+  const span = (ns) => ns.length === 1 ? `run ${ns[0]}`
+    : ns.every((x, i) => i === 0 || x === ns[i - 1] + 1) ? `runs ${ns[0]}–${ns[ns.length - 1]}` : `runs ${ns.join(", ")}`;
+  const upper = (s) => s[0].toUpperCase() + s.slice(1);
+  // "MI300X", "MI300X (run 1's fit)", "MI300X (spec sheet)": two entries for one
+  // card must not read the same in a comparison.
   const cardShort = (key) => {
-    const c = data.accelerators[key];
-    const base = c.name.replace(/ \(.*\)$/, "").replace(/^(NVIDIA|AMD Instinct) /, "");
-    const run = c.name.match(/\((run \d+) coefficients\)/);
-    return run ? `${base} (${run[1]})` : c.measured ? base : `${base} (spec sheet)`;
+    const card = cardOf(key);
+    return key === card.fit ? card.short : `${card.short} (${fitName(key)})`;
   };
   const rateOf = (st) => st.hourly_rate === null ? data.accelerators[st.accelerator].hourly_rate : st.hourly_rate;
   // The batch class reads the same point as throughput and time to a million,
@@ -247,13 +253,14 @@
   // Links inside the answers that move the sliders: "Try it", "Switch card".
   function bindAnswerLinks() {
     document.addEventListener("click", (e) => {
-      const a = e.target.closest && e.target.closest("a[data-set-hit], a[data-set-card], a[data-open-ttft]");
+      const a = e.target.closest && e.target.closest("a[data-set-hit], a[data-set-card], a[data-open-ttft], a[data-open-fit]");
       if (!a) return;
       e.preventDefault();
-      if (a.dataset.openTtft !== undefined) {
+      if (a.dataset.openTtft !== undefined || a.dataset.openFit !== undefined) {
+        closePops(null);
         unpinSituation();   // pinned, the bar hides the assumptions and the field cannot take focus
         $("assumptions").open = true;
-        $("ttft").focus();
+        $(a.dataset.openFit !== undefined ? "fit" : "ttft").focus();
         return;
       }
       if (a.dataset.setHit !== undefined) state.hit_rate = Number(a.dataset.setHit);
@@ -456,7 +463,8 @@
         setStat("alt2", "—", "", `Even with 80 % repeats nothing fits at ${t} on this card.`);
       }
     } else {
-      const other = state.accelerator.startsWith("mi300x") ? "l40s-run1" : "mi300x-run1";
+      const otherCard = Object.keys(data.cards).find((c) => c !== data.accelerators[state.accelerator].card);
+      const other = data.cards[otherCard].fit;
       const oc = data.accelerators[other];
       const alt = R.whatIfPoint(data, Object.assign({}, state, { accelerator: other, hourly_rate: null }));
       const d = delivered(alt);
@@ -645,12 +653,13 @@
 
   // --- the situation's controls -------------------------------------------------
   function bindInputs() {
-    const acc = $("accelerator");
-    for (const [key, card] of Object.entries(data.accelerators)) {
+    const cardSel = $("card");
+    for (const [key, card] of Object.entries(data.cards)) {
       const o = document.createElement("option");
-      o.value = key; o.textContent = card.name + (card.measured ? "" : " (prior)"); acc.appendChild(o);
+      o.value = key; o.textContent = card.name; cardSel.appendChild(o);
     }
-    acc.addEventListener("change", () => { state.accelerator = acc.value; state.hourly_rate = null; update(); });
+    cardSel.addEventListener("change", () => { state.accelerator = data.cards[cardSel.value].fit; state.hourly_rate = null; update(); });
+    $("fit").addEventListener("change", () => { state.accelerator = $("fit").value; state.hourly_rate = null; update(); });
     const mod = $("model");
     const modelKeys = Object.keys(data.models).sort(
       (a, b) => (a === data.defaults.model ? -1 : b === data.defaults.model ? 1 : a < b ? -1 : 1));
@@ -690,15 +699,33 @@
     $("rate-reset").addEventListener("click", () => { state.hourly_rate = null; update(); });
   }
   function reflectInputs() {
-    $("accelerator").value = state.accelerator;
-    const card = data.accelerators[state.accelerator];
+    const accel = data.accelerators[state.accelerator], card = cardOf(state.accelerator);
+    const inUse = state.accelerator === card.fit;
+    $("card").value = accel.card;
+    $("v-accelerator").textContent = card.short;
+    // The badge counts the card's runs on the coefficients in use, and names any other set chosen.
     const badge = $("accel-badge");
-    const run = card.name.match(/\((run \d+) coefficients\)/);
-    badge.textContent = run ? run[1] : card.measured ? "measured" : "prior";
-    badge.className = "badge " + (card.measured ? "measured" : "prior");
-    badge.title = card.provenance;
-    $("accel-prov").textContent = card.provenance;
-    $("v-accelerator").textContent = cardShort(state.accelerator).replace(/ \(.*\)$/, "");   // the badge says which entry
+    const n = card.runs.length;
+    badge.textContent = !accel.measured ? "prior" : inUse ? `measured · ${n} run${n === 1 ? "" : "s"}` : fitName(state.accelerator);
+    badge.className = "badge " + (accel.measured ? "measured" : "prior");
+    badge.title = accel.provenance;
+    renderCardRuns(card, inUse);
+    // Rebuilt only when the card changes, so the select keeps its focus.
+    const fit = $("fit");
+    if (fit.dataset.card !== accel.card) {
+      fit.innerHTML = card.options.map((k) => {
+        return `<option value="${k}">${fitName(k)}${k === card.fit ? ", in use" : ""}</option>`;
+      }).join("");
+      fit.dataset.card = accel.card;
+    }
+    fit.value = state.accelerator;
+    // Three choices for five runs needs saying: a run that only predicted adds no set.
+    const runs = card.runs.map((id) => data.runs[id]);
+    const fitters = runs.filter((r) => r.fitted).map((r) => r.number);
+    const reusers = runs.filter((r) => !r.fitted).map((r) => r.number);
+    $("fit-prov").textContent = !fitters.length ? "No run has fitted coefficients on this card yet."
+      : `Only a run that fitted coefficients adds a set here: ${span(fitters)}.` +
+        (reusers.length ? ` ${upper(span(reusers))} predicted from a fitted set and added none.` : "");
     $("model").value = state.model;
     const mdl = data.models[state.model];
     const mbadge = $("model-badge");
@@ -722,7 +749,29 @@
     const rate = rateOf(state);
     $("rate").value = rate.toFixed(2);
     $("v-rate").textContent = `$${rate.toFixed(2)}`;
-    $("rate-prov").textContent = state.hourly_rate === null ? card.hourly_rate_provenance : "Your figure: a contract, not physics.";
+    $("rate-prov").textContent = state.hourly_rate === null ? accel.hourly_rate_provenance : "Your figure: a contract, not physics.";
+  }
+  // What the card's numbers rest on, in two sentences whatever the run count;
+  // each run's question and answer are in the journal, one link away.
+  function renderCardRuns(card, inUse) {
+    const runs = card.runs.map((id) => data.runs[id]);
+    if (!runs.length) {
+      $("card-runs").textContent = "No run on this card yet: every number here is a spec-sheet guess.";
+      $("card-links").innerHTML = "";
+      return;
+    }
+    const first = runs[0].date, last = runs[runs.length - 1].date;
+    const day = (d) => `<span class="nowrap">${d}</span>`;   // a date never breaks at its hyphen
+    const when = first === last ? `on ${day(first)}` : `from ${day(first)} to ${day(last)}`;
+    const chosen = data.accelerators[state.accelerator].fitted_by ? fitName(state.accelerator) : "the spec sheet's coefficients";
+    const basis = !inUse ? `This view uses ${chosen} instead of the set in use.`
+      : card.fitted_by ? `The numbers use the coefficients run ${card.fitted_by} fitted` +
+        (card.faced_by.length ? `; ${span(card.faced_by)} predicted from them.` : ".")
+      : "The numbers use the spec sheet's coefficients.";
+    $("card-runs").innerHTML = `<b>${runs.length} run${runs.length === 1 ? "" : "s"}</b> on rented cards, ${when}. ${basis}`;
+    const href = repoLink(card.journal);
+    $("card-links").innerHTML = (href ? `<a href="${href}">What each run asked and found</a> · ` : "") +
+      `<a href="#assumptions" data-open-fit>Other coefficients</a>`;
   }
   function cell(title, big, small) {
     return `<div class="cell"><div class="cell-title">${title}</div><div class="cell-big">${big}</div><div class="cell-small">${small || ""}</div></div>`;

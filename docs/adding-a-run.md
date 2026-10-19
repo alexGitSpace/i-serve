@@ -149,10 +149,10 @@ unless the run measured TPOT minus median ITL across seats.
 
 Then regenerate what the numbers feed: `python3 bench/export_site_data.py`
 (the calculator's card table and its golden grid) — `.githooks/pre-commit` does
-it on commit if enabled. Nothing else is needed for the site: the calculator
-reads its cards from that table, so the new card appears as a button on the
-cost screen and in the assumptions panel, wearing *measured* or *prior* from
-its `provenance` field, and the golden grid gains its rows. A run's measured
+it on commit if enabled. Nothing else is needed for the site: a new card appears
+in the sentence's card list, its runs counted and linked into the journal, a new fit becomes
+the card's coefficients in use once a run trusts it and stays choosable under
+*More assumptions* after that, and the golden grid gains its rows. A run's measured
 points appear on the seats picture once `measured_<run>.py` feeds them into
 `export_site_data.measured_points()` with the geometry they were taken at.
 
