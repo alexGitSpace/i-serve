@@ -8,9 +8,10 @@
  * relative 1e-9, and a floor() taken on 23.999999999999996 instead of 24.0 is
  * a seat that exists in one language and not the other.
  *
- * Every constant comes in through `data` (site/data/model.json); nothing is
- * typed here -- including which model is being priced, and which single model
- * the interference fit was measured on and may therefore be lent to. Loads as window.Roofline in a browser and as module.exports
+ * Every constant comes in through `data` (site/data/model.json) but the physical
+ * ones typed at the top, which golden parity holds equal to Python -- including
+ * which model is being priced, and which single model the interference fit was
+ * measured on and may therefore be lent to. Loads as window.Roofline in a browser and as module.exports
  * under node, so the same file is the page and the CI check.
  */
 (function (root, factory) {
