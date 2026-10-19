@@ -19,8 +19,8 @@ built from. The routes are in [../README.md](../README.md).
 | `docs/benchmarks/` | One report per run, registered by its front matter; the run journal (`README.md`, generated); the chart above | every run written up, raw evidence committed; the count and what each found are in the journal |
 | `docs/benchmarks/runsheets/` | The sheet written **before** each run | one or two per run, written before its card was rented |
 | `docs/instrument-vllm-bench-sweep.md` | What `vllm bench sweep` does at `v0.27.1` | verified off-card against that tag |
-| `bench/` | Load harness, `roofline.py`, chart generator, site export, the run journal (`runs.py`); tests in `bench/tests/` | model calibrated; the harness has run on both cards |
-| `site/` | Calculator and advisor as one static page for Pages | live; parity 333/333 rows |
+| `bench/` | Load harness, `roofline.py`, chart generator, site export, the run journal (`runs.py`), checkpoint snapshots of every priced model (`models/`); tests in `bench/tests/` | model calibrated on Qwen3-8B; two more architectures priced, never served; the harness has run on both cards |
+| `site/` | Calculator and advisor as one static page for Pages | live; parity 438/438 rows |
 | `.github/workflows/` | Tests on Python 3.10 and 3.14, the quick-start commands, the chart, the run journal, the parity check | installs nothing, which is the claim it tests |
 | `.githooks/` | Pre-commit: regenerates the chart, `site/data/` and the run journal; refuses a status glyph on the map, non-English content, a credential | opt-in: `git config core.hooksPath .githooks`; CI runs the three refusals on a branch no hook saw |
 | `deploy/kind/` | Local CPU-only cluster | control plane + two workers |

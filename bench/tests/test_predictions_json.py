@@ -43,8 +43,9 @@ ROOT = _pathlib.Path(__file__).resolve().parent.parent.parent
 # than derived.
 POINT_KEYS = {
     "inputs", "model_name", "accelerator_name", "coefficients", "kv_pool_tokens",
-    "seats", "tpot_floor_at_max_num_seqs", "ttft_floor", "ttft_floor_uncached",
-    "aggregate_tokens_per_sec", "cost_per_1m_output_tokens", "service", "error",
+    "state_tokens_per_seat", "seats", "tpot_floor_at_max_num_seqs", "ttft_floor",
+    "ttft_floor_uncached", "aggregate_tokens_per_sec", "cost_per_1m_output_tokens",
+    "service", "error",
 }
 INPUT_KEYS = {
     "accelerator", "model", "context_len", "prompt_tokens", "tpot_target_s",
@@ -86,6 +87,8 @@ def test_what_if_point_carries_exactly_the_keys_the_page_reads():
     assert set(point["seats"]) == {"by_capacity", "by_latency", "max_num_seqs",
                                    "bound_by", "gap"}
     assert set(point["coefficients"]) == {"eff_mem", "mfu", "provenance"}
+    assert set(point["tpot_floor_at_max_num_seqs"]) == {
+        "seconds", "bound_by", "ratio", "share_of_target", "experts_read_share"}
 
 
 def test_the_first_nine_lines_are_the_ones_audience_md_quotes():
@@ -126,6 +129,19 @@ def test_the_text_is_a_rendering_of_the_dict():
     ]
     missing = [e for e in expected if e not in text]
     assert not missing, missing
+
+
+def test_the_state_and_expert_lines_are_renderings_too_and_only_where_they_apply():
+    """A dense model prints neither; the hybrid MoE prints both, from the dict."""
+    kwargs = dict(model="qwen3.6-35b-a3b", accelerator="mi300x-run2")
+    point, text = what_if_point(**kwargs), _printed(**kwargs)
+    decode = point["tpot_floor_at_max_num_seqs"]
+    assert f"{point['state_tokens_per_seat']:,.0f} tokens' worth of KV per seat" in text
+    assert (f"{decode['experts_read_share']:.0%} per step at "
+            f"{point['seats']['max_num_seqs']} seats") in text
+    dense = _printed()
+    assert "recurrent state" not in dense and "experts read" not in dense
+    assert what_if_point()["state_tokens_per_seat"] is None
 
 
 def test_hit_rate_scales_only_the_interference_term():
@@ -193,20 +209,19 @@ def test_the_interference_fit_is_never_lent_to_a_model_it_was_not_measured_on():
             continue
         point = what_if_point(model=key)
         assert point["service"] is None, key
+        if point["seats"] is None:                          # does not fit the card at all
+            assert "exceed" in point["error"], key
+            continue
         assert point["seats"]["max_num_seqs"] > 0, key      # the floors still hold
         assert "not derivable" in _printed(model=key)
 
 
 def test_a_second_architecture_changes_the_seat_count_on_the_same_card():
-    """The reason the page offers one at all: "an 8B model" does not determine a
-    seat count -- the KV geometry does. Qwen2.5-7B carries 4 KV heads over 28
-    layers against Qwen3-8B's 8 over 36, so its KV per token is 2.6x smaller and
-    the same card at the same target seats far more of it.
-    """
-    from roofline import QWEN2_5_7B, QWEN3_8B
-    assert QWEN3_8B.kv_bytes_per_token / QWEN2_5_7B.kv_bytes_per_token > 2.5
+    """The attention layout, not "an 8B model", sets the seat count (docs/audience.md, SLO.md section 11)."""
+    from roofline import QWEN3_5_9B
+    assert QWEN3_8B.kv_bytes_per_token / QWEN3_5_9B.kv_bytes_per_token == 4.5
     a = what_if_point(model="qwen3-8b")["seats"]["max_num_seqs"]
-    b = what_if_point(model="qwen2.5-7b")["seats"]["max_num_seqs"]
+    b = what_if_point(model="qwen3.5-9b")["seats"]["max_num_seqs"]
     assert b > 2 * a, (a, b)
 
 

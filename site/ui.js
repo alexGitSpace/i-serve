@@ -698,6 +698,17 @@
     $("rate").addEventListener("change", () => { const v = Number($("rate").value); state.hourly_rate = v > 0 ? v : null; update(); });
     $("rate-reset").addEventListener("click", () => { state.hourly_rate = null; update(); });
   }
+  // Geometry in words: KV per token over the layers that keep it, then what a
+  // hybrid or an MoE adds, then where the figures came from.
+  function modelProvenance(m) {
+    const layers = m.attention_layers === m.num_layers
+      ? `${m.num_layers} layers` : `${m.attention_layers} of ${m.num_layers} layers`;
+    const state = m.state_bytes_per_sequence
+      ? `, plus ${(m.state_bytes_per_sequence / 1e6).toFixed(1)} MB of recurrent state per sequence` : "";
+    const experts = m.experts.params
+      ? `; ${m.experts.per_token} of ${m.experts.count} experts per token, ${(m.params_active / 1e9).toFixed(1)} B of ${(m.params_total / 1e9).toFixed(1)} B parameters active` : "";
+    return `${(m.kv_bytes_per_token / 1e3).toFixed(0)} kB of KV per token, ${m.num_kv_heads} KV heads × ${layers}${state}${experts}. ${m.provenance}`;
+  }
   function reflectInputs() {
     const accel = data.accelerators[state.accelerator], card = cardOf(state.accelerator);
     const inUse = state.accelerator === card.fit;
@@ -734,8 +745,16 @@
     mbadge.className = "badge " + (mdl.measured ? "measured" : "prior");
     mbadge.title = mdl.served_by_this_stack
       ? "The model this stack serves and every run measured."
-      : "Predicted only: this stack never serves it and no run here has measured it. The arithmetic holds because it is dense, GQA and full-attention.";
-    $("model-prov").textContent = `${(mdl.kv_bytes_per_token / 1e3).toFixed(0)} kB of KV per token, ${mdl.num_kv_heads} KV heads × ${mdl.num_layers} layers. ${mdl.provenance}`;
+      : `Predicted only: this stack never serves it and no run here has measured it. The arithmetic covers its architecture: ${mdl.architecture}.`;
+    $("model-prov").textContent = modelProvenance(mdl);
+    // The options say which models this card cannot hold, so a pick is never a surprise.
+    for (const o of $("model").options) {
+      const m = data.models[o.value];
+      let fits = true;
+      try { R.kvCacheTokens(m, accel, state.gpu_memory_utilization); } catch (e) { fits = false; }
+      o.textContent = m.name + (m.served_by_this_stack ? "" : " (predicted only)") +
+        (fits ? "" : ` — does not fit an ${card.short}`);
+    }
     $("v-model").textContent = mdl.name;
     $("prompt-range").value = promptToSlider(state.prompt_tokens); $("prompt").value = state.prompt_tokens;
     $("v-prompt").textContent = int(state.prompt_tokens);

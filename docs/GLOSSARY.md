@@ -1596,16 +1596,19 @@ card is added.
 
 **`--model`** (`bench/predictions.py`) — which architecture the floors are
 computed for: `qwen3-8b`, the model this stack serves and the only one any run
-here has measured, or a second entry priced but never served — see *Predicted
-only*. The names come from the `MODELS` registry in `bench/predictions.py`, and
-every model in it must be dense, GQA and full-attention, because the formulas
-above assume exactly that (*Architectures that break the standard arithmetic*).
+here has measured, or `qwen3.5-9b` and `qwen3.6-35b-a3b`, priced but never
+served — see *Predicted only*. The names come from the `MODELS` registry in
+`bench/predictions.py`. A model joins it only when every `config.json` term
+that moves bytes or FLOPs is modelled, which `bench/tests/test_models.py` checks
+against *Checkpoint snapshot* (*Architectures that break the standard
+arithmetic*).
 
 **Checkpoint snapshot** (`bench/models/`) — a model's `config.json` and its
 parameter counts split by role (embedding, `lm_head`, decoder, routed experts,
 vision tower, MTP head), read from the safetensors headers at a pinned
 revision by `bench/models/snapshot.py`. It needs the network, so it is run by
-hand when a model is added.
+hand when a model is added. The `Model` literals in `bench/roofline.py` are
+checked against it.
 
 **`--what-if`** (`bench/predictions.py`) — prints one operating point of the
 reader's choosing — card, context length, prompt length, TPOT and TTFT targets,
@@ -1739,8 +1742,8 @@ a class added without a derivation would be a target picked by feel. In code,
 The rules of thumb above (`2 × P × B` for FLOPs, `2 × n_kv × head_dim × bytes × L`
 for KV per token) assume a dense, GQA, full-attention transformer. Five families
 depart from them. Check which one you are holding before reaching for a formula.
-`bench/roofline.py` now models the first two; the three after them still
-break it.
+`bench/roofline.py` now models the first two, and the three after them still
+keep a model off the calculator's list (`bench/tests/test_models.py`).
 
 **MoE (Mixture of Experts)** — modelled. Only a subset of experts fires per
 token, so the parameter count splits in two. Memory must use **total**

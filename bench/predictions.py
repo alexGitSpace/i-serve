@@ -24,7 +24,8 @@ from roofline import (
     MI300X_RUN1,
     MI300X_RUN2,
     Model,
-    QWEN2_5_7B,
+    QWEN3_5_9B,
+    QWEN3_6_35B_A3B,
     QWEN3_8B,
     aggregate_tokens_per_sec,
     concurrency_ceiling,
@@ -80,12 +81,12 @@ L40S_RUN1_INTERFERENCE_PROVENANCE = (
     "4 000-token prompts, max_num_batched_tokens 2 048; its (1 - h) scaling "
     "confirmed by run 3, slope ratio 0.194 against 0.200")
 
-# Dense, GQA, full-attention models only: the formulas are not general
-# (GLOSSARY.md, "Architectures that break the standard arithmetic"). Qwen2.5-7B
-# is for comparison; Qwen3-8B is the one served and measured.
+# One step apart each (docs/audience.md); admitted by bench/tests/test_models.py.
+# Qwen3-8B is the one served and measured.
 MODELS = {
     "qwen3-8b": QWEN3_8B,
-    "qwen2.5-7b": QWEN2_5_7B,
+    "qwen3.5-9b": QWEN3_5_9B,
+    "qwen3.6-35b-a3b": QWEN3_6_35B_A3B,
 }
 DEFAULT_MODEL = "qwen3-8b"
 
@@ -800,6 +801,8 @@ def what_if_point(accelerator: str = "l40s-run1",
             "mfu": accel.mfu,
             "provenance": accel.provenance,
         },
+        # None under full attention: the state is a term only some models have.
+        "state_tokens_per_seat": model.state_tokens or None,
         "kv_pool_tokens": None,
         "seats": None,
         "tpot_floor_at_max_num_seqs": None,
@@ -860,6 +863,8 @@ def what_if_point(accelerator: str = "l40s-run1",
         "bound_by": decode.bound_by,
         "ratio": _finite(decode.ratio),
         "share_of_target": decode.seconds / tpot_target,
+        "experts_read_share": (model.experts.share_read(seats.sequences)
+                               if model.experts.params else None),
     }
     point["aggregate_tokens_per_sec"] = total
     point["cost_per_1m_output_tokens"] = cost_per_1m_tokens(total, hourly_rate)
@@ -943,6 +948,9 @@ def what_if(accelerator: str = "l40s-run1",
         return
     seats = point["seats"]
     print(f"  {'KV pool':<22}{point['kv_pool_tokens'] / 1e6:.2f} M tokens")
+    if point["state_tokens_per_seat"]:
+        print(f"  {'recurrent state':<22}{point['state_tokens_per_seat']:,.0f} tokens' "
+              f"worth of KV per seat, whatever its length")
     print(f"  {'seats by capacity':<22}{seats['by_capacity']}")
     print(f"  {'seats by latency':<22}{seats['by_latency']}")
     gap = f", gap {seats['gap']:.2f}x" if seats["gap"] is not None else ""
@@ -960,6 +968,9 @@ def what_if(accelerator: str = "l40s-run1",
     print(f"  {'TPOT floor':<22}{decode['seconds'] * 1e3:.2f} ms at "
           f"{n} seats   bound by {decode['bound_by']}, "
           f"{decode['ratio']:.1f}x   ({decode['share_of_target']:.0%} of target)")
+    if decode["experts_read_share"] is not None:
+        print(f"  {'experts read':<22}{decode['experts_read_share']:.0%} per step at "
+              f"{n} seats, routing assumed uniform (docs/SLO.md section 11)")
     print(f"  {'TTFT floor':<22}{prefill['seconds'] * 1e3:.1f} ms at "
           f"{prompt_tokens:,} tokens   bound by {prefill['bound_by']}, "
           f"{prefill['ratio']:.1f}x   ({prefill['share_of_target']:.0%} of target)")

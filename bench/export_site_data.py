@@ -10,6 +10,7 @@ each .json has a .js twin that loads from file:// -- site/README.md has the why.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import pathlib
 
@@ -22,7 +23,7 @@ import runs
 from predictions import (DEFAULT_MODEL, GMU, HOURLY_RATES, INTERFERENCE_FITS,
                          INTERFERENCE_MODEL, MODELS, SLO_CLASSES,
                          TPOT_TARGET, TTFT_TARGET, what_if_point)
-from roofline import ACCELERATORS, FLOPS_PER_MAC
+from roofline import ACCELERATORS, FLOPS_PER_MAC, STATE_PASSES
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SITE_DATA = ROOT / "site" / "data"
@@ -45,6 +46,15 @@ def _point(**inputs) -> dict:
     kwargs["context_len"] = kwargs.pop("prompt_tokens") + kwargs.pop("output_tokens")
     kwargs["prompt_tokens"] = inputs["prompt_tokens"]
     return what_if_point(**kwargs)
+
+
+def architecture(m) -> str:
+    """The model's place on the two axes the formulas cover, in words for the page."""
+    ffn = (f"MoE, {m.experts.per_token} of {m.experts.count} experts per token"
+           if m.experts.params else "dense")
+    attention = (f"{m.attention_layers} of {m.num_layers} layers full attention, "
+                 f"the rest linear" if m.linear.num_layers else "full attention")
+    return f"{ffn}; {attention}"
 
 
 def model_data() -> dict:
@@ -84,16 +94,20 @@ def model_data() -> dict:
             "head_dim": m.head_dim,
             "weight_dtype_bytes": m.weight_dtype_bytes,
             "kv_dtype_bytes": m.kv_dtype_bytes,
+            "experts": dataclasses.asdict(m.experts),
+            "linear": dataclasses.asdict(m.linear),
+            # Derived, for the words on the page; calc.js recomputes each one.
             "kv_bytes_per_token": m.kv_bytes_per_token,
-            # Which of the two the page may draw a measured point over, and
+            "attention_layers": m.attention_layers,
+            "state_bytes_per_sequence": m.state_bytes_per_sequence,
+            "params_active": m.params_active,
+            "architecture": architecture(m),
+            # Which of them the page may draw a measured point over, and
             # lend the interference fit to. Exactly one, and it says so here
             # rather than in the JavaScript, so the fact has one home.
             "measured": key == INTERFERENCE_MODEL,
             "served_by_this_stack": key == DEFAULT_MODEL,
-            "provenance": ("config.json and the model card; docs/model-anatomy.md"
-                           if key == DEFAULT_MODEL else
-                           "config.json and the model card; never served or measured here, "
-                           "docs/audience.md"),
+            "provenance": m.provenance,
         }
         for key, m in MODELS.items()
     }
@@ -111,7 +125,7 @@ def model_data() -> dict:
             "kv_dtype_bytes": 2,
             "hit_rate": 0.0,
         },
-        "constants": {"FLOPS_PER_MAC": FLOPS_PER_MAC},
+        "constants": {"FLOPS_PER_MAC": FLOPS_PER_MAC, "STATE_PASSES": STATE_PASSES},
         "cards": cards,
         "runs": {
             r.id: {"card": r.card, "number": r.number, "label": r.label, "date": r.date,
@@ -271,16 +285,19 @@ def golden_grid() -> list[dict]:
     add(**dict(BASE, hit_rate=0.0))
     for accelerator in ("l40s", "mi300x"):
         add(**dict(BASE, accelerator=accelerator))
-    # The edges, and the second model over the regimes that decide its answer,
-    # so its "service: not derivable" is held to Python too.
-    for prompt in (512, 4000, 32000):
-        for tpot in (0.050, 0.200):
-            for kv in (2, 1):
-                add(**dict(BASE, model="qwen2.5-7b", prompt_tokens=prompt,
-                           tpot_target=tpot, kv_dtype_bytes=kv))
-    for accelerator in ("l40s", "mi300x-run2", "mi300x-run1", "mi300x"):
-        add(**dict(BASE, model="qwen2.5-7b", accelerator=accelerator))
-    add(**dict(BASE, model="qwen2.5-7b", hit_rate=0.0))
+    # Every other model over the regimes that decide its answer, on every card,
+    # so its "does not fit" and its "service: not derivable" are held to Python
+    # too; the MoE's bisection runs at both targets.
+    for model in sorted(set(MODELS) - {DEFAULT_MODEL}):
+        for accelerator in sorted(ACCELERATORS):
+            for prompt in (512, 4000, 32000):
+                for tpot in (0.050, 0.200):
+                    for kv in (2, 1):
+                        add(**dict(BASE, model=model, accelerator=accelerator,
+                                   prompt_tokens=prompt, tpot_target=tpot,
+                                   kv_dtype_bytes=kv))
+        add(**dict(BASE, model=model, hit_rate=0.0))
+    # The edges.
     add(**dict(BASE, tpot_target=0.020))
     add(**dict(BASE, gpu_memory_utilization=0.30))
     add(**dict(BASE, accelerator="mi300x", prompt_tokens=32000, hit_rate=0.0))

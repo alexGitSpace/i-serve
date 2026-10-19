@@ -197,7 +197,8 @@ model, and six numbers are *derived* from it:
 |---|---|---|---|
 | `Qwen/Qwen3-8B` | Apache 2.0 | open | default, used by every quick-start path |
 | `meta-llama/Llama-3.1-8B-Instruct` | Llama 3.1 Community | gated, needs `HF_TOKEN` | documented alternative |
-| `Qwen/Qwen2.5-7B-Instruct` | Apache 2.0 | open | the calculator's second architecture; never served here, never measured |
+| `Qwen/Qwen3.5-9B` | Apache 2.0 | open | the calculator's second architecture, hybrid attention; never served here, never measured |
+| `Qwen/Qwen3.6-35B-A3B` | Apache 2.0 | open | the third, routed experts on top of it; never served here, never measured |
 
 Some weights — `meta-llama/*` among them — are *gated*: the publisher wants an
 accepted licence and an approved request before the download works. Serving one
@@ -209,18 +210,32 @@ reason the default is an open model instead.
 One consequence for reading results: every report in `docs/benchmarks/` names the
 model that produced it, because architecture differences change the arithmetic.
 Figures from two models are not interchangeable, however similar the parameter
-counts look. The calculator's second model is there to make that concrete rather
-than to be believed: Qwen2.5-7B carries four KV heads over 28 layers against
-Qwen3-8B's eight over 36, so its KV per token is 2.6× smaller and the same L40S
-at the same 50 ms target seats 85 of it against 31 — two models of the same
-advertised size, a seat count that differs by 2.7×. The parameter count was
-never the number that decided it.
+counts look. The calculator's other two models make that concrete rather than
+asking to be believed, and each is one step from the one before it. Qwen3.5-9B
+has Qwen3-8B's FFN, 4 096 wide with 12 288 in the middle, but keeps KV in only 8
+of its 32 layers; the other 24 each hold a fixed state. At the same 50 ms target
+the same L40S seats 74 of it against 31: two models of the same advertised
+size, a seat count 2.4× apart. Qwen3.6-35B-A3B then adds routed experts. It is
+the architecture of Qwen3.8-Max (`qwen3_5_moe_text`, three linear layers to
+each full one) at a size one MI300X holds. The parameter count was never the
+number that decided it ([SLO.md](SLO.md) §11).
 
-A last limit on that list: every model on it is dense, GQA and full-attention,
-because the formulas in `bench/roofline.py` assume exactly that. The four
-families that break them are named in [GLOSSARY.md](GLOSSARY.md), *Architectures
-that break the standard arithmetic*; adding one of those to the page would
-produce confident wrong numbers, which is worse than offering no choice at all.
+What makes the three comparable is a rule, checked by `bench/tests/test_models.py`
+against the checkpoints snapshotted in `bench/models/`:
+
+- **One card.** Every model's weights fit at least one card the calculator
+  prices. Qwen3.8-Max, at 2.4e12 parameters, about 4.8 TB in BF16, fits none,
+  so it is not on the list.
+- **One engine, one precision, one way of serving.** vLLM v0.27.1, BF16 weights,
+  text only (`--language-model-only`), MTP off. The parameter counts are the
+  ones that load that way.
+- **Every term priced.** Each `config.json` key that moves bytes or FLOPs is
+  modelled. A sliding window, MLA's latent KV or an unknown layer type keeps a
+  model off the list rather than on it with a wrong number. The families that
+  still break the formulas are named in [GLOSSARY.md](GLOSSARY.md),
+  *Architectures that break the standard arithmetic*.
+- **One class of evidence.** Only Qwen3-8B has been measured, so only it
+  carries measured points or the interference fit.
 
 A knob that changed the three strings and left the six numbers pointing at the
 old model would produce a stack that comes up, serves, autoscales — and is wrong

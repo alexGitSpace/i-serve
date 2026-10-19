@@ -967,7 +967,8 @@ the same three, held to 0.24%.
 `bench/roofline.py` also prices two models that keep the shape of those formulas and
 change two of their terms: Qwen3.5-9B, whose layers mostly keep a fixed state
 instead of KV, and Qwen3.6-35B-A3B, which adds routed experts on top of that.
-Each
+Why these two and not others is in
+[audience.md](audience.md#gated-weights-and-why-the-default-is-not-one). Each
 new term is zero for a dense full-attention model, so every figure in §3–§7 is
 unchanged; `bench/tests/test_roofline.py` checks that the two cases agree bit
 for bit. Neither model has been served or measured here, so everything in this
@@ -1044,3 +1045,6 @@ here is prefill compute, not decode bandwidth. The model does not fit an L40S:
 | The page's cache hit rate `h` applies | A hybrid's prefix hits only at block boundaries, where a state was kept, so `h` on the page is an optimistic reading | `vllm:prefix_cache_hits` per level, as run 3 read them |
 | Compute is `2 × P_active` per token | Leaves out `lm_head` and attention FLOPs, as §4 does for Qwen3-8B and as `mfu` was fitted. Their larger vocabularies put the two new models' TTFT floors about 5 % and 11 % lower, relative to Qwen3-8B, than a full count would | A refit of `mfu` with `lm_head` counted: a separate change |
 | Served text-only, MTP off | `--language-model-only` drops the vision tower (0.46e9 and 0.45e9) and vLLM skips the MTP head (0.24e9 and 0.84e9) unless speculative decoding is configured. A deployment that keeps either one adds its weights | The weights line of the startup log |
+
+The interference fit stays with Qwen3-8B (§6), so neither model gets a service
+seat count, and the page hides measured points for both.

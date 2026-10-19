@@ -181,18 +181,6 @@ QWEN3_8B = Model(
     provenance="config.json and the model card; docs/model-anatomy.md",
 )
 
-# Priced by the calculator, never served or measured here; dense GQA and full
-# attention, so the formulas hold. head_dim = 3584 / 28 from config.json, which
-# has no key for it in a qwen2 config; parameter counts from the model card.
-QWEN2_5_7B = Model(
-    name="Qwen2.5-7B-Instruct",
-    params_total=7.61e9,
-    params_non_embedding=6.53e9,
-    num_layers=28,
-    num_kv_heads=4,
-    head_dim=128,
-)
-
 # Priced, never served or measured here. Parameters: bench/models/checkpoints.json
 # as served text-only (SLO.md section 11).
 

@@ -118,7 +118,8 @@
   }
  },
  "constants": {
-  "FLOPS_PER_MAC": 2
+  "FLOPS_PER_MAC": 2,
+  "STATE_PASSES": 2
  },
  "defaults": {
   "accelerator": "l40s-run1",
@@ -888,32 +889,103 @@
   }
  },
  "models": {
-  "qwen2.5-7b": {
-   "head_dim": 128,
-   "kv_bytes_per_token": 57344,
-   "kv_dtype_bytes": 2,
-   "measured": false,
-   "name": "Qwen2.5-7B-Instruct",
-   "num_kv_heads": 4,
-   "num_layers": 28,
-   "params_non_embedding": 6530000000.0,
-   "params_total": 7610000000.0,
-   "provenance": "config.json and the model card; never served or measured here, docs/audience.md",
-   "served_by_this_stack": false,
-   "weight_dtype_bytes": 2
-  },
   "qwen3-8b": {
+   "architecture": "dense; full attention",
+   "attention_layers": 36,
+   "experts": {
+    "count": 1,
+    "params": 0.0,
+    "per_token": 1
+   },
    "head_dim": 128,
    "kv_bytes_per_token": 147456,
    "kv_dtype_bytes": 2,
+   "linear": {
+    "conv_dtype_bytes": 2,
+    "conv_kernel": 1,
+    "head_k_dim": 0,
+    "head_v_dim": 0,
+    "num_k_heads": 0,
+    "num_layers": 0,
+    "num_v_heads": 0,
+    "state_dtype_bytes": 4
+   },
    "measured": true,
    "name": "Qwen3-8B",
    "num_kv_heads": 8,
    "num_layers": 36,
+   "params_active": 6950000000.0,
    "params_non_embedding": 6950000000.0,
    "params_total": 8200000000.0,
    "provenance": "config.json and the model card; docs/model-anatomy.md",
    "served_by_this_stack": true,
+   "state_bytes_per_sequence": 0,
+   "weight_dtype_bytes": 2
+  },
+  "qwen3.5-9b": {
+   "architecture": "dense; 8 of 32 layers full attention, the rest linear",
+   "attention_layers": 8,
+   "experts": {
+    "count": 1,
+    "params": 0.0,
+    "per_token": 1
+   },
+   "head_dim": 256,
+   "kv_bytes_per_token": 32768,
+   "kv_dtype_bytes": 2,
+   "linear": {
+    "conv_dtype_bytes": 2,
+    "conv_kernel": 4,
+    "head_k_dim": 128,
+    "head_v_dim": 128,
+    "num_k_heads": 16,
+    "num_layers": 24,
+    "num_v_heads": 32,
+    "state_dtype_bytes": 4
+   },
+   "measured": false,
+   "name": "Qwen3.5-9B",
+   "num_kv_heads": 4,
+   "num_layers": 32,
+   "params_active": 6919565824.0,
+   "params_non_embedding": 6919565824,
+   "params_total": 8953803264,
+   "provenance": "config.json and the safetensors headers at c202236; never served or measured here, docs/audience.md",
+   "served_by_this_stack": false,
+   "state_bytes_per_sequence": 51511296,
+   "weight_dtype_bytes": 2
+  },
+  "qwen3.6-35b-a3b": {
+   "architecture": "MoE, 8 of 256 experts per token; 10 of 40 layers full attention, the rest linear",
+   "attention_layers": 10,
+   "experts": {
+    "count": 256,
+    "params": 32212254720,
+    "per_token": 8
+   },
+   "head_dim": 256,
+   "kv_bytes_per_token": 20480,
+   "kv_dtype_bytes": 2,
+   "linear": {
+    "conv_dtype_bytes": 2,
+    "conv_kernel": 4,
+    "head_k_dim": 128,
+    "head_v_dim": 128,
+    "num_k_heads": 16,
+    "num_layers": 30,
+    "num_v_heads": 32,
+    "state_dtype_bytes": 4
+   },
+   "measured": false,
+   "name": "Qwen3.6-35B-A3B",
+   "num_kv_heads": 2,
+   "num_layers": 40,
+   "params_active": 2437870208.0,
+   "params_non_embedding": 33643491968,
+   "params_total": 34660610688,
+   "provenance": "config.json and the safetensors headers at 995ad96; never served or measured here, docs/audience.md",
+   "served_by_this_stack": false,
+   "state_bytes_per_sequence": 64389120,
    "weight_dtype_bytes": 2
   }
  },

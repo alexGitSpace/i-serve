@@ -15,6 +15,7 @@
   "use strict";
 
   const FLOPS_PER_MAC = 2;
+  const STATE_PASSES = 2;   // a decode step reads each recurrent state and writes it back
 
   // Python's round(): half to even. round(2.5) is 2 there and 3 in JS.
   function pyRound(x) {
@@ -26,21 +27,45 @@
   const finite = (v) => (v === null || v === undefined || !isFinite(v)) ? null : v;
 
   // --- specs -----------------------------------------------------------------
+  // A dense model's experts weigh 0 and its linear layers number 0, so these
+  // reduce to the dense formulas exactly, as in roofline.py.
+  function shareRead(e, tokens) { return 1 - (1 - e.per_token / e.count) ** tokens; }
   function weightsBytes(m) { return m.params_total * m.weight_dtype_bytes; }
-  function kvBytesPerToken(m) {
-    return 2 * m.num_kv_heads * m.head_dim * m.kv_dtype_bytes * m.num_layers;
+  function weightsReadBytes(m, tokens) {
+    const skipped = m.experts.params * (1 - shareRead(m.experts, tokens));
+    return (m.params_total - skipped) * m.weight_dtype_bytes;
   }
+  function paramsActive(m) {
+    const unrouted = 1 - m.experts.per_token / m.experts.count;
+    return m.params_non_embedding - m.experts.params * unrouted;
+  }
+  function attentionLayers(m) { return m.num_layers - m.linear.num_layers; }
+  function kvBytesPerToken(m) {
+    return 2 * m.num_kv_heads * m.head_dim * m.kv_dtype_bytes * attentionLayers(m);
+  }
+  function stateBytesPerSequence(m) {
+    const l = m.linear;
+    const recurrent = l.num_v_heads * l.head_k_dim * l.head_v_dim * l.state_dtype_bytes;
+    const channels = 2 * l.num_k_heads * l.head_k_dim + l.num_v_heads * l.head_v_dim;
+    const conv = (l.conv_kernel - 1) * channels * l.conv_dtype_bytes;
+    return l.num_layers * (recurrent + conv);
+  }
+  function stateTokens(m) { return stateBytesPerSequence(m) / kvBytesPerToken(m); }
   function withKvDtype(model, bytes) {
     if (bytes === model.kv_dtype_bytes) return model;
     return Object.assign({}, model, { name: model.name + " FP8 KV", kv_dtype_bytes: bytes });
   }
 
   // --- traffic ---------------------------------------------------------------
+  function seatStepBytes(m, ctx) {
+    return kvBytesPerToken(m) * ctx + STATE_PASSES * stateBytesPerSequence(m);
+  }
   function decodeStepBytes(m, batch, ctx) {
-    return weightsBytes(m) + kvBytesPerToken(m) * batch * ctx;
+    return weightsReadBytes(m, batch) + seatStepBytes(m, ctx) * batch;
   }
   function prefillBytes(m, promptTokens) {
-    return weightsBytes(m) + kvBytesPerToken(m) * promptTokens;
+    return weightsReadBytes(m, promptTokens) + kvBytesPerToken(m) * promptTokens +
+      stateBytesPerSequence(m);
   }
   function kvCacheTokens(m, a, gmu) {
     const kvSpace = a.memory_bytes * gmu - weightsBytes(m);
@@ -64,12 +89,12 @@
   // --- floors ----------------------------------------------------------------
   function tpotFloor(m, a, batch, ctx) {
     const memory = decodeStepBytes(m, batch, ctx) / (a.peak_bandwidth * a.achieved_bandwidth);
-    const compute = FLOPS_PER_MAC * m.params_non_embedding * batch / (a.peak_flops * a.mfu);
+    const compute = FLOPS_PER_MAC * paramsActive(m) * batch / (a.peak_flops * a.mfu);
     return roofline(memory, compute);
   }
   function ttftFloor(m, a, promptTokens) {
     const memory = prefillBytes(m, promptTokens) / (a.peak_bandwidth * a.achieved_bandwidth);
-    const compute = FLOPS_PER_MAC * m.params_non_embedding * promptTokens / (a.peak_flops * a.mfu);
+    const compute = FLOPS_PER_MAC * paramsActive(m) * promptTokens / (a.peak_flops * a.mfu);
     return roofline(memory, compute);
   }
 
@@ -77,13 +102,24 @@
   function maxNumSeqsFromSlo(m, a, ctx, tpotTarget) {
     if (ctx <= 0) throw new Error("context_len must be positive");
     const byteBudget = tpotTarget * a.peak_bandwidth * a.achieved_bandwidth;
-    const kvPerSeq = kvBytesPerToken(m) * ctx;
-    const byBandwidth = (byteBudget - weightsBytes(m)) / kvPerSeq;
-    const byCompute = (tpotTarget * a.peak_flops * a.mfu) / (FLOPS_PER_MAC * m.params_non_embedding);
+    const perSeq = seatStepBytes(m, ctx);
+    let byBandwidth = (byteBudget - weightsBytes(m)) / perSeq;
+    // Every expert read and none: one number for dense weights, a bracket to bisect under MoE.
+    let lo = Math.max(Math.floor(byBandwidth), 0);
+    let hi = Math.floor((byteBudget - weightsReadBytes(m, 0)) / perSeq);
+    if (hi > lo) {
+      while (lo < hi) {
+        const mid = Math.floor((lo + hi + 1) / 2);
+        if (weightsReadBytes(m, mid) + perSeq * mid <= byteBudget) lo = mid;
+        else hi = mid - 1;
+      }
+      byBandwidth = lo;
+    }
+    const byCompute = (tpotTarget * a.peak_flops * a.mfu) / (FLOPS_PER_MAC * paramsActive(m));
     return Math.max(Math.floor(Math.min(byBandwidth, byCompute)), 0);
   }
   function seatsUnderPrefillInterference(m, a, ctx, tpotTarget, slope, intercept, hitRate) {
-    const stepPerSeat = (kvBytesPerToken(m) * ctx) / (a.peak_bandwidth * a.achieved_bandwidth);
+    const stepPerSeat = seatStepBytes(m, ctx) / (a.peak_bandwidth * a.achieved_bandwidth);
     const stepAtZero = weightsBytes(m) / (a.peak_bandwidth * a.achieved_bandwidth);
     const uncached = 1.0 - hitRate;
     const denominator = stepPerSeat + uncached * slope;
@@ -92,7 +128,7 @@
   }
   function concurrencyCeiling(m, a, ctx, gmu) {
     if (ctx <= 0) throw new Error("context_len must be positive");
-    return Math.floor(kvCacheTokens(m, a, gmu) / ctx);
+    return Math.floor(kvCacheTokens(m, a, gmu) / (ctx + stateTokens(m)));
   }
   function maxNumSeqs(m, a, ctx, tpotTarget, gmu) {
     const byLatency = maxNumSeqsFromSlo(m, a, ctx, tpotTarget);
@@ -139,6 +175,7 @@
       },
       model_name: m.name,
       accelerator_name: a.name,
+      state_tokens_per_seat: stateTokens(m) || null,
       coefficients: { eff_mem: a.achieved_bandwidth, mfu: a.mfu, provenance: a.provenance },
       kv_pool_tokens: null, seats: null, tpot_floor_at_max_num_seqs: null,
       ttft_floor: null, ttft_floor_uncached: null, aggregate_tokens_per_sec: null,
@@ -173,7 +210,8 @@
     const decode = tpotFloor(m, a, seats.sequences, ctx);
     const total = aggregateTokensPerSec(m, a, seats.sequences, ctx);
     point.tpot_floor_at_max_num_seqs = { seconds: decode.seconds, bound_by: decode.bound_by,
-                                         ratio: finite(decode.ratio), share_of_target: decode.seconds / tpot };
+                                         ratio: finite(decode.ratio), share_of_target: decode.seconds / tpot,
+                                         experts_read_share: m.experts.params ? shareRead(m.experts, seats.sequences) : null };
     point.aggregate_tokens_per_sec = total;
     point.cost_per_1m_output_tokens = costPer1mTokens(total, hourly);
 
@@ -205,8 +243,9 @@
   }
 
   return {
-    FLOPS_PER_MAC, pyRound, withKvDtype, weightsBytes, kvBytesPerToken,
-    decodeStepBytes, prefillBytes, kvCacheTokens, roofline, tpotFloor, ttftFloor,
+    FLOPS_PER_MAC, STATE_PASSES, pyRound, withKvDtype, shareRead, weightsBytes, weightsReadBytes,
+    paramsActive, attentionLayers, kvBytesPerToken, stateBytesPerSequence, stateTokens,
+    seatStepBytes, decodeStepBytes, prefillBytes, kvCacheTokens, roofline, tpotFloor, ttftFloor,
     maxNumSeqsFromSlo, seatsUnderPrefillInterference, concurrencyCeiling, maxNumSeqs,
     aggregateTokensPerSec, costPer1mTokens, whatIfPoint,
   };
