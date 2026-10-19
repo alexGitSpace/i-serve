@@ -250,6 +250,10 @@ spends the error budget exactly over its period; 14.4 spends 2 % of a 30-day
 budget in one hour, the conventional page threshold. Which SLI it is computed
 on here: [SLO.md](SLO.md) §4, "The alert rule".
 
+**USE method** — Brendan Gregg's checklist for a performance investigation: for
+every resource, check its **U**tilization, **S**aturation and **E**rrors before
+forming a theory about any of them.
+
 **Multi-window burn-rate alert** — one SLI, two windows that must agree: the long
 one (1 h) establishes that the burn is real, the short one (5 m) that it is still
 happening, so the page resolves when the cause does.
@@ -552,6 +556,11 @@ the GPU busy under uneven request lengths.
 decode steps of other requests, trading a little TTFT for a large drop in TPOT
 jitter for everyone else.
 
+**Speculative decoding** ⏳ — a cheap *draft* (a small model, or n-grams lifted
+from the prompt) proposes several tokens and the served model checks them all in
+one forward pass, keeping the accepted run. The output distribution is unchanged;
+what it buys is fewer memory-bound decode steps per token, paid for in compute.
+
 **Prefix caching** — reusing the KV cache of a shared prompt prefix (system prompt,
 few-shot examples) across requests, removing that part of prefill entirely. On by
 default in vLLM's V1 engine, and turned off with `--no-enable-prefix-caching`.
@@ -582,6 +591,11 @@ of them a replica is asked to keep at once, and it decides whether prefix-aware
 routing buys anything: a set small enough to fit on every replica makes affinity
 a no-op ([SLO.md](SLO.md) §6, channel 2; the arithmetic is table 11 of
 `bench/predictions.py`).
+
+**RadixAttention** ⏳ — SGLang's prefix cache: finished requests' KV is kept in a
+radix tree keyed by token sequence, so a shared prefix is matched at token rather
+than block granularity, and eviction is LRU over the tree's leaves. vLLM's
+equivalent hashes fixed-size blocks.
 
 **LRU** (least recently used) — the eviction order a cache uses when it must
 free space: the block untouched for longest goes first. It is why a working set
