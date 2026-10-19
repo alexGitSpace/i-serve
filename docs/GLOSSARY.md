@@ -1497,8 +1497,9 @@ server, cluster or card. The floors come from `bench/roofline.py`.
 
 **`--accelerator`** (`bench/harness.py`, `bench/predictions.py`) — which
 `Accelerator` instance the floors and gates are computed against: `l40s-run1`
-and `mi300x-run1` carry coefficients fitted to each card's run 1, `l40s` and
-`mi300x` carry the unvalidated priors. Which is which matters more than the value; `docs/SLO.md` §9. The names
+and `mi300x-run1` carry coefficients fitted to each card's run 1, `mi300x-run2`
+those of the MI300X's run 2, on a second droplet, and `l40s` and `mi300x` carry
+the unvalidated priors. Which is which matters more than the value; `docs/SLO.md` §9. The names
 come from the `ACCELERATORS` registry in `bench/roofline.py`, which is where a
 card is added.
 

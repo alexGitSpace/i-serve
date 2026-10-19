@@ -58,7 +58,7 @@ window.MODEL_DATA = {
    "name": "AMD Instinct MI300X (run 2 coefficients)",
    "peak_bandwidth": 5300000000000.0,
    "peak_flops": 1307000000000000.0,
-   "provenance": "measured (MI300X run 2, 2026-09-27); a second droplet, not yet faced"
+   "provenance": "measured (MI300X run 2, 2026-09-27), on a second droplet; every later MI300X run predicted from it"
   }
  },
  "constants": {

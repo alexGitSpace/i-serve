@@ -169,7 +169,8 @@ MI300X_RUN2 = Accelerator(
     peak_flops=1.307e15,
     achieved_bandwidth=0.57,    # measured, decode, median ITL, seven levels, 0.52-0.62
     mfu=0.247,                  # measured, prefill, one uncontended 4 000-token request
-    provenance="measured (MI300X run 2, 2026-09-27); a second droplet, not yet faced",
+    provenance="measured (MI300X run 2, 2026-09-27), on a second droplet; every later "
+               "MI300X run predicted from it",
 )
 
 
