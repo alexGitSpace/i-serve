@@ -1,18 +1,12 @@
 /* calc.js -- bench/roofline.py and predictions.what_if_point(), ported.
  *
- * A second implementation of the performance model, which this repository
- * otherwise forbids (one home per fact). It is allowed because it is checked:
- * site/data/golden.json is rows of the Python function over a grid of inputs,
- * and selftest.js runs every row through this file and compares. Keep the
- * ORDER OF OPERATIONS identical to roofline.py -- the two are compared to a
- * relative 1e-9, and a floor() taken on 23.999999999999996 instead of 24.0 is
- * a seat that exists in one language and not the other.
- *
- * Every constant comes in through `data` (site/data/model.json) but the physical
- * ones typed at the top, which golden parity holds equal to Python -- including
- * which model is being priced, and which single model the interference fit was
- * measured on and may therefore be lent to. Loads as window.Roofline in a browser and as module.exports
- * under node, so the same file is the page and the CI check.
+ * The one second implementation allowed, because selftest.js holds it to the
+ * rows of site/data/golden.json. Keep the ORDER OF OPERATIONS identical to
+ * roofline.py: they agree to 1e-9, and a floor() of 23.999999999999996 is a seat
+ * in one language only. Every constant comes in through `data` but the physical
+ * ones typed at the top, which that parity holds equal -- the model priced and
+ * the one the interference fit may be lent to included. window.Roofline in a
+ * browser, module.exports under node: the page and the CI check are one file.
  */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) { module.exports = factory(); }
