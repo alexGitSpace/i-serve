@@ -34,6 +34,8 @@ from roofline import (
     MI300X,
     MI300X_RUN1,
     MI300X_RUN2,
+    QWEN3_5_9B,
+    QWEN3_6_35B_A3B,
     QWEN3_8B,
     Accelerator,
     aggregate_tokens_per_sec,
@@ -45,6 +47,7 @@ from roofline import (
     max_num_seqs_from_slo,
     prefill_bytes,
     roofline,
+    seat_step_bytes,
     seats_under_prefill_interference,
     token_budget_ceiling,
     tpot_floor,
@@ -337,6 +340,86 @@ def test_batching_divides_a_fixed_bill():
     alone = cost_per_1m_tokens(aggregate_tokens_per_sec(QWEN3_8B, MI300X, 1, 4000), 2.00)
     full = cost_per_1m_tokens(aggregate_tokens_per_sec(QWEN3_8B, MI300X, 286, 4000), 2.00)
     assert close(alone / full, 26, 0.5)
+
+
+# --- section 11: hybrid attention and routed experts -----------------------
+
+def test_dense_full_attention_is_the_empty_case_exactly():
+    """No experts and no linear layers: every new term vanishes without rounding."""
+    m = QWEN3_8B
+    assert m.attention_layers == m.num_layers and m.state_bytes_per_sequence == 0
+    assert m.params_active == m.params_non_embedding
+    assert all(m.weights_read_bytes(n) == m.weights_bytes for n in (0, 1, 31, 4000))
+
+
+def test_the_recurrent_state_is_vllms_allocation():
+    """Qwen3.5-9B's state is the arithmetic of docs/SLO.md section 11, which is vLLM's allocation."""
+    assert QWEN3_5_9B.state_bytes_per_sequence == 24 * (32 * 128 * 128 * 4 + 3 * 8192 * 2)
+    assert QWEN3_5_9B.kv_bytes_per_token == 2 * 4 * 256 * 2 * 8
+    assert QWEN3_5_9B.state_tokens == 1572
+    # FP8 KV halves the attention layers only: the state then costs twice the tokens.
+    assert replace(QWEN3_5_9B, kv_dtype_bytes=1).state_tokens == 2 * 1572
+
+
+def test_the_state_is_held_once_and_moved_twice():
+    """Capacity counts it once per seat; a decode step reads it and writes it back."""
+    m, ctx = QWEN3_5_9B, 4200
+    assert decode_step_bytes(m, 2, ctx) - decode_step_bytes(m, 1, ctx) == \
+        m.kv_bytes_per_token * ctx + 2 * m.state_bytes_per_sequence
+    pool = kv_cache_tokens(m, L40S_RUN1, GMU)
+    assert concurrency_ceiling(m, L40S_RUN1, ctx, GMU) == math.floor(pool / (ctx + 1572))
+
+
+def test_a_token_routes_to_its_share_of_experts_and_a_prompt_to_all_of_them():
+    e = QWEN3_6_35B_A3B.experts
+    assert e.share_read(0) == 0 and e.share_read(1) == 8 / 256
+    assert e.share_read(4000) == 1.0              # (31/32)^4000 is 7e-56, below one ulp
+    m = QWEN3_6_35B_A3B
+    assert math.isclose(m.params_active, m.params_non_embedding - e.params * 248 / 256)
+    assert math.isclose(prefill_bytes(m, 4000) - m.kv_bytes_per_token * 4000
+                        - m.state_bytes_per_sequence, m.weights_bytes)
+
+
+def test_the_bisection_is_the_largest_batch_whose_floor_fits():
+    """The bisection finds what brute force finds, and dense weights keep section 4's closed form."""
+    for accel in (MI300X_RUN2, MI300X):
+        for target in (0.012, 0.020, 0.030, 0.050, 0.100, 0.200):
+            m, ctx = QWEN3_6_35B_A3B, 4200
+            n = 0
+            while tpot_floor(m, accel, n + 1, ctx).seconds <= target:
+                n += 1
+            assert max_num_seqs_from_slo(m, accel, ctx, target) == n, (accel.name, target)
+    budget = INTERACTIVE_TPOT * L40S_RUN1.peak_bandwidth * L40S_RUN1.achieved_bandwidth
+    closed = math.floor((budget - QWEN3_8B.weights_bytes) / (QWEN3_8B.kv_bytes_per_token * 4200))
+    assert max_num_seqs_from_slo(QWEN3_8B, L40S_RUN1, 4200, INTERACTIVE_TPOT) == closed == 31
+
+
+def test_section_11_figures():
+    """The rows docs/SLO.md section 11 quotes, from the functions that produce them."""
+    m, ctx = QWEN3_5_9B, 4200
+    held = m.kv_bytes_per_token * ctx + m.state_bytes_per_sequence
+    moved = seat_step_bytes(m, ctx)
+    assert (round(held / 1e6, 1), round(moved / 1e6, 1)) == (189.1, 240.6)
+    assert round(m.state_bytes_per_sequence / held * 100) == 27
+    assert round(2 * m.state_bytes_per_sequence / moved * 100) == 43
+    assert round(seat_step_bytes(QWEN3_8B, ctx) / moved, 1) == 2.6
+    seats = lambda model, accel: max_num_seqs(model, accel, ctx, INTERACTIVE_TPOT, GMU)
+    assert (seats(m, L40S_RUN1).sequences, seats(QWEN3_8B, L40S_RUN1).sequences) == (74, 31)
+    assert (seats(m, MI300X_RUN2).sequences, seats(QWEN3_8B, MI300X_RUN2).sequences) == (553, 217)
+    moe = QWEN3_6_35B_A3B
+    assert [round(moe.experts.share_read(n) * 100, 1) for n in (1, 32, 128)] == [3.1, 63.8, 98.3]
+    assert seats(moe, MI300X_RUN2).sequences == 380
+    assert round(moe.experts.share_read(380) * 100) == 100
+    assert round(moe.weights_bytes / 1e9, 1) == 69.3
+    assert round(moe.params_active / 1e9, 2) == 2.44
+    ttft = lambda model: round(ttft_floor(model, MI300X_RUN2, 4000).seconds * 1e3)
+    assert (ttft(moe), ttft(QWEN3_8B)) == (60, 172)
+    try:
+        kv_cache_tokens(moe, L40S_RUN1, GMU)
+    except ValueError as exc:
+        assert "69.3 GB" in str(exc) and "43.2 GB" in str(exc)
+    else:
+        raise AssertionError("the MoE fits an L40S")
 
 
 # --- guards -----------------------------------------------------------------

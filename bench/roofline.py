@@ -14,13 +14,68 @@ from typing import NamedTuple
 
 FLOPS_PER_MAC = 2
 
+# A decode step reads each recurrent state and writes it back: vLLM's kernel
+# updates it in place (SLO.md section 11).
+STATE_PASSES = 2
+
+
+@dataclass(frozen=True)
+class Experts:
+    """The routed experts of an MoE FFN: resident in full, read as routed.
+
+    Shared experts are not here -- every token reads them, so they are ordinary
+    weights. params from bench/models/checkpoints.json.
+    """
+
+    params: float                 # every routed expert of every layer
+    count: int                    # config.json: num_experts
+    per_token: int                # config.json: num_experts_per_tok
+
+    def share_read(self, tokens: int) -> float:
+        """Expected share a pass over `tokens` tokens reads, routing uniform (SLO.md section 11)."""
+        return 1 - (1 - self.per_token / self.count) ** tokens
+
+
+# A dense FFN is the MoE whose routed experts weigh nothing.
+NO_EXPERTS = Experts(params=0.0, count=1, per_token=1)
+
+
+@dataclass(frozen=True)
+class LinearAttention:
+    """Gated DeltaNet layers: a fixed state per sequence where attention keeps KV per token.
+
+    Shapes as vLLM v0.27.1 allocates them (mamba_utils.py,
+    gated_delta_net_state_shape).
+    """
+
+    num_layers: int               # config.json: layer_types == "linear_attention"
+    num_k_heads: int              # config.json: linear_num_key_heads
+    num_v_heads: int              # config.json: linear_num_value_heads
+    head_k_dim: int               # config.json: linear_key_head_dim
+    head_v_dim: int               # config.json: linear_value_head_dim
+    conv_kernel: int              # config.json: linear_conv_kernel_dim
+    state_dtype_bytes: int = 4    # config.json: mamba_ssm_dtype float32, which vLLM adopts
+    conv_dtype_bytes: int = 2     # the model's dtype
+
+    @property
+    def bytes_per_sequence(self) -> int:
+        """A k x v matrix per value head, plus the conv window over q, k and v, per layer."""
+        recurrent = self.num_v_heads * self.head_k_dim * self.head_v_dim * self.state_dtype_bytes
+        channels = 2 * self.num_k_heads * self.head_k_dim + self.num_v_heads * self.head_v_dim
+        conv = (self.conv_kernel - 1) * channels * self.conv_dtype_bytes
+        return self.num_layers * (recurrent + conv)
+
+
+# Full attention in every layer is the hybrid with no linear layers.
+NO_LINEAR_ATTENTION = LinearAttention(0, 0, 0, 0, 0, conv_kernel=1)
+
 
 @dataclass(frozen=True)
 class Model:
-    """Architecture from config.json plus the model card.
+    """Architecture from config.json plus the checkpoint's parameter counts.
 
-    Two parameter counts: memory reads every weight, compute skips the
-    embedding lookup.
+    Memory reads every weight, compute skips the embedding lookup. Empty experts
+    and linear are dense full attention (SLO.md section 11).
     """
 
     name: str
@@ -31,11 +86,30 @@ class Model:
     head_dim: int                 # config.json: head_dim
     weight_dtype_bytes: int = 2   # BF16
     kv_dtype_bytes: int = 2       # BF16 KV cache; 1 for FP8
+    experts: Experts = NO_EXPERTS
+    linear: LinearAttention = NO_LINEAR_ATTENTION
+    provenance: str = ""          # where the figures came from, read by the printers
 
     @property
     def weights_bytes(self) -> float:
-        """Read once per forward pass, regardless of batch size."""
+        """Resident, and read in full by any pass that routes to every expert."""
         return self.params_total * self.weight_dtype_bytes
+
+    def weights_read_bytes(self, tokens: int) -> float:
+        """Read by one forward pass over `tokens` tokens: all but the experts none of them routed to."""
+        skipped = self.experts.params * (1 - self.experts.share_read(tokens))
+        return (self.params_total - skipped) * self.weight_dtype_bytes
+
+    @property
+    def params_active(self) -> float:
+        """Compute side: P_active in GLOSSARY.md's notation."""
+        unrouted = 1 - self.experts.per_token / self.experts.count
+        return self.params_non_embedding - self.experts.params * unrouted
+
+    @property
+    def attention_layers(self) -> int:
+        """The layers that keep KV; the rest keep a state."""
+        return self.num_layers - self.linear.num_layers
 
     @property
     def kv_bytes_per_token(self) -> float:
@@ -45,8 +119,18 @@ class Model:
             * self.num_kv_heads
             * self.head_dim
             * self.kv_dtype_bytes
-            * self.num_layers
+            * self.attention_layers
         )
+
+    @property
+    def state_bytes_per_sequence(self) -> int:
+        """Held by every sequence whatever its length; 0 under full attention."""
+        return self.linear.bytes_per_sequence
+
+    @property
+    def state_tokens(self) -> float:
+        """The state in tokens of this model's KV: what a seat holds beyond its context."""
+        return self.state_bytes_per_sequence / self.kv_bytes_per_token
 
 
 @dataclass(frozen=True)
@@ -94,6 +178,7 @@ QWEN3_8B = Model(
     num_layers=36,
     num_kv_heads=8,
     head_dim=128,
+    provenance="config.json and the model card; docs/model-anatomy.md",
 )
 
 # Priced by the calculator, never served or measured here; dense GQA and full
@@ -106,6 +191,38 @@ QWEN2_5_7B = Model(
     num_layers=28,
     num_kv_heads=4,
     head_dim=128,
+)
+
+# Priced, never served or measured here. Parameters: bench/models/checkpoints.json
+# as served text-only (SLO.md section 11).
+
+# Qwen3-8B's FFN (4096 / 12288) under another attention: 8 of 32 layers keep KV.
+QWEN3_5_9B = Model(
+    name="Qwen3.5-9B",
+    params_total=8_953_803_264,
+    params_non_embedding=6_919_565_824,
+    num_layers=32,
+    num_kv_heads=4,
+    head_dim=256,
+    linear=LinearAttention(num_layers=24, num_k_heads=16, num_v_heads=32,
+                           head_k_dim=128, head_v_dim=128, conv_kernel=4),
+    provenance="config.json and the safetensors headers at c202236; "
+               "never served or measured here, docs/audience.md",
+)
+
+# Qwen3.8-Max's architecture (qwen3_5_moe_text) at a size one card holds.
+QWEN3_6_35B_A3B = Model(
+    name="Qwen3.6-35B-A3B",
+    params_total=34_660_610_688,
+    params_non_embedding=33_643_491_968,
+    num_layers=40,
+    num_kv_heads=2,
+    head_dim=256,
+    experts=Experts(params=32_212_254_720, count=256, per_token=8),
+    linear=LinearAttention(num_layers=30, num_k_heads=16, num_v_heads=32,
+                           head_k_dim=128, head_v_dim=128, conv_kernel=4),
+    provenance="config.json and the safetensors headers at 995ad96; "
+               "never served or measured here, docs/audience.md",
 )
 
 MI300X = Accelerator(
@@ -182,11 +299,19 @@ ACCELERATORS = {
 }
 
 
-def decode_step_bytes(model: Model, batch_size: int, context_len: int) -> float:
-    """Bytes moved per decode step: weights once, KV per sequence; every decode figure derives from it."""
+def seat_step_bytes(model: Model, context_len: int) -> float:
+    """What one more sequence adds to a decode step: its KV read, its state read and written."""
     return (
-        model.weights_bytes
-        + model.kv_bytes_per_token * batch_size * context_len
+        model.kv_bytes_per_token * context_len
+        + STATE_PASSES * model.state_bytes_per_sequence
+    )
+
+
+def decode_step_bytes(model: Model, batch_size: int, context_len: int) -> float:
+    """Bytes moved per decode step: weights once, each sequence's share; every decode figure derives from it."""
+    return (
+        model.weights_read_bytes(batch_size)
+        + seat_step_bytes(model, context_len) * batch_size
     )
 
 
@@ -230,17 +355,21 @@ def tpot_floor(
     """Roofline of one decode step; each side over its own coefficient."""
     memory = decode_step_bytes(model, batch_size, context_len) / \
                 (accel.peak_bandwidth * accel.achieved_bandwidth)
-    compute = FLOPS_PER_MAC * model.params_non_embedding * batch_size / \
+    compute = FLOPS_PER_MAC * model.params_active * batch_size / \
                 (accel.peak_flops * accel.mfu)
     return roofline(memory, compute)
 
 
 def prefill_bytes(model: Model, prompt_tokens: int) -> float:
-    """Bytes moved while prefilling one prompt: weights once, KV written once.
+    """Bytes moved while prefilling one prompt: weights once, KV and state written once.
 
     Not modelled: attention re-reading the KV already written (SLO.md section 4).
     """
-    return model.weights_bytes + model.kv_bytes_per_token * prompt_tokens
+    return (
+        model.weights_read_bytes(prompt_tokens)
+        + model.kv_bytes_per_token * prompt_tokens
+        + model.state_bytes_per_sequence
+    )
 
 
 def ttft_floor(
@@ -253,7 +382,7 @@ def ttft_floor(
     """
     memory = prefill_bytes(model, prompt_tokens) / \
                 (accel.peak_bandwidth * accel.achieved_bandwidth)
-    compute = FLOPS_PER_MAC * model.params_non_embedding * prompt_tokens / \
+    compute = FLOPS_PER_MAC * model.params_active * prompt_tokens / \
                 (accel.peak_flops * accel.mfu)
     return roofline(memory, compute)
 
@@ -273,14 +402,27 @@ def max_num_seqs_from_slo(
         )
 
     byte_budget = tpot_target * accel.peak_bandwidth * accel.achieved_bandwidth
-    kv_per_seq = model.kv_bytes_per_token * context_len
+    per_seq = seat_step_bytes(model, context_len)
 
     # by_bandwidth: the memory *bus* inside a time budget. "memory" already
     # names the capacity limit in concurrency_ceiling.
-    by_bandwidth = (byte_budget - model.weights_bytes) / kv_per_seq
+    by_bandwidth = (byte_budget - model.weights_bytes) / per_seq
+
+    # Every expert read and none bracket the limit; dense weights make it one
+    # point, MoE is bisected inside it (SLO.md section 11).
+    lo = max(math.floor(by_bandwidth), 0)
+    hi = math.floor((byte_budget - model.weights_read_bytes(0)) / per_seq)
+    if hi > lo:
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if model.weights_read_bytes(mid) + per_seq * mid <= byte_budget:
+                lo = mid
+            else:
+                hi = mid - 1
+        by_bandwidth = lo
 
     by_compute = (tpot_target * accel.peak_flops * accel.mfu) / \
-                    (FLOPS_PER_MAC * model.params_non_embedding)
+                    (FLOPS_PER_MAC * model.params_active)
 
     # floor, never round: rounding up ships a breached SLO. max(_, 0): a target
     # below the batch-1 floor makes by_bandwidth negative, and a negative seat
@@ -303,7 +445,7 @@ def seats_under_prefill_interference(
     if not 0.0 <= hit_rate <= 1.0:
         raise ValueError("hit_rate is a share of prompt tokens, so 0 <= h <= 1")
 
-    step_per_seat = (model.kv_bytes_per_token * context_len) / \
+    step_per_seat = seat_step_bytes(model, context_len) / \
                     (accel.peak_bandwidth * accel.achieved_bandwidth)
     step_at_zero = model.weights_bytes / \
                     (accel.peak_bandwidth * accel.achieved_bandwidth)
@@ -325,15 +467,17 @@ def concurrency_ceiling(
     """Sequences whose KV fits at a fixed context length; capacity only.
 
     context_len is the length *reserved* per sequence, so this is the
-    steady-state seat count. Returns 0 when less than one fits -- a real answer,
-    unlike the weights not fitting, which kv_cache_tokens raises on.
+    steady-state seat count; a recurrent state adds its own tokens' worth. Returns
+    0 when less than one fits -- a real answer, unlike the weights not fitting,
+    which kv_cache_tokens raises on.
     """
     if context_len <= 0:
         raise ValueError(
             "context_len must be positive: at zero reserved context every "
             "sequence is free and the seat count is unbounded"
         )
-    return math.floor(kv_cache_tokens(model, accel, gpu_memory_utilization) / context_len)
+    return math.floor(kv_cache_tokens(model, accel, gpu_memory_utilization) /
+                      (context_len + model.state_tokens))
 
 
 def max_num_seqs(

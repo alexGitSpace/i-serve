@@ -226,10 +226,12 @@ almost the same point, is [SLO.md](SLO.md) §6.
 ## When these drawings stop being true
 
 Every level above assumes a dense, GQA, full-attention transformer. MoE splits the
-parameter count in two, MLA replaces the per-head cache with a latent, sliding
-window attention stops the cache growing past a fixed length, and quantization
-detaches `weight_dtype_bytes` from `kv_dtype_bytes`. Each is described in
-[GLOSSARY.md](GLOSSARY.md) § *Architectures that break the standard arithmetic*.
+parameter count in two, hybrid attention swaps most layers' KV for a fixed
+state, MLA replaces the per-head cache with a latent, sliding window attention
+stops the cache growing past a fixed length, and quantization detaches
+`weight_dtype_bytes` from `kv_dtype_bytes`. Each is described in
+[GLOSSARY.md](GLOSSARY.md) § *Architectures that break the standard arithmetic*;
+`bench/roofline.py` prices the first two ([SLO.md](SLO.md) §11).
 
 And the standing rule: vLLM logs its actual KV cache size and block count at
 startup. That log outranks every diagram here ([SLO.md](SLO.md) §9).

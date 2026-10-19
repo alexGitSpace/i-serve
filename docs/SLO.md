@@ -958,3 +958,89 @@ the same three, held to 0.24%.
 - [ ] Measure TTFAT with `--reasoning-parser` and set a target for it (§8)
 - [ ] Re-derive the concurrency ceiling for realistic reasoning context lengths
 - [ ] Split cost accounting into reasoning and answering tokens
+
+---
+
+## 11. Hybrid attention and routed experts
+
+§3–§7 derive for Qwen3-8B, a dense model with full attention in every layer.
+`bench/roofline.py` also prices two models that keep the shape of those formulas and
+change two of their terms: Qwen3.5-9B, whose layers mostly keep a fixed state
+instead of KV, and Qwen3.6-35B-A3B, which adds routed experts on top of that.
+Each
+new term is zero for a dense full-attention model, so every figure in §3–§7 is
+unchanged; `bench/tests/test_roofline.py` checks that the two cases agree bit
+for bit. Neither model has been served or measured here, so everything in this
+section is a derivation.
+
+### A state per sequence
+
+```
+Qwen3.5-9B: 32 layers, full attention in every fourth, Gated DeltaNet in the other 24
+
+KV per token        = 2 × 4 × 256 × 2 × 8                         =     32 768 B   (Qwen3-8B: 147 456)
+state per layer     = 32 × 128 × 128 × 4      recurrent, fp32       =  2 097 152 B
+                    + 3 × (2×16×128 + 32×128) × 2   conv window, BF16 =     49 152 B
+state per sequence  = 24 × 2 146 304                                = 51 511 296 B
+                    = exactly 1 572 tokens of the model's own KV
+```
+
+Capacity holds the state once per seat, and the KV pool seats
+`⌊pool / (context + 1 572)⌋`. A decode step **reads the state and writes it
+back**: vLLM updates it in place (`inplace_final_state=True`,
+`qwen_gdn_linear_attn.py` at v0.27.1). So the state moves twice per step:
+
+```
+per seat at 4 200 tokens         held           moved per step
+  KV                             137.6 MB       137.6 MB
+  state                           51.5 MB       103.0 MB
+  total                          189.1 MB       240.6 MB      (Qwen3-8B: 619.3 MB both)
+```
+
+**The state is cheap to hold and costly to move.** It is 27 % of what a seat
+holds and 43 % of what a seat moves. The seat still costs 2.6 times less traffic
+than Qwen3-8B's: the L40S at 50 ms seats **74 against 31**, and MI300X run 2's
+coefficients give 553 against 217. Both models are latency-bound, and their
+prefill floors land within 1 % of each other.
+
+The state's shapes and dtype are what vLLM v0.27.1 allocates:
+`gated_delta_net_state_shape` in `mamba_utils.py`, and the float32
+`mamba_ssm_dtype` from `config.json`, which `Qwen3_5ForConditionalGenerationConfig`
+adopts unless `--mamba-ssm-cache-dtype` overrides it. FP8 KV halves only the
+attention layers, so the same state then costs 3 144 tokens.
+
+### Routed experts: resident in full, read as routed
+
+```
+Qwen3.6-35B-A3B: 40 layers × 256 experts × 3 × 2 048 × 512  = 32.2e9 routed     (the header agrees exactly)
+weights           = 34.66e9 × 2                          = 69.3 GB  every expert resident
+active            = 33.64e9 − 32.21e9 × 248/256          = 2.44e9   FLOPs per token
+share read (n)    = 1 − (1 − 8/256)^n                    for n tokens in one pass
+                    n = 1: 3.1 %    n = 32: 64 %    n = 128: 98 %    n = 380: 100 %
+```
+
+Memory holds every expert, compute multiplies through 8 of 256, and a pass
+reads the union of what its tokens routed to. Because the weights a step reads
+grow with the batch, §4's closed form for the latency limit no longer solves in
+one line. It still brackets the answer. With every expert read it gives the
+lowest seat count; with none read, the highest. The largest batch between the
+two is found by bisection. Dense weights make the bracket a single point, and
+the answer is §4's number untouched.
+
+**At the seat counts a card actually ships, an MoE reads every expert.** On
+MI300X run 2's coefficients it seats 380, latency-bound, with 100 % of experts
+read per step. Its decode step therefore reads every one of its 69.3 GB, like
+a dense model of that size, while its KV per token is 20 KiB. Its TTFT floor is
+**60 ms against Qwen3-8B's 172 ms**. What the experts buy
+here is prefill compute, not decode bandwidth. The model does not fit an L40S:
+69.3 GB against 43.2 GB.
+
+### What the two derivations assume
+
+| Assumption | Direction of the error | What would settle it |
+|---|---|---|
+| Routing is uniform | Overstates the experts a small batch reads. A skewed router reads fewer, so for an MoE the TPOT line is a floor only under this assumption. Under it, the share is ≥ 98 % from 128 seats up | The decode step measured at low concurrency |
+| One state per seat | vLLM serves Qwen3.5 with prefix caching in `mamba_cache_mode` `align`, experimental at v0.27.1. It holds a second state across a block boundary, and it enlarges the attention block to match the state's page | The startup log's pool and concurrency (§9) |
+| The page's cache hit rate `h` applies | A hybrid's prefix hits only at block boundaries, where a state was kept, so `h` on the page is an optimistic reading | `vllm:prefix_cache_hits` per level, as run 3 read them |
+| Compute is `2 × P_active` per token | Leaves out `lm_head` and attention FLOPs, as §4 does for Qwen3-8B and as `mfu` was fitted. Their larger vocabularies put the two new models' TTFT floors about 5 % and 11 % lower, relative to Qwen3-8B, than a full count would | A refit of `mfu` with `lm_head` counted: a separate change |
+| Served text-only, MTP off | `--language-model-only` drops the vision tower (0.46e9 and 0.45e9) and vLLM skips the MTP head (0.24e9 and 0.84e9) unless speculative decoding is configured. A deployment that keeps either one adds its weights | The weights line of the startup log |

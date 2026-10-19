@@ -41,6 +41,9 @@ one: vLLM's startup log settles it ([SLO.md](SLO.md) §9).
 | `n_q` | query heads per layer | `config.json` → `num_attention_heads` |
 | `n_kv` | key/value heads per layer. Under GQA, `n_q / n_kv` query heads share one KV head — that ratio is exactly how much KV memory GQA saves | `config.json` → `num_key_value_heads` |
 | `head_dim` | width of one attention head | `config.json` → `head_dim`, else `hidden_size / n_q` |
+| `L_lin` | layers that keep a recurrent state instead of KV, under hybrid attention; `L − L_lin` keep KV. 0 under full attention | `config.json` → `layer_types`, the entries `linear_attention` |
+| `E`, `k` | routed experts per MoE layer, and how many of them each token is sent to | `config.json` → `num_experts`, `num_experts_per_tok` |
+| `P_experts` | parameters in every routed expert of every layer: resident in full, read only where tokens routed. 0 for a dense FFN | the checkpoint's safetensors headers (`bench/models/`) |
 
 ### Read from the hardware
 
@@ -86,8 +89,18 @@ bytes_moved        = weights_bytes + kv_bytes_total
                      — so the term is present in both phases and means the
                      opposite direction in each
 
+state_bytes        = L_lin × (n_v × d_k × d_v × 4 + (conv − 1) × channels × 2)
+                     the recurrent state one sequence holds, whatever its length
+state_tokens       = state_bytes / kv_bytes_per_token
+
+share_read(n)      = 1 − (1 − k / E)^n
+                     the expected share of routed experts a pass over n tokens
+                     reads, routing uniform
+weights_read(n)    = (P_total − P_experts × (1 − share_read(n))) × bytes_per_param
+P_active           = P_compute − P_experts × (1 − k / E)
+
 t_mem_ideal        = bytes_moved / BW_peak
-t_compute_ideal    = 2 × P_compute × B_tokens / FLOPS_dense
+t_compute_ideal    = 2 × P_active × B_tokens / FLOPS_dense
                      └ FLOPS_PER_MAC: one multiply–accumulate = 2 FLOP
 t_step_ideal       = max(t_mem_ideal, t_compute_ideal)          ← roofline
 
@@ -98,6 +111,13 @@ achieved_bandwidth = BW_peak × eff_mem
                      the denominator of every decode floor; the peak row of a
                      vendor table is never it
 ```
+
+Under hybrid attention `kv_bytes_per_token` counts the `L − L_lin` layers that
+keep KV; a decode step adds `2 × state_bytes` per sequence, because the state is
+read and written back. Under MoE `weights_bytes` becomes `weights_read(B_tokens)`
+and `P_compute` becomes `P_active`. A dense full-attention model has
+`L_lin = P_experts = 0`, and every line reduces to the one above it
+([SLO.md](SLO.md) §11).
 
 Weights are read **once per forward pass** whatever `B_tokens` is; KV is read per
 sequence. That asymmetry is the whole economics of batching, worked through with
@@ -507,6 +527,46 @@ ship.
 **head_dim** — width of one attention head, `hidden_size / num_attention_heads`
 unless stated explicitly in `config.json`.
 
+**Hybrid attention** — a stack whose layers do not all attend the same way: in
+Qwen3.5 and later, every fourth layer keeps full attention and a KV cache, and
+the other three are linear attention. `config.json` → `layer_types`,
+`full_attention_interval`. KV per token shrinks by the share of layers that no
+longer keep it, and each sequence gains a fixed state ([SLO.md](SLO.md) §11).
+
+**Linear attention** (here **Gated DeltaNet**) — attention that folds each new
+token into a fixed-size matrix instead of appending it to a cache, so its memory
+does not grow with the context. `config.json` → `linear_num_key_heads`,
+`linear_num_value_heads`, `linear_key_head_dim`, `linear_value_head_dim`, and
+`linear_conv_kernel_dim` for the short convolution in front of it.
+
+**Recurrent state** — what a linear-attention layer keeps per sequence in place of
+KV: a `d_k × d_v` matrix per value head, plus a convolution window of the last
+`conv − 1` inputs. Held once per sequence, read and written back by every decode
+step. vLLM calls it the *mamba* state, after the first model family that had one.
+
+**State-equivalent tokens** (`state_tokens`) — a recurrent state expressed in tokens
+of the same model's KV: the context a seat holds beyond its own length. 1 572 for
+Qwen3.5-9B at BF16 KV, twice that at FP8 KV, because FP8 KV shrinks only the
+attention layers.
+
+**Routed experts / shared expert** — the FFN of an MoE layer split into `E` small
+FFNs, of which a router sends each token to `k`. A shared expert is one every
+token passes through, so its weights count as ordinary ones.
+
+**Expert share read** (`share_read`) — the expected fraction of routed experts a
+forward pass touches, `1 − (1 − k/E)^n` for `n` tokens routed uniformly: `k/E` for
+one token, all of them for any long prompt or large batch.
+
+**Active parameters** (`P_active`) — the non-embedding weights one token multiplies
+through: everything but the routed experts it was not sent to. What the compute
+side of an MoE uses. The memory side still uses `P_total`, because every expert is
+resident in HBM.
+
+**MTP** (multi-token prediction) — an extra head shipped in some checkpoints
+(`mtp.*` tensors, `config.json` → `mtp_num_hidden_layers`) that drafts tokens for
+speculative decoding. vLLM loads it only when speculative decoding is configured,
+so its parameters are not in the weights this repository prices.
+
 **hidden_size** — width of the vector carried from layer to layer, one per token.
 `config.json` → `hidden_size`. **vocab_size** is the number of distinct tokens, and
 sets the width of the two vocabulary-sized matrices below.
@@ -757,6 +817,22 @@ weights: `auto` follows the model, `fp8` stores one byte per element. It halves
 divisor, so it buys sequences and speed and cannot change which limit binds
 ([SLO.md](SLO.md) §6). Uncalibrated scales default to 1.0; the accuracy cost is a
 separate question this repo has not measured.
+
+**`--mamba-ssm-cache-dtype`** / **`mamba_ssm_dtype`** — the dtype a linear-attention
+layer's recurrent state is stored in, separate from `--kv-cache-dtype`. `auto`
+takes the checkpoint's `config.json` → `mamba_ssm_dtype` for Qwen3.5, which is
+float32, so the state is 4 bytes per element under a BF16 model and an FP8 KV
+cache alike.
+
+**`mamba_cache_mode`** — how vLLM keeps recurrent states for prefix caching:
+`none` with caching off, and `all` or `align` with it on. Qwen3.5 gets `align` at
+v0.27.1, marked experimental: a state is kept only at block boundaries, a second
+one is held across the boundary while it is copied, and a prefix hit lands only
+where a state was kept ([SLO.md](SLO.md) §11).
+
+**`--language-model-only`** — serve a multimodal checkpoint as text only: every
+modality limit goes to 0, and vLLM skips the vision tower's weights. The way
+this repository prices Qwen3.5-9B and Qwen3.6-35B-A3B.
 
 **Attention backend** — the kernel family vLLM uses for attention, chosen at startup
 from what the card, the dtype and the build support, and printed in the startup log.
@@ -1661,14 +1737,23 @@ a class added without a derivation would be a target picked by feel. In code,
 ## Architectures that break the standard arithmetic
 
 The rules of thumb above (`2 × P × B` for FLOPs, `2 × n_kv × head_dim × bytes × L`
-for KV per token) assume a dense, GQA, full-attention transformer. Four families
-break them. Check which one you are holding before reaching for a formula.
+for KV per token) assume a dense, GQA, full-attention transformer. Five families
+depart from them. Check which one you are holding before reaching for a formula.
+`bench/roofline.py` now models the first two; the three after them still
+break it.
 
-**MoE (Mixture of Experts)** — only a subset of experts fires per token, so the
-parameter count splits in two. Memory must use **total** parameters, since every
-expert is resident in HBM; FLOPs must use **active** parameters. Config fields:
-`num_experts`, `num_experts_per_tok`. Using total params for FLOPs overestimates
-prefill time by roughly the expert ratio.
+**MoE (Mixture of Experts)** — modelled. Only a subset of experts fires per
+token, so the parameter count splits in two. Memory must use **total**
+parameters, since every expert is resident in HBM; FLOPs must use **active**
+parameters. Config fields: `num_experts`, `num_experts_per_tok`. Using total
+params for FLOPs overestimates prefill time by roughly the expert ratio. The
+weights a decode step reads grow with the batch, *Expert share read*
+([SLO.md](SLO.md) §11).
+
+**Hybrid linear attention** — modelled. Most layers keep a fixed *Recurrent
+state* instead of KV, so KV per token counts only the full-attention layers,
+and each sequence adds a constant that does not grow with its context. Config
+fields: `layer_types`, `linear_*`, `mamba_ssm_dtype` ([SLO.md](SLO.md) §11).
 
 **MLA (Multi-head Latent Attention)** — DeepSeek-V2 and later compress keys and
 values into a low-rank latent instead of storing them per head. The KV formula does
@@ -1683,5 +1768,5 @@ so KV stops growing once context exceeds `sliding_window`. The linear
 also be quantized independently of the weights (`kv_cache_dtype` in vLLM), so the
 weight term and the KV term of `bytes_moved` may carry different multipliers.
 
-In all four cases the check is the same one that applies to every derivation here:
+In all five cases the check is the same one that applies to every derivation here:
 vLLM's startup log outranks the arithmetic ([SLO.md](SLO.md) §9).
