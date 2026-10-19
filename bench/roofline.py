@@ -96,12 +96,9 @@ QWEN3_8B = Model(
     head_dim=128,
 )
 
-# For the calculator's comparison only: never served or measured here. Four KV
-# heads against eight and 28 layers against 36, so the same card seats far more
-# of it. Dense GQA, full attention, so the formulas above hold for it.
-# config.json: num_hidden_layers 28, num_key_value_heads 4, head_dim =
-# hidden_size / num_attention_heads = 3584 / 28 (the key is absent from a qwen2
-# config). Model card: 7.61B total, 6.53B non-embedding.
+# Priced by the calculator, never served or measured here; dense GQA and full
+# attention, so the formulas hold. head_dim = 3584 / 28 from config.json, which
+# has no key for it in a qwen2 config; parameter counts from the model card.
 QWEN2_5_7B = Model(
     name="Qwen2.5-7B-Instruct",
     params_total=7.61e9,
@@ -131,10 +128,9 @@ L40S = Accelerator(
     provenance="prior, unvalidated; the spec-sheet card, kept for contrast",
 )
 
-# Same card, coefficients fitted by run 1 (SLO.md section 9,
-# docs/benchmarks/l40s-baseline.md). A separate instance, so a prediction can
-# be printed against either and the table can say which produced a row.
-# Neither coefficient transfers to MI300X.
+# Same card, coefficients fitted by run 1 (docs/benchmarks/l40s-baseline.md). A
+# separate instance, so a prediction can be printed against either and the
+# section 9 table can say which produced a row (SLO.md section 9).
 L40S_RUN1 = Accelerator(
     name="NVIDIA L40S (run 1 coefficients)",
     memory_bytes=48e9,
