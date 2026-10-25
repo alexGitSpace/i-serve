@@ -249,6 +249,11 @@ system`. Used here in the other direction: with all seats busy a seat frees ever
 — the step that turns a TTFT budget into an autoscaling threshold
 ([SLO.md](SLO.md) §4).
 
+**First-token bias** — a decode rate overstated by `n / (n − 1)`: the first
+generated token comes from the prefill's last logits, so an `n`-token generation
+spans `n − 1` decode steps, and a tool that divides `n` by that window counts one
+token it did not time. 128/127 = 1.008 at `n` = 128.
+
 ---
 
 ## Reliability vocabulary
@@ -492,6 +497,21 @@ accelerator pools, so each is sized for the limit that actually binds it
 ([model-anatomy.md](model-anatomy.md) level 1) instead of sharing one card that is
 wrong for both.
 
+**Ceiling** (decode) — the throughput counterpart of a floor: peak memory
+bandwidth divided by the bytes one decode step reads (every weight it multiplies
+by, plus the KV it attends over), in tokens per second. Peak, not achieved,
+bandwidth, so no coefficient enters it.
+
+**Share of ceiling** — a measured decode rate divided by the ceiling for the same
+weight file, context and batch.
+
+**Unified memory** — one physical memory pool shared by CPU and GPU, as on Apple
+silicon: the model's weights and KV compete with everything else on the machine
+for the same capacity and bandwidth.
+
+**M2 Max** — an Apple-silicon SoC; the 38-core-GPU variant with 32 GB of unified
+memory and 400 GB/s of peak memory bandwidth (Apple's figure, decimal GB).
+
 ---
 
 ## Model internals
@@ -603,6 +623,22 @@ multiplier on that sequence's KV footprint.
 pass. Raising it costs almost nothing on the compute side and a great deal on the
 memory side, because the extra sequences bring their own KV. The ceiling is set by
 the TPOT target, not by how much memory happens to be free ([SLO.md](SLO.md) §6).
+
+**Bits per weight** (bpw) — a quantised file's tensor bytes × 8 divided by its
+weight count, scales and biases included. It replaces `bytes_per_param` when
+the weights are not one plain dtype.
+
+**GGUF** — llama.cpp's single-file weight format: a header (architecture fields,
+tokenizer, chat template) followed by the tensors, each with its own type.
+
+**K-quants** (`Q4_K`, `Q6_K`) and **Q4_K_M** — llama.cpp's block quantisations:
+`Q4_K` stores 256 weights in 144 B (4.5 bpw), `Q6_K` 256 in 210 B (6.5625 bpw).
+`Q4_K_M` names a file mix, mostly `Q4_K` with `Q6_K` on the output projection
+and some `ffn_down` and `attn_v` tensors.
+
+**MLX affine quantisation** (`bits`, `group_size`) — weights packed into
+`uint32`, with one BF16 scale and one BF16 bias per group of `group_size`
+weights: 4-bit is 4.5 bpw at group 64 and 4.25 at group 128.
 
 ---
 
@@ -969,6 +1005,38 @@ measured on the L40S in
 `Directly load AOT compilation from path …`. The key is a hash whose members are
 only partly established
 ([benchmarks/l40s-run3.md](benchmarks/l40s-run3.md) §6).
+
+**llama.cpp** — a C/C++ inference engine on the ggml tensor library; it reads
+GGUF and runs on Metal, CUDA, ROCm, Vulkan and CPU. Its tools: `llama-bench`,
+`llama-batched-bench`, `llama-server`.
+
+**`llama-bench`** — llama.cpp's microbenchmark: `-p` prompt tokens, `-n`
+generated tokens, `-d` depth (tokens already in the KV cache before the timed
+window, prefilled untimed), `-r` repetitions. **`llama-batched-bench`** runs
+`-npl` sequences at once and reports the aggregate decode rate `S_TG`.
+
+**`llama-server`** — llama.cpp's OpenAI-compatible HTTP server: `-c` the KV pool
+in tokens, `-np` parallel slots.
+
+**Ollama** — a local-model daemon with its own registry and API. From v0.40 it
+serves every GGUF through upstream `llama-server`, started as a subprocess.
+**`num_ctx`** is its per-request context window, passed on as `-c`.
+
+**MLX** and **mlx-lm** — Apple's array framework for Apple-silicon GPUs, and its
+LLM package (`mlx_lm.generate`, `mlx_lm.server`, `mlx_lm.benchmark`).
+
+**KV cache type** (`--cache-type-k`, `--cache-type-v`; Ollama's
+`OLLAMA_KV_CACHE_TYPE`) — the format llama.cpp stores the cache in: F16 by
+default, or quantised (`q8_0`, `q4_0`), which shrinks the bytes per token. A
+quantised V cache requires flash attention.
+
+**Flash attention, AUTO** (llama.cpp `-fa auto`) — the default: the fused
+attention kernel is enabled when the device that runs a layer supports it,
+which a probe decides when the context is created.
+
+**KV padding** (llama.cpp) — a decode step attends over the used KV cells
+rounded up to a multiple of 256, so it reads up to 255 cells more than the
+context holds.
 
 ---
 
