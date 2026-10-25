@@ -512,6 +512,15 @@ for the same capacity and bandwidth.
 **M2 Max** — an Apple-silicon SoC; the 38-core-GPU variant with 32 GB of unified
 memory and 400 GB/s of peak memory bandwidth (Apple's figure, decimal GB).
 
+**Thermal pressure** — macOS's system-wide thermal level, published as the
+notification key `com.apple.system.thermalpressurelevel`: 0 nominal, 1 moderate,
+2 heavy, 3 trapping, 4 sleeping (`OSThermalNotification.h`). Readable without
+`sudo`.
+
+**Thermal throttling** — the clock reduction a chip applies to stay within its
+temperature limit. In a benchmark it reads as a slower engine unless the clock
+is logged beside each row.
+
 ---
 
 ## Model internals
