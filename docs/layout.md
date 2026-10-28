@@ -2,7 +2,9 @@
 
 The map of the tree, not a route: one row per component, what it is and how
 far it got. Directories map one-to-one onto the components the platform is
-built from. The routes are in [../README.md](../README.md).
+built from. The routes are in [../README.md](../README.md). The Kubernetes
+half — `deploy/`, `router/`, `controllers/` — is kept as built and no longer
+grows; what it measures enters the ledger as ordinary rows.
 
 | Path | What | State |
 |---|---|---|
@@ -15,9 +17,10 @@ built from. The routes are in [../README.md](../README.md).
 | `docs/runbook.md` | Canary rollout, SLO-breach tree, morning triage, two engines on one card, OOM | canary run once on `kind`; two engines on one card measured once on a droplet; OOM procedure not written |
 | `docs/symptom-map.md`, `.json` | The decision tree, and the checked subset the site evaluates | 75 nodes; the JSON's 38 nodes held equal by a test |
 | `docs/running-on-kind.md` | The eleven commands, the two waits, the stub contract | ✅ |
-| `docs/adding-a-run.md` | Why runs accumulate here, and the checklist | first user: MI300X run 1 |
+| `docs/adding-a-run.md` | Why runs and probes accumulate here, and the checklist | first user: MI300X run 1; the probe variant has one sheet |
 | `docs/benchmarks/` | One report per run, registered by its front matter; the run journal (`README.md`, generated); the ledger (`ledger.jsonl`, generated); the chart above | every run written up, raw evidence committed; the count and what each found are in the journal |
-| `docs/benchmarks/runsheets/` | The sheet written **before** each run | one or two per run, written before its card was rented |
+| `docs/benchmarks/runsheets/` | The sheet written **before** each run or probe | one or two per run, written before its card was rented; the Mac sheet is the single-stream template, stopped 2026-10-25 with its ceiling registered and no share read |
+| `docs/benchmarks/raw/` | The evidence, verbatim: one directory per run or probe, each with a README of its files | six rented runs and one laptop probe |
 | `docs/instrument-vllm-bench-sweep.md` | What `vllm bench sweep` does at `v0.27.1` | verified off-card against that tag |
 | `bench/` | Load harness, `roofline.py`, chart generator, site export, the run journal (`runs.py`), the ledger (`ledger.py`), checkpoint snapshots of every priced model (`models/`); tests in `bench/tests/` | model calibrated on Qwen3-8B; two more architectures priced, never served; the harness has run on both cards |
 | `site/` | Calculator and advisor as one static page for Pages | live; parity 438/438 rows |

@@ -51,6 +51,12 @@ reviewed MI300X sheet; its parts, in order:
 Commit the sheet before renting. In the public repository, open it as its own
 pull request ([CONTRIBUTING.md](../CONTRIBUTING.md)).
 
+A probe on a device you own follows the same sheet with a single-stream
+geometry: [benchmarks/runsheets/mac-probe-1.md](benchmarks/runsheets/mac-probe-1.md)
+is the template, down to the thermal state recorded beside each row and the
+reason it stopped. The ceiling is read from the weight file's bytes, per
+tensor role, because a quantised file mixes widths.
+
 ## 2. On the card: what to capture
 
 Everything lands in `benchmarks/raw/<card>-<date>/`, with a README in the shape

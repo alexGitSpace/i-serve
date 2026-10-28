@@ -1,11 +1,22 @@
 # Who this is for, and what it will and will not give you
 
-This repository is a slice of an LLM inference operator's platform, built small
-on purpose. It is written for **one reader**: an engineer who wants to understand
-the economics and behaviour of LLM inference, and who checks that understanding
-by changing something and watching what moves.
+This repository is a ledger of inference efficiency, built small on purpose.
+It is written for a **practitioner**: someone who runs, or is about to run, an
+open-weights model on hardware they chose, and who wants to know how close to
+the physics their stack is, and why. The first such reader is the author.
 
-Everything here is arranged for that reader. If you are skimming to judge whether
+Readers arrive with different hardware, and with it a different regime of the
+ceiling:
+
+| Who | Hardware | The question they arrive with | Regime | What is here today |
+|---|---|---|---|---|
+| An enterprise team | rented H100 or MI300X, a cluster of its own | seats and $ per task at our SLO, and is the API cheaper? | seats and goodput at SLO | seats and $/1M of goodput, measured on the L40S and MI300X; $ per task is not priced yet |
+| A startup | one to eight rented cards | which card, and why is mine slower than the vendor's figure? | both | the ceiling and the share for vLLM on two cards; the symptom map |
+| A hobbyist or an edge builder | a Mac, an RTX 4090 or 5090, Strix Halo, DGX Spark, a Jetson | will my hardware run model X, how fast, and which engine is faster? | single stream | the ceiling for Qwen3-8B read from a weight file ([the Mac sheet](benchmarks/runsheets/mac-probe-1.md)); no engine measured yet, because the first probe stopped on the laptop's heat |
+| A batch operator on an API | Flash-class models, paid by the token | is my own hardware cheaper at equal quality? | goodput, no hard SLO | not yet: a paper comparison first, then a measured one behind an eval |
+
+Everything here is arranged for that reader, and checked the way that reader
+checks: by changing something and watching what moves. If you are skimming to judge whether
 the work is real, the first route below is the short one; if you are looking for
 a single formula or a manifest to copy, the headings in [SLO.md](SLO.md) and the
 `README.md` under each `deploy/` directory are stable anchors and you can deep
@@ -95,8 +106,10 @@ The derivations are the point, and they are long. Reading order:
 1. [model-anatomy.md](model-anatomy.md) — where the bytes come from.
 2. [SLO.md](SLO.md) — targets, floors, ceiling, cost, and §9 on how each
    assumption gets validated or falsified.
-3. [benchmarks/](benchmarks/) — three L40S runs, each with a predicted-vs-measured
-   table and a section on what the run could **not** measure.
+3. [benchmarks/](benchmarks/) — eight runs on two cards and one probe on a
+   laptop, each with a predicted-vs-measured table and a section on what it
+   could **not** measure; every decode step they measured, in
+   [benchmarks/ledger.jsonl](benchmarks/ledger.jsonl).
 4. [architecture.md](architecture.md) — the request path, and where each SLO is
    won or lost along it.
 5. [runbook.md](runbook.md) — canary rollout, morning triage.
@@ -247,8 +260,11 @@ the model means changing both, and the table above is the checklist.
 
 Three kinds of number live here and they are never mixed:
 
-- **Measured** — produced by a run, with raw evidence committed under
-  `docs/benchmarks/raw/`. On the accelerator side two entries carry measured
+- **Measured** — produced by a run or a probe, with raw evidence committed
+  under `docs/benchmarks/raw/`, and one line per decode step in
+  `docs/benchmarks/ledger.jsonl`: its share of ceiling, the host it was taken
+  on, and the status of every prediction it faced. A condition a run did not
+  record reads `not recorded` there, never a guess. On the accelerator side two entries carry measured
   coefficients: `l40s-run1`, `eff_mem = 0.83` from twelve decode levels and
   `mfu = 0.439` from one uncontended prefill, faced by two later runs;
   `mi300x-run1`, `eff_mem = 0.46` from five decode rows and `mfu = 0.166` from one
@@ -264,9 +280,12 @@ Three kinds of number live here and they are never mixed:
   answer, not its size, and comparing an assumed card against a measured one
   compares two different kinds of thing.
 
-Adding an accelerator is one run and one registry edit, and two of its six
-fields can only come from the run: [adding-a-run.md](adding-a-run.md). That is
-why this repository knows three accelerators rather than thirty.
+A card enters with a run and a device with a probe, never with a datasheet
+alone: two of an accelerator's six fields exist only after a measurement, and a
+coefficient is a `hypothesis` until a run it did not see faces it
+([adding-a-run.md](adding-a-run.md)). That is why the ledger knows two cards
+and one laptop rather than thirty devices, and why the laptop's row is a sheet
+with a registered ceiling and no share yet.
 
 Where a measurement and a derivation disagree, the measurement wins and the
 derivation is corrected in place; [SLO.md](SLO.md) §9 records how each assumption

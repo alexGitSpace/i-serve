@@ -1,8 +1,9 @@
 # Contributing
 
-This repository is a ledger of predictions faced by measurements, kept small on
-purpose. A contribution is welcome when it adds a row to that ledger or corrects
-one; the shape of the work is fixed, and this page says what it is.
+This repository is a ledger of inference efficiency: predictions faced by
+measurements, kept small on purpose. A contribution is welcome when it adds a
+row to that ledger or corrects one; the shape of the work is fixed, and this
+page says what it is.
 
 ## What a contribution is
 
@@ -11,6 +12,12 @@ one; the shape of the work is fixed, and this page says what it is.
   after, two fitted coefficients, and one row per prediction in a §9 table. The
   whole procedure, and why runs are what accumulate here:
   [docs/adding-a-run.md](docs/adding-a-run.md).
+- **A probe.** One engine, one weight file, one device you own: the ceiling
+  read from the file's bytes and registered before the measurement, the
+  measurement with the engine's version and the host's state beside it, and
+  the share of ceiling in the read-out. The template is the Mac sheet
+  ([docs/benchmarks/runsheets/mac-probe-1.md](docs/benchmarks/runsheets/mac-probe-1.md)),
+  including the way it stopped.
 - **A corrected number, with the evidence that corrects it.** Measurement
   outranks derivation ([docs/SLO.md §9](docs/SLO.md#9-assumptions-and-how-they-get-validated)):
   a derivation a run has shown wrong is corrected in place, the §9 table gains
@@ -21,10 +28,16 @@ one; the shape of the work is fixed, and this page says what it is.
 
 ## What it is not
 
-- **Another model.** The served model is one string in three places and six
-  derived numbers, and the repository argues against making it a parameter:
-  [docs/audience.md](docs/audience.md#changing-the-model). The value here comes
-  from comparing configurations of one model, not two models in the same class.
+- **A model without a probe.** A model enters the ledger measured, on a named
+  engine and device; a `config.json` alone is priced by the calculator as a
+  prediction and marked as one. Swapping the model the `kind` half serves is
+  still not a string substitution
+  ([docs/audience.md](docs/audience.md#changing-the-model)), and that half no
+  longer grows.
+- **A public claim as a row.** A vendor's or a provider's figure is checked on
+  paper against the ceiling and lives in its own table, never in the ledger: a
+  row is taken with a run or a probe. Where a claim omits the precision, the
+  context or the batch, the verdict is *condition not disclosed*, not a number.
 - **A card without a run.** A new `Accelerator(...)` with spec-sheet coefficients
   is welcome as a *prior* — `provenance="prior, unvalidated; no run on this card"`
   — and it will be labelled as one on every page it prints. It becomes a
@@ -47,6 +60,8 @@ one; the shape of the work is fixed, and this page says what it is.
   produces;
 - the committed `site/data/` is what `bench/export_site_data.py` produces, and
   `site/calc.js` agrees with Python on every golden row;
+- the committed ledger is what `bench/ledger.py` produces from the modules
+  that score each run;
 - every node of `docs/symptom-map.json` is a line of `docs/symptom-map.md`, and
   every link in either resolves.
 
@@ -81,7 +96,10 @@ from going quietly inert.
 2. **The results and the report as a second pull request**, with the raw
    evidence under `docs/benchmarks/raw/`, the §9 rows, the coefficient fit, the
    registry edit, the report's front matter, and the regenerated chart, site
-   data and run journal (`.githooks/pre-commit` does all three if enabled).
+   data, run journal and ledger (`.githooks/pre-commit` does all four if
+   enabled). A probe follows the same two steps, with a single-stream
+   geometry, and its sheet records the device's thermal state beside each
+   row.
 
 ## Licence
 

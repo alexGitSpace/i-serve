@@ -1,12 +1,17 @@
 # i-serve
 
-A slice of an LLM inference operator's platform, centred on one piece of
-arithmetic: what an open-weights model costs to serve at a promised speed,
-derived from its `config.json` and the card under it and checked by runs on
-rented hardware; today that model is Qwen3-8B.
+A ledger of inference efficiency for people who serve open-weights models
+themselves. For a model on a card it names the physical ceiling of a decode
+step before the run, from the bytes the step reads and the card's peak
+bandwidth; then it records what the stack delivered as a share of that ceiling,
+with the engine, its version, the host and the raw log beside the number. Two
+regimes: a single stream, for a workstation or an edge device; seats and goodput
+at an SLO, for a datacenter or a batch. Today: Qwen3-8B on two rented cards,
+every decode step their runs measured in the ledger, and one probe on a laptop
+that stopped on its own heat.
 
-Around it: a Kubernetes control plane, a prefix router, a dashboard, a runbook —
-and the operator's three questions in the order they arrive:
+Around the ledger: the arithmetic that prices a model from its `config.json`, a
+page that runs it, and the operator's three questions in the order they arrive:
 [speed](#1-speed--how-fast-should-each-word-appear),
 [cost](#2-cost--what-does-a-million-tokens-cost-at-that-speed),
 [trouble](#3-trouble--it-got-slow-where-do-you-look-first).
@@ -39,6 +44,12 @@ Numbers come in three kinds, never mixed:
   On the MI300X its first run came in a third and nearly two thirds below the
   0.70 / 0.45 ([the report](docs/benchmarks/mi300x-run1.md)).
 
+The ledger holds the measured kind one decode step per line, beside its
+ceiling, its share and the status of every prediction it faced — `hypothesis`
+when the coefficient was fitted to that same run, `survived` or `falsified`
+when a later run faced it: [docs/benchmarks/ledger.jsonl](docs/benchmarks/ledger.jsonl),
+generated from the modules that score each run.
+
 The runs so far, by card; every run, what it asked and what it found:
 [docs/benchmarks/README.md](docs/benchmarks/README.md).
 
@@ -50,7 +61,9 @@ The runs so far, by card; every run, what it asked and what it found:
 <!-- runs:end -->
 
 `kind` runs the stack against a stub and shows what the system *does*, never
-what the numbers *are*, and no card has ever been sent these manifests. What it
+what the numbers *are*, and no card has ever been sent these manifests. That
+half — control plane, prefix router, dashboard, runbook — is kept as built and
+no longer grows; what it measures enters the ledger as ordinary rows. What it
 cannot show, and what is fixture:
 [docs/audience.md](docs/audience.md#what-is-real-on-kind-and-what-is-not).
 
@@ -178,13 +191,15 @@ break; the other on spec-sheet assumptions that its first run embarrassed
 The eleven commands, the two load-bearing waits, and why what comes up is not
 vLLM: [docs/running-on-kind.md](docs/running-on-kind.md).
 
-## Model, contributing, layout
+## Models, contributing, layout
 
-The served model is one string in three places and six numbers derived from
-it; **`Qwen/Qwen3-8B`** (Apache 2.0) is the default because `git clone` and one
-command then work for anyone. The calculator prices a second architecture from
-its `config.json` alone, marked *predicted only*. The checklist for swapping the
-served one: [docs/audience.md](docs/audience.md#changing-the-model).
-The unit of contribution is one run: [docs/adding-a-run.md](docs/adding-a-run.md),
-ground rules in [CONTRIBUTING.md](CONTRIBUTING.md). The map of the tree, one row
-per component with its state: [docs/layout.md](docs/layout.md).
+A model enters the ledger measured: on a named engine and device, with a
+ceiling registered before the measurement. The calculator prices two more
+architectures from their `config.json` alone, marked *predicted only*, and the
+served model of the `kind` half stays **`Qwen/Qwen3-8B`** (Apache 2.0), one
+string in three places and six derived numbers
+([docs/audience.md](docs/audience.md#changing-the-model)). The unit of
+contribution is one run on a rented card or one probe on a device you own:
+[docs/adding-a-run.md](docs/adding-a-run.md), ground rules in
+[CONTRIBUTING.md](CONTRIBUTING.md). The map of the tree, one row per component
+with its state: [docs/layout.md](docs/layout.md).
