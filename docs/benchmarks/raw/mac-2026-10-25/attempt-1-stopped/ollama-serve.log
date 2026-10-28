@@ -1,9 +1,9 @@
-Couldn't find '/Users/aleksei/.ollama/id_ed25519'. Generating new private key.
+Couldn't find '~/.ollama/id_ed25519'. Generating new private key.
 Your new public key is: 
 
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFqEDFhwZ+r6QPmHP+O2evF2Hr1CRjyUvrae2Pba+LDS
 
-time=2026-10-25T15:22:37.470+02:00 level=INFO source=routes.go:2454 msg="server config" env="map[HTTPS_PROXY: HTTP_PROXY: LLAMA_ARG_FIT: LLAMA_ARG_FIT_TARGET: NO_PROXY: OLLAMA_CONTEXT_LENGTH:0 OLLAMA_CREATE_REMOTE:false OLLAMA_DEBUG:INFO OLLAMA_DEBUG_LOG_REQUESTS:false OLLAMA_EDITOR: OLLAMA_FLASH_ATTENTION:false OLLAMA_GO_TEMPLATE:true OLLAMA_GPU_OVERHEAD:0 OLLAMA_HOST:http://127.0.0.1:11434 OLLAMA_IGPU_ENABLE: OLLAMA_KEEP_ALIVE:5m0s OLLAMA_KV_CACHE_TYPE: OLLAMA_LLM_LIBRARY: OLLAMA_LOAD_TIMEOUT:5m0s OLLAMA_MAX_LOADED_MODELS:0 OLLAMA_MAX_QUEUE:512 OLLAMA_MAX_TRANSFER_STREAMS:4 OLLAMA_MODELS:/Users/aleksei/.ollama/models OLLAMA_NOHISTORY:false OLLAMA_NOPRUNE:false OLLAMA_NO_CLOUD:false OLLAMA_NUM_PARALLEL:1 OLLAMA_ORIGINS:[http://localhost https://localhost http://localhost:* https://localhost:* http://127.0.0.1 https://127.0.0.1 http://127.0.0.1:* https://127.0.0.1:* http://0.0.0.0 https://0.0.0.0 http://0.0.0.0:* https://0.0.0.0:* app://* file://* tauri://* vscode-webview://* vscode-file://*] OLLAMA_REMOTES:[ollama.com] OLLAMA_SCHED_SPREAD:false http_proxy: https_proxy: no_proxy:]"
+time=2026-10-25T15:22:37.470+02:00 level=INFO source=routes.go:2454 msg="server config" env="map[HTTPS_PROXY: HTTP_PROXY: LLAMA_ARG_FIT: LLAMA_ARG_FIT_TARGET: NO_PROXY: OLLAMA_CONTEXT_LENGTH:0 OLLAMA_CREATE_REMOTE:false OLLAMA_DEBUG:INFO OLLAMA_DEBUG_LOG_REQUESTS:false OLLAMA_EDITOR: OLLAMA_FLASH_ATTENTION:false OLLAMA_GO_TEMPLATE:true OLLAMA_GPU_OVERHEAD:0 OLLAMA_HOST:http://127.0.0.1:11434 OLLAMA_IGPU_ENABLE: OLLAMA_KEEP_ALIVE:5m0s OLLAMA_KV_CACHE_TYPE: OLLAMA_LLM_LIBRARY: OLLAMA_LOAD_TIMEOUT:5m0s OLLAMA_MAX_LOADED_MODELS:0 OLLAMA_MAX_QUEUE:512 OLLAMA_MAX_TRANSFER_STREAMS:4 OLLAMA_MODELS:~/.ollama/models OLLAMA_NOHISTORY:false OLLAMA_NOPRUNE:false OLLAMA_NO_CLOUD:false OLLAMA_NUM_PARALLEL:1 OLLAMA_ORIGINS:[http://localhost https://localhost http://localhost:* https://localhost:* http://127.0.0.1 https://127.0.0.1 http://127.0.0.1:* https://127.0.0.1:* http://0.0.0.0 https://0.0.0.0 http://0.0.0.0:* https://0.0.0.0:* app://* file://* tauri://* vscode-webview://* vscode-file://*] OLLAMA_REMOTES:[ollama.com] OLLAMA_SCHED_SPREAD:false http_proxy: https_proxy: no_proxy:]"
 time=2026-10-25T15:22:37.471+02:00 level=INFO source=routes.go:2456 msg="Ollama cloud disabled: false"
 time=2026-10-25T15:22:37.472+02:00 level=INFO source=images.go:1007 msg="total blobs: 0"
 time=2026-10-25T15:22:37.472+02:00 level=INFO source=images.go:1016 msg="total unused blobs removed: 0"
@@ -19,11 +19,11 @@ time=2026-10-25T15:22:50.367+02:00 level=INFO source=routes.go:2566 msg="vram-ba
 [GIN] 2026/10/25 - 15:22:56 | 200 | 221.27ms |       127.0.0.1 | POST     "/api/create"
 [GIN] 2026/10/25 - 15:22:56 | 200 | 11.875µs |       127.0.0.1 | HEAD     "/"
 [GIN] 2026/10/25 - 15:22:56 | 200 |  40.48ms |       127.0.0.1 | POST     "/api/show"
-time=2026-10-25T15:24:21.388+02:00 level=INFO source=server.go:107 msg="using llama-server for model" model=/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
-time=2026-10-25T15:24:21.390+02:00 level=INFO source=llama_server.go:457 msg="starting llama-server" cmd="/opt/homebrew/Cellar/ollama/0.40.11/libexec/lib/ollama/llama-server --model /Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 --port 51014 --host 127.0.0.1 --no-webui --offline -c 8192 -np 1 --log-verbosity 4 --no-log-prefix --no-log-timestamps --flash-attn auto -b 1024 -ub 1024 --context-shift --keep 4"
+time=2026-10-25T15:24:21.388+02:00 level=INFO source=server.go:107 msg="using llama-server for model" model=~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
+time=2026-10-25T15:24:21.390+02:00 level=INFO source=llama_server.go:457 msg="starting llama-server" cmd="/opt/homebrew/Cellar/ollama/0.40.11/libexec/lib/ollama/llama-server --model ~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 --port 51014 --host 127.0.0.1 --no-webui --offline -c 8192 -np 1 --log-verbosity 4 --no-log-prefix --no-log-timestamps --flash-attn auto -b 1024 -ub 1024 --context-shift --keep 4"
 time=2026-10-25T15:24:21.392+02:00 level=INFO source=sched.go:658 msg="system memory" total="32.0 GiB" free="19.2 GiB" free_swap="0 B"
 time=2026-10-25T15:24:21.392+02:00 level=INFO source=sched.go:665 msg="gpu memory" id=0 library=Metal available="24.5 GiB" free="25.0 GiB" minimum="512.0 MiB" overhead="0 B"
-time=2026-10-25T15:24:21.392+02:00 level=INFO source=llama_server.go:1088 msg="loading model via llama-server" model=/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
+time=2026-10-25T15:24:21.392+02:00 level=INFO source=llama_server.go:1088 msg="loading model via llama-server" model=~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
 time=2026-10-25T15:24:21.392+02:00 level=INFO source=llama_server.go:1341 msg="waiting for llama-server to start responding"
 time=2026-10-25T15:24:21.392+02:00 level=INFO source=llama_server.go:1396 msg="waiting for llama-server to become available" status="llm server not responding"
 srv  llama_server: initializing ...
@@ -53,8 +53,8 @@ srv  init_listene: The UI is disabled
 srv  init_listene: Use --ui/--no-ui (or deprecated --webui/--no-webui) to enable/disable
 srv          init: using 11 threads for HTTP server
 srv  llama_server: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
-srv    load_model: loading model '/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
-srv    load_model: local path '/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
+srv    load_model: loading model '~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
+srv    load_model: local path '~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
 cmn  common_init_: fitting params to device memory ...
 cmn  common_init_: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
 common_params_fit_impl: getting device memory data for initial parameters:
@@ -65,7 +65,7 @@ common_params_fit_impl: projected to use 5831 MiB of device memory vs. 25558 MiB
 common_params_fit_impl: will leave 19727 >= 1024 MiB of free device memory, no changes needed
 common_fit_params: successfully fit params to free device memory
 common_fit_params: fitting params to free memory took 0.10 seconds
-llama_model_loader: loaded meta data with 28 key-value pairs and 399 tensors from /Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 (version GGUF V3 (latest))
+llama_model_loader: loaded meta data with 28 key-value pairs and 399 tensors from ~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 (version GGUF V3 (latest))
 llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
 llama_model_loader: - kv   0:                       general.architecture str              = qwen3
 llama_model_loader: - kv   1:                               general.type str              = model
@@ -284,11 +284,11 @@ srv  update_slots: all slots are idle
 [GIN] 2026/10/25 - 15:24:27 | 200 |  7.667µs |       127.0.0.1 | HEAD     "/"
 [GIN] 2026/10/25 - 15:24:27 | 200 | 515.958µs |       127.0.0.1 | POST     "/api/show"
 [GIN] 2026/10/25 - 15:24:27 | 200 | 124.583µs |       127.0.0.1 | POST     "/api/generate"
-time=2026-10-25T15:24:50.651+02:00 level=INFO source=server.go:107 msg="using llama-server for model" model=/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
-time=2026-10-25T15:24:50.652+02:00 level=INFO source=llama_server.go:457 msg="starting llama-server" cmd="/opt/homebrew/Cellar/ollama/0.40.11/libexec/lib/ollama/llama-server --model /Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 --port 51039 --host 127.0.0.1 --no-webui --offline -c 8192 -np 1 --log-verbosity 4 --no-log-prefix --no-log-timestamps --flash-attn auto -b 1024 -ub 1024 --context-shift --keep 4"
+time=2026-10-25T15:24:50.651+02:00 level=INFO source=server.go:107 msg="using llama-server for model" model=~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
+time=2026-10-25T15:24:50.652+02:00 level=INFO source=llama_server.go:457 msg="starting llama-server" cmd="/opt/homebrew/Cellar/ollama/0.40.11/libexec/lib/ollama/llama-server --model ~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 --port 51039 --host 127.0.0.1 --no-webui --offline -c 8192 -np 1 --log-verbosity 4 --no-log-prefix --no-log-timestamps --flash-attn auto -b 1024 -ub 1024 --context-shift --keep 4"
 time=2026-10-25T15:24:50.654+02:00 level=INFO source=sched.go:658 msg="system memory" total="32.0 GiB" free="15.1 GiB" free_swap="0 B"
 time=2026-10-25T15:24:50.654+02:00 level=INFO source=sched.go:665 msg="gpu memory" id=0 library=Metal available="24.5 GiB" free="25.0 GiB" minimum="512.0 MiB" overhead="0 B"
-time=2026-10-25T15:24:50.654+02:00 level=INFO source=llama_server.go:1088 msg="loading model via llama-server" model=/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
+time=2026-10-25T15:24:50.654+02:00 level=INFO source=llama_server.go:1088 msg="loading model via llama-server" model=~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
 time=2026-10-25T15:24:50.654+02:00 level=INFO source=llama_server.go:1341 msg="waiting for llama-server to start responding"
 time=2026-10-25T15:24:50.654+02:00 level=INFO source=llama_server.go:1396 msg="waiting for llama-server to become available" status="llm server not responding"
 srv  llama_server: initializing ...
@@ -318,8 +318,8 @@ srv  init_listene: The UI is disabled
 srv  init_listene: Use --ui/--no-ui (or deprecated --webui/--no-webui) to enable/disable
 srv          init: using 11 threads for HTTP server
 srv  llama_server: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
-srv    load_model: loading model '/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
-srv    load_model: local path '/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
+srv    load_model: loading model '~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
+srv    load_model: local path '~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
 cmn  common_init_: fitting params to device memory ...
 cmn  common_init_: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
 common_params_fit_impl: getting device memory data for initial parameters:
@@ -330,7 +330,7 @@ common_params_fit_impl: projected to use 5831 MiB of device memory vs. 25558 MiB
 common_params_fit_impl: will leave 19727 >= 1024 MiB of free device memory, no changes needed
 common_fit_params: successfully fit params to free device memory
 common_fit_params: fitting params to free memory took 0.11 seconds
-llama_model_loader: loaded meta data with 28 key-value pairs and 399 tensors from /Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 (version GGUF V3 (latest))
+llama_model_loader: loaded meta data with 28 key-value pairs and 399 tensors from ~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 (version GGUF V3 (latest))
 llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
 llama_model_loader: - kv   0:                       general.architecture str              = qwen3
 llama_model_loader: - kv   1:                               general.type str              = model
@@ -601,11 +601,11 @@ srv  update_slots: all slots are idle
 [GIN] 2026/10/25 - 15:26:20 | 200 |  13.75µs |       127.0.0.1 | HEAD     "/"
 [GIN] 2026/10/25 - 15:26:20 | 200 | 793.833µs |       127.0.0.1 | POST     "/api/show"
 [GIN] 2026/10/25 - 15:26:20 | 200 | 64.875µs |       127.0.0.1 | POST     "/api/generate"
-time=2026-10-25T15:27:21.820+02:00 level=INFO source=server.go:107 msg="using llama-server for model" model=/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
-time=2026-10-25T15:27:21.821+02:00 level=INFO source=llama_server.go:457 msg="starting llama-server" cmd="/opt/homebrew/Cellar/ollama/0.40.11/libexec/lib/ollama/llama-server --model /Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 --port 51119 --host 127.0.0.1 --no-webui --offline -c 8192 -np 1 --log-verbosity 4 --no-log-prefix --no-log-timestamps --flash-attn auto -b 1024 -ub 1024 --context-shift --keep 4"
+time=2026-10-25T15:27:21.820+02:00 level=INFO source=server.go:107 msg="using llama-server for model" model=~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
+time=2026-10-25T15:27:21.821+02:00 level=INFO source=llama_server.go:457 msg="starting llama-server" cmd="/opt/homebrew/Cellar/ollama/0.40.11/libexec/lib/ollama/llama-server --model ~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 --port 51119 --host 127.0.0.1 --no-webui --offline -c 8192 -np 1 --log-verbosity 4 --no-log-prefix --no-log-timestamps --flash-attn auto -b 1024 -ub 1024 --context-shift --keep 4"
 time=2026-10-25T15:27:21.823+02:00 level=INFO source=sched.go:658 msg="system memory" total="32.0 GiB" free="19.8 GiB" free_swap="0 B"
 time=2026-10-25T15:27:21.823+02:00 level=INFO source=sched.go:665 msg="gpu memory" id=0 library=Metal available="24.5 GiB" free="25.0 GiB" minimum="512.0 MiB" overhead="0 B"
-time=2026-10-25T15:27:21.823+02:00 level=INFO source=llama_server.go:1088 msg="loading model via llama-server" model=/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
+time=2026-10-25T15:27:21.823+02:00 level=INFO source=llama_server.go:1088 msg="loading model via llama-server" model=~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
 time=2026-10-25T15:27:21.823+02:00 level=INFO source=llama_server.go:1341 msg="waiting for llama-server to start responding"
 time=2026-10-25T15:27:21.823+02:00 level=INFO source=llama_server.go:1396 msg="waiting for llama-server to become available" status="llm server not responding"
 srv  llama_server: initializing ...
@@ -635,8 +635,8 @@ srv  init_listene: The UI is disabled
 srv  init_listene: Use --ui/--no-ui (or deprecated --webui/--no-webui) to enable/disable
 srv          init: using 11 threads for HTTP server
 srv  llama_server: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
-srv    load_model: loading model '/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
-srv    load_model: local path '/Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
+srv    load_model: loading model '~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
+srv    load_model: local path '~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785'
 cmn  common_init_: fitting params to device memory ...
 cmn  common_init_: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
 common_params_fit_impl: getting device memory data for initial parameters:
@@ -647,7 +647,7 @@ common_params_fit_impl: projected to use 5831 MiB of device memory vs. 25558 MiB
 common_params_fit_impl: will leave 19727 >= 1024 MiB of free device memory, no changes needed
 common_fit_params: successfully fit params to free device memory
 common_fit_params: fitting params to free memory took 0.10 seconds
-llama_model_loader: loaded meta data with 28 key-value pairs and 399 tensors from /Users/aleksei/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 (version GGUF V3 (latest))
+llama_model_loader: loaded meta data with 28 key-value pairs and 399 tensors from ~/.ollama/models/blobs/sha256-d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785 (version GGUF V3 (latest))
 llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
 llama_model_loader: - kv   0:                       general.architecture str              = qwen3
 llama_model_loader: - kv   1:                               general.type str              = model

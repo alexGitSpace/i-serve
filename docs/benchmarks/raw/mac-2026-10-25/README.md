@@ -1,6 +1,8 @@
 # Raw evidence — Mac probe 1, 2026-10-25
 
-Verbatim capture, no interpretation. The sheet, with the record of both
+Verbatim capture, no interpretation, with one edit: the home directory the
+engines printed is written `~` in the five files that carried it, as the
+sheet spells it. Nothing else is changed. The sheet, with the record of both
 attempts, is `docs/benchmarks/runsheets/mac-probe-1.md` §4; its read-out (§5)
 was never filled, so nothing in `bench/` reads these files yet.
 
