@@ -174,6 +174,7 @@ def journal_md(journal: list[Run]) -> str:
         "",
         "Every prediction the runs faced, drawn: [predicted-vs-measured.svg](predicted-vs-measured.svg).",
         "The sheet written before each run: [runsheets/](runsheets/). The evidence, verbatim: [raw/](raw/).",
+        "Every decode step measured, beside its ceiling and the verdict on what it faced: [ledger.jsonl](ledger.jsonl).",
     ]
     for card in cards(journal).values():
         mine = [r for r in journal if r.id in card["runs"]]

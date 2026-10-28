@@ -36,6 +36,10 @@ if ! git show :README.md | python3 "$root/bench/runs.py" --check-readme; then
     exit 1
 fi
 
+# The ledger, generated whole from the measured modules and staged like the journal.
+python3 "$root/bench/ledger.py" >/dev/null
+git add "$root/docs/benchmarks/ledger.jsonl"
+
 # --- what a commit may not carry -----------------------------------------
 #
 # Three rules the repository states elsewhere, enforced here over the index --

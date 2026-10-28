@@ -234,6 +234,39 @@ def cost():
           f"the droplet's lifetime is in the report, at ${HOURLY}/h")
 
 
+
+# The ledger's view of this run (bench/ledger.py): block C, the 70B at TP = 1.
+LEDGER = {
+    "run": "mi300x-5",
+    "model": MODEL,
+    "engine": "vLLM",
+    "engine_version": "0.27.1+rocm723",
+    "regime": "in",
+    "mode": "seats",
+    "host": {"provider": "AMD Developer Cloud (DigitalOcean)",
+             "instance": "droplet created 2026-10-17, id not recorded",
+             "kernel": "6.8.0-138-generic", "driver": "amdgpu 6.19.14, ROCm 7.14"},
+    "sheet": "docs/benchmarks/runsheets/mi300x-run-5.md",
+    "sheet_commit": "8f51611",
+    "raw": os.path.join(RAW, "results", "claim"),
+}
+
+
+def ledger_points():
+    """The sheet's claim rows: run 2's fit as a floor the step may not cross."""
+    for c in LEVELS:
+        j = level("claim", f"c{c}")
+        yield {
+            "batch": c,
+            "context": CONTEXT,
+            "prompt": CONTEXT - 922 // 2,
+            "step_ms": j["median_itl_ms"],
+            "faced": [("mi300x-run2", "bound")],
+            # The pool seated 55-59 of the 64 asked; the floor is drawn for 64.
+            **({"note": "55-59 seated of 64"} if c == 64 else {}),
+        }
+
+
 if __name__ == "__main__":
     checkpoint_a()
     droplet_check()

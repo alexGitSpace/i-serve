@@ -226,6 +226,37 @@ def cost_table(hourly_rate: float = 0.99) -> None:
     rule()
 
 
+
+# The ledger's view of this run (bench/ledger.py): the conditions its rows carry,
+# and every decode step it measured with the coefficients each one faced.
+LEDGER = {
+    "run": "l40s-1",
+    "model": QWEN3_8B,
+    "engine": "vLLM",
+    "engine_version": "0.27.1",
+    "regime": "in",
+    "mode": "seats",
+    "host": {"provider": "RunPod, North American DC", "driver": "580.159.04 / CUDA 13.0"},
+    "sheet": "docs/benchmarks/runsheets/l40s-first-run.md",
+    # The public history starts at this commit, after the run; the sheet's own
+    # date and the report's say which came first.
+    "sheet_commit": "f7172a6",
+    "raw": RESULTS,
+}
+
+
+def ledger_points():
+    """Every level's median ITL: the prior faced, and L40S_RUN1 fitted -- a hypothesis here."""
+    for lv in levels():
+        yield {
+            "batch": lv["ran"],
+            "context": lv["context"],
+            "prompt": lv["input_len"],
+            "step_ms": lv["decode_step_ms"],
+            "faced": [("l40s", "point"), ("l40s-run1", "point")],
+        }
+
+
 if __name__ == "__main__":
     print(f"Run: {RUN}   raw evidence: docs/benchmarks/raw/{RUN}/")
     print(f"Argument and conclusions: docs/benchmarks/l40s-baseline.md")

@@ -344,6 +344,37 @@ def block_c_table() -> None:
           f"${dollars_per_1m(fp8[32]['out_tps']):.3f} per 1M")
 
 
+
+# The ledger's view of this run (bench/ledger.py).
+LEDGER = {
+    "run": "l40s-2",
+    "model": QWEN3_8B,
+    "engine": "vLLM",
+    "engine_version": "0.27.1",
+    "regime": "in",
+    "mode": "seats",
+    "host": {"provider": "RunPod, North American DC", "instance": "pod 70700baa4cfa",
+             "driver": "550.127.05 / CUDA 13.0"},
+    "sheet": "docs/benchmarks/runsheets/l40s-run-2.md",
+    "sheet_commit": "f7172a6",      # as measured.py: the history starts after the run
+    "raw": LEVELS_TSV,
+}
+
+
+def ledger_points():
+    """The six BF16 launches at c = 13 whose median ITL is a decode step: run 1's fit, faced."""
+    for lv in sorted(block("B") + block("C"), key=lambda l: l["tag"]):
+        if int(lv["conc"]) == 13 and not lv["fp8"]:
+            yield {
+                "batch": 13,
+                "context": lv["context"],
+                "prompt": lv["input_len"],
+                "step_ms": lv["decode_step_ms"],
+                "faced": [("l40s-run1", "point")],
+                "note": lv["tag"],
+            }
+
+
 if __name__ == "__main__":
     print(f"Run: {RUN}   raw evidence: docs/benchmarks/raw/{RUN}/")
     print("Argument and conclusions: docs/benchmarks/l40s-run2.md")

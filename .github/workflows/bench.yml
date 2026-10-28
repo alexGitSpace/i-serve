@@ -114,6 +114,29 @@ jobs:
             exit 1
           fi
 
+  ledger:
+    runs-on: ubuntu-latest
+    name: the committed ledger is what bench/ledger.py produces
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      # Same shape as the journal: `bench/tests/test_ledger.py` asserts this
+      # against the strings the generator returns, and this against the bytes.
+      - name: regenerate and diff
+        run: |
+          python3 bench/ledger.py
+          if ! git diff --exit-code --stat docs/benchmarks/ledger.jsonl; then
+            echo
+            echo "The ledger is stale. Regenerate and commit:"
+            echo "    python3 bench/ledger.py"
+            echo
+            git --no-pager diff docs/benchmarks/ledger.jsonl | head -60
+            exit 1
+          fi
+
   site-data:
     runs-on: ubuntu-latest
     name: the committed site data is what bench/ produces, and the JS agrees with it

@@ -129,6 +129,16 @@ GitHub reads the block as YAML, so a value may not contain `: ` or ` #`, and
 `bench/runs.py` refuses one that does. Then `python3 bench/runs.py` rewrites
 [benchmarks/README.md](benchmarks/README.md) and the front page's runs table.
 
+And the ledger. The run's `measured_<run>.py` exposes `LEDGER`, the conditions
+its rows carry (host identity, engine version, model revision, regime, the
+sheet and the commit that holds it, the raw path), and `ledger_points()`, each
+decode step it measured with the coefficient keys it faced and whether each is
+a point prediction or a bound. `python3 bench/ledger.py` computes the ceiling,
+the share and the status of every point, once, and rewrites
+[benchmarks/ledger.jsonl](benchmarks/ledger.jsonl); the fields are the
+glossary's *Ledger*. A condition the run did not record is written as
+`not recorded`, never guessed.
+
 ## 5. The registry edit
 
 One `Accelerator(...)` in `bench/roofline.py` and one key in `ACCELERATORS`:

@@ -409,6 +409,39 @@ def every_repeat(data):
               + f"  failed {r['failed']}")
 
 
+
+# The ledger's view of this run (bench/ledger.py).
+LEDGER = {
+    "run": "mi300x-1",
+    "model": QWEN3_8B,
+    "engine": "vLLM",
+    "engine_version": "0.27.1+rocm723",
+    "regime": "in",
+    "mode": "seats",
+    "host": {"provider": "AMD Developer Cloud (DigitalOcean), ATL1",
+             "instance": "droplet 1, id not recorded", "driver": "ROCm 7.14, Ubuntu 24.04"},
+    "sheet": "docs/benchmarks/runsheets/mi300x-run-1.md",
+    "sheet_commit": "f7172a6",      # the history starts at this commit, after the run
+    "raw": RESULTS,
+}
+
+
+def ledger_points():
+    """The decode rows: the prior faced, and MI300X_RUN1 fitted -- a hypothesis here."""
+    data = rows()
+    for name in DECODE_ROWS:
+        r = data[name]
+        yield {
+            "batch": r["c"],
+            "context": r["context"],
+            "prompt": r["input_len"],
+            "step_ms": r["itl_ms"],
+            "repeats": r["repeats"],
+            "faced": [("mi300x", "point"), ("mi300x-run1", "point")],
+            "note": name,
+        }
+
+
 if __name__ == "__main__":
     print(f"Run: {RUN}   raw evidence: docs/benchmarks/raw/{RUN}/")
     print("Argument and conclusions: docs/benchmarks/mi300x-run1.md")

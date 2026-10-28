@@ -320,6 +320,36 @@ def cost():
     print("  any operator whose traffic repeats and to no operator whose traffic does not.")
 
 
+
+# The ledger's view of this run (bench/ledger.py).
+LEDGER = {
+    "run": "l40s-3",
+    "model": QWEN3_8B,
+    "engine": "vLLM",
+    "engine_version": "0.27.1",
+    "regime": "in",
+    "mode": "seats",
+    "host": {"provider": "RunPod", "instance": "pod ff6689f28bec", "driver": "580.126.20"},
+    "sheet": "docs/benchmarks/runsheets/l40s-run-3.md",
+    "sheet_commit": "f7172a6",      # as measured.py: the history starts after the run
+    "raw": os.path.join(RAW, "results"),
+}
+
+
+def ledger_points():
+    """The uncached sweep and the c = 13 control: run 1's fit faced on a third pod."""
+    for directory in ("run3-a-h00-clean", "run3-c-control"):
+        for lv in levels(directory):
+            yield {
+                "batch": int(lv["harness_load"]),
+                "context": SEAT_CONTEXT,
+                "prompt": int(lv["harness_prompt_tokens_nominal"]),
+                "step_ms": lv["median_itl_ms"],
+                "faced": [("l40s-run1", "point")],
+                "note": directory,
+            }
+
+
 if __name__ == "__main__":
     print(f"Run: {RUN}   raw evidence: docs/benchmarks/raw/{RUN}/")
     print("Argument and conclusions: docs/benchmarks/l40s-run3.md")

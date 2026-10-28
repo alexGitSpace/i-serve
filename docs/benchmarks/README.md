@@ -7,6 +7,7 @@ from the front matter of each report, so edit the report, never this page
 
 Every prediction the runs faced, drawn: [predicted-vs-measured.svg](predicted-vs-measured.svg).
 The sheet written before each run: [runsheets/](runsheets/). The evidence, verbatim: [raw/](raw/).
+Every decode step measured, beside its ceiling and the verdict on what it faced: [ledger.jsonl](ledger.jsonl).
 
 ## NVIDIA L40S
 

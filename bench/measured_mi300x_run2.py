@@ -402,6 +402,41 @@ def every_repeat(data):
               + " / ".join(f"{x:.2f}" for x in r["itl_each"]) + f"  failed {r['failed']}")
 
 
+
+# The ledger's view of this run (bench/ledger.py).
+LEDGER = {
+    "run": "mi300x-2",
+    "model": QWEN3_8B,
+    "revision": "b968826d",
+    "engine": "vLLM",
+    "engine_version": "0.27.1+rocm723",
+    "regime": "in",
+    "mode": "seats",
+    "host": {"provider": "AMD Developer Cloud (DigitalOcean), ATL1",
+             "instance": "droplet 2, id not recorded", "kernel": "6.8.0-138-generic",
+             "driver": "amdgpu 6.19.14, ROCm 7.14"},
+    "sheet": "docs/benchmarks/runsheets/mi300x-run-2.md",
+    "sheet_commit": "7c13a57",
+    "raw": RESULTS,
+}
+
+
+def ledger_points():
+    """Run 1's server line on this droplet: run 1's fit faced, and MI300X_RUN2 fitted."""
+    data = rows()
+    for name in DECODE_ROWS:
+        r = data["b2048", name]
+        yield {
+            "batch": r["c"],
+            "context": r["context"],
+            "prompt": r["input_len"],
+            "step_ms": r["itl_ms"],
+            "repeats": r["repeats"],
+            "faced": [("mi300x-run1", "point"), ("mi300x-run2", "point")],
+            "note": name,
+        }
+
+
 if __name__ == "__main__":
     print(f"Run: {RUN}   raw evidence: docs/benchmarks/raw/{RUN}/run2/")
     print("Argument and conclusions: docs/benchmarks/mi300x-run2.md")
