@@ -1,0 +1,15 @@
+ %CPU    RSS COMM
+ 15.1 129056 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+ 12.3 676960 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+  7.1 915072 /Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper (Renderer).app/Contents/MacOS/Code Helper (Renderer)
+  4.2 171056 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/155.0.8059.85/Helpers/Google Chrome Helper (Aperitif Renderer).app/Contents/MacOS/Google Chrome Helper (Aperitif Renderer)
+  3.3 629440 claude
+  2.4  33536 /usr/sbin/bluetoothd
+  2.3  22752 /usr/sbin/BTLEServer
+  2.1 212720 /Applications/Wispr Flow.app/Contents/Frameworks/Wispr Flow Helper (Renderer).app/Contents/MacOS/Wispr Flow Helper (Renderer)
+  2.1  73616 /Applications/Wispr Flow.app/Contents/Resources/swift-helper-app-dist/Wispr Flow.app/Contents/MacOS/Wispr Flow
+  1.9  24288 /System/Library/Frameworks/AppKit.framework/Versions/C/XPCServices/ThemeWidgetControlViewService.xpc/Contents/MacOS/ThemeWidgetControlViewService
+  1.8 240432 /Applications/Wispr Flow.app/Contents/MacOS/Wispr Flow
+  1.7  19232 /System/Library/CoreServices/UniversalControl.app/Contents/MacOS/UniversalControl
+  1.7  97664 /Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper.app/Contents/MacOS/Code Helper
+  1.4 184448 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/155.0.8059.85/Helpers/Google Chrome Helper (Aperitif).app/Contents/MacOS/Google Chrome Helper (Aperitif)

@@ -1,0 +1,12 @@
+{"words": 508, "rep": 0, "prompt_eval_count": 512, "prompt_eval_duration": 1079263000, "eval_count": 128, "eval_duration": 2198521000, "tok_s": 57.76610730577511, "tok_s_reported": 58.22095854440326}
+{"words": 508, "rep": 1, "prompt_eval_count": 512, "prompt_eval_duration": 966092000, "eval_count": 128, "eval_duration": 2211263000, "tok_s": 57.433240641208215, "tok_s_reported": 57.88547088247757}
+{"words": 508, "rep": 2, "prompt_eval_count": 512, "prompt_eval_duration": 956701000, "eval_count": 128, "eval_duration": 2220192000, "tok_s": 57.20225998472204, "tok_s_reported": 57.65267148066473}
+{"words": 508, "rep": 3, "prompt_eval_count": 512, "prompt_eval_duration": 967895000, "eval_count": 128, "eval_duration": 2252253000, "tok_s": 56.38798127919022, "tok_s_reported": 56.831981131782264}
+{"words": 508, "rep": 4, "prompt_eval_count": 512, "prompt_eval_duration": 973328000, "eval_count": 128, "eval_duration": 2230061000, "tok_s": 56.949114844840565, "tok_s_reported": 57.3975330719653}
+{"words": 4092, "rep": 0, "prompt_eval_count": 4096, "prompt_eval_duration": 6557671000, "eval_count": 128, "eval_duration": 2439313000, "tok_s": 52.063839285897295, "tok_s_reported": 52.47379077633744}
+{"words": 4092, "rep": 1, "prompt_eval_count": 4096, "prompt_eval_duration": 6321386000, "eval_count": 128, "eval_duration": 2437567000, "tok_s": 52.10113198939762, "tok_s_reported": 52.51137712317241}
+{"words": 4092, "rep": 2, "prompt_eval_count": 4096, "prompt_eval_duration": 6250253000, "eval_count": 128, "eval_duration": 2465100000, "tok_s": 51.519208145714174, "tok_s_reported": 51.924871201979634}
+{"words": 4092, "rep": 3, "prompt_eval_count": 4096, "prompt_eval_duration": 6219270000, "eval_count": 128, "eval_duration": 2434937000, "tok_s": 52.15740694728447, "tok_s_reported": 52.568095190963874}
+{"words": 4092, "rep": 4, "prompt_eval_count": 4096, "prompt_eval_duration": 6234394000, "eval_count": 128, "eval_duration": 2494101000, "tok_s": 50.92015118874496, "tok_s_reported": 51.321097261097286}
+NAME                    ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL              
+qwen3-8b-q4km:latest    2c9d3e986da8    5.6 GB    100% GPU     8192       llamacpp    4 minutes from now    

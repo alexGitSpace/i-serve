@@ -1,0 +1,26 @@
+Sun Oct 25 13:23:04 UTC 2026
+ProductName:		macOS
+ProductVersion:		26.3.1
+ProductVersionExtra:	(a)
+BuildVersion:		25D771280a
+System-wide power settings:
+ SleepDisabled		0
+Currently in use:
+ standby              1
+ Sleep On Power Button 1
+ hibernatefile        /var/vm/sleepimage
+ powernap             1
+ networkoversleep     0
+ disksleep            10
+ sleep                1 (sleep prevented by powerd, caffeinate)
+ hibernatemode        3
+ ttyskeepawake        1
+ displaysleep         120
+ tcpkeepalive         1
+ powermode            0
+ womp                 0
+Now drawing from 'AC Power'
+ -InternalBattery-0 (id=22675555)	100%; charged; 0:00 remaining present: true
+Note: No thermal warning level has been recorded
+Note: No performance warning level has been recorded
+Note: No CPU power status has been recorded
