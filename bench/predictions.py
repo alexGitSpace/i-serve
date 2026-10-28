@@ -885,6 +885,7 @@ def what_if_point(accelerator: str = "l40s-run1",
             "seats_shipped": shipped,
             "bound_by": bound_by,
             "tpot_floor_at_seats_s": None,
+            "tpot_at_seats_s": None,
             "aggregate_tokens_per_sec": None,
             "cost_per_1m_output_tokens": None,
             "fit": {"slope_s_per_seat": slope, "intercept_s": intercept,
@@ -895,8 +896,13 @@ def what_if_point(accelerator: str = "l40s-run1",
         }
         if shipped > 0:
             step = tpot_floor(model, accel, shipped, context_len).seconds
-            rate = aggregate_tokens_per_sec(model, accel, shipped, context_len)
+            # The seats were chosen under interference, so the step a seat sees is
+            # the floor plus that term, and the price follows it. Below the fit's
+            # range the term reads negative; a prefill cannot shorten a step.
+            served = step + max(0.0, (1.0 - hit_rate) * (slope * shipped + intercept))
+            rate = shipped / served
             service["tpot_floor_at_seats_s"] = step
+            service["tpot_at_seats_s"] = served
             service["aggregate_tokens_per_sec"] = rate
             service["cost_per_1m_output_tokens"] = cost_per_1m_tokens(rate, hourly_rate)
         point["service"] = service
@@ -998,7 +1004,8 @@ def what_if(accelerator: str = "l40s-run1",
         if service["note"]:
             print(f"  {'':<22}{service['note']}")
         if service["seats_shipped"] > 0:
-            print(f"  {'service':<22}{service['aggregate_tokens_per_sec']:,.0f} tok/s, "
+            print(f"  {'service':<22}{service['aggregate_tokens_per_sec']:,.0f} tok/s at "
+                  f"{service['tpot_at_seats_s'] * 1e3:.1f} ms per token, "
                   f"${service['cost_per_1m_output_tokens']:.3f} / 1M tokens at "
                   f"{service['seats_shipped']} seats")
         else:

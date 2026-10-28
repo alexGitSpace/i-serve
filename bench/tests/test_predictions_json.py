@@ -54,7 +54,8 @@ INPUT_KEYS = {
 }
 SERVICE_KEYS = {
     "seats_at_hit_rate", "seats_shipped", "bound_by", "tpot_floor_at_seats_s",
-    "aggregate_tokens_per_sec", "cost_per_1m_output_tokens", "fit", "note",
+    "tpot_at_seats_s", "aggregate_tokens_per_sec", "cost_per_1m_output_tokens",
+    "fit", "note",
 }
 
 # The nine lines docs/audience.md quotes from, for the default point. Held as
@@ -124,6 +125,8 @@ def test_the_text_is_a_rendering_of_the_dict():
         f"{point['ttft_floor_uncached']['uncached_tokens']:,} uncached tokens",
         f"{service['seats_at_hit_rate']:.1f} by prefill interference -> ship "
         f"{service['seats_shipped']}",
+        f"{service['aggregate_tokens_per_sec']:,.0f} tok/s at "
+        f"{service['tpot_at_seats_s'] * 1e3:.1f} ms per token",
         f"${service['cost_per_1m_output_tokens']:.3f} / 1M tokens at "
         f"{service['seats_shipped']} seats",
     ]

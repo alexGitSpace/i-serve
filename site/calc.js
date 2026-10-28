@@ -224,7 +224,8 @@
       if (seats.by_capacity < shipped) { shipped = seats.by_capacity; boundBy = "capacity"; }
       const service = {
         seats_at_hit_rate: byInterference, seats_shipped: shipped, bound_by: boundBy,
-        tpot_floor_at_seats_s: null, aggregate_tokens_per_sec: null, cost_per_1m_output_tokens: null,
+        tpot_floor_at_seats_s: null, tpot_at_seats_s: null,
+        aggregate_tokens_per_sec: null, cost_per_1m_output_tokens: null,
         fit: { slope_s_per_seat: fit.slope_s_per_seat, intercept_s: fit.intercept_s,
                provenance: fit.provenance },
         note: h > 0.5
@@ -232,8 +233,13 @@
           : null,
       };
       if (shipped > 0) {
-        service.tpot_floor_at_seats_s = tpotFloor(m, a, shipped, ctx).seconds;
-        const rate = aggregateTokensPerSec(m, a, shipped, ctx);
+        const step = tpotFloor(m, a, shipped, ctx).seconds;
+        // the floor plus the interference the seats were chosen under; clamped
+        // at zero below the fit's range, as predictions.what_if_point() does
+        const served = step + Math.max(0, (1 - h) * (fit.slope_s_per_seat * shipped + fit.intercept_s));
+        const rate = shipped / served;
+        service.tpot_floor_at_seats_s = step;
+        service.tpot_at_seats_s = served;
         service.aggregate_tokens_per_sec = rate;
         service.cost_per_1m_output_tokens = costPer1mTokens(rate, hourly);
       }

@@ -1721,7 +1721,9 @@ reader's choosing — card, context length, prompt length, TPOT and TTFT targets
 `gpu_memory_utilization`, KV dtype, hourly rate — instead of the twelve fixed
 tables. The tables take no parameters on purpose: `docs/SLO.md` quotes their
 rows, so a flag that moved them would be a flag that edits a derivation. Every
-line it prints is still a floor.
+line it prints is still a floor. The `service` line prices its seats at the step
+they were chosen under, the floor plus the prefill interference term
+(`tpot_at_seats_s`), so its tok/s and $/1M are the service's, not the floor's.
 
 **`--hit-rate`** (`bench/predictions.py --what-if`) — the prefix cache hit rate
 `h` the operating point is priced at, 0..1. Moves the uncached TTFT floor
