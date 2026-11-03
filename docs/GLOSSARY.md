@@ -1502,6 +1502,10 @@ datasheet: provider, instance, kernel, driver, and on a laptop the thermal
 state. Recorded because one server line ran 16–22 % apart on two MI300X
 droplets of one product ([benchmarks/mi300x-run2.md](benchmarks/mi300x-run2.md)).
 
+**Device passport** (`bench/passports.py`) — a device's datasheet: capacity,
+peak bandwidth, dense FLOPS, with the vendor's words they were read from and the
+date. Never a fitted coefficient, which belongs to a run's `ACCELERATORS` entry;
+a card that has one is not given a passport too.
 
 **Coefficients in use** — of a card, the `ACCELERATORS` entry its latest run
 trusted: the coefficients that run fitted, or else the ones its predictions were
