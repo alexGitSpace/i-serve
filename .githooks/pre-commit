@@ -40,6 +40,10 @@ fi
 python3 "$root/bench/ledger.py" >/dev/null
 git add "$root/docs/benchmarks/ledger.jsonl"
 
+# The claims table, generated whole from bench/claims.py and staged the same way.
+python3 "$root/bench/claims.py" >/dev/null
+git add "$root/docs/claims.md"
+
 # --- what a commit may not carry -----------------------------------------
 #
 # Three rules the repository states elsewhere, enforced here over the index --

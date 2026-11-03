@@ -11,8 +11,8 @@ ceiling:
 | Who | Hardware | The question they arrive with | Regime | What is here today |
 |---|---|---|---|---|
 | An enterprise team | rented H100 or MI300X, a cluster of its own | seats and $ per task at our SLO, and is the API cheaper? | seats and goodput at SLO | seats and $/1M of goodput, measured on the L40S and MI300X; $ per task is not priced yet |
-| A startup | one to eight rented cards | which card, and why is mine slower than the vendor's figure? | both | the ceiling and the share for vLLM on two cards; the symptom map |
-| A hobbyist or an edge builder | a Mac, an RTX 4090 or 5090, Strix Halo, DGX Spark, a Jetson | will my hardware run model X, how fast, and which engine is faster? | single stream | the ceiling for Qwen3-8B read from a weight file ([the Mac sheet](benchmarks/runsheets/mac-probe-1.md)); no engine measured yet, because the first probe stopped on the laptop's heat |
+| A startup | one to eight rented cards | which card, and why is mine slower than the vendor's figure? | both | the ceiling and the share for vLLM on two cards; the symptom map; vendors' and providers' figures checked on paper ([claims.md](claims.md)) |
+| A hobbyist or an edge builder | a Mac, an RTX 4090 or 5090, Strix Halo, DGX Spark, a Jetson | will my hardware run model X, how fast, and which engine is faster? | single stream | the ceiling for Qwen3-8B read from a weight file ([the Mac sheet](benchmarks/runsheets/mac-probe-1.md)); no engine measured yet, because the first probe stopped on the laptop's heat; published figures for these devices checked on paper ([claims.md](claims.md)) |
 | A batch operator on an API | Flash-class models, paid by the token | is my own hardware cheaper at equal quality? | goodput, no hard SLO | not yet: a paper comparison first, then a measured one behind an eval |
 
 Everything here is arranged for that reader, and checked the way that reader

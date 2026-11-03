@@ -35,9 +35,10 @@ page says what it is.
   ([docs/audience.md](docs/audience.md#changing-the-model)), and that half no
   longer grows.
 - **A public claim as a row.** A vendor's or a provider's figure is checked on
-  paper against the ceiling and lives in its own table, never in the ledger: a
-  row is taken with a run or a probe. Where a claim omits the precision, the
-  context or the batch, the verdict is *condition not disclosed*, not a number.
+  paper against the ceiling and lives in its own table,
+  [docs/claims.md](docs/claims.md), never in the ledger: a row is taken with a
+  run or a probe. Where a claim omits the precision, the context or the batch,
+  the verdict is *condition not disclosed*, not a number.
 - **A card without a run.** A new `Accelerator(...)` with spec-sheet coefficients
   is welcome as a *prior* — `provenance="prior, unvalidated; no run on this card"`
   — and it will be labelled as one on every page it prints. It becomes a
