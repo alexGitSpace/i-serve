@@ -61,6 +61,11 @@ def row(run: runs.Run, conditions: dict, point: dict) -> dict:
     """One ledger line: the point's ceiling at peak bandwidth, its share, and what it faced."""
     model = conditions["model"]
     batch, context = point["batch"], point["context"]
+    # A point may leave the run's regime: its ceiling is still printed, but it
+    # carries no share and faces nothing, and says why (GLOSSARY.md, *Regime*).
+    regime = point.get("regime", conditions["regime"])
+    if regime != "in" and (point["faced"] or "why" not in point):
+        raise ValueError(f"{run.id}: a point out of regime faces nothing and says why")
     step_bytes = decode_step_bytes(model, batch, context)
     at_peak_ms = step_bytes / ACCELERATORS[run.card].peak_bandwidth * 1e3
     faced = []
@@ -78,10 +83,10 @@ def row(run: runs.Run, conditions: dict, point: dict) -> dict:
             "fitted_here": fitted_here,
             "status": status(claim, fitted_here, predicted, point["step_ms"]),
         })
-    for name in ("regime", "mode"):
+    for name, value in (("regime", regime), ("mode", conditions["mode"])):
         allowed = REGIMES if name == "regime" else MODES
-        if conditions[name] not in allowed:
-            raise ValueError(f"{run.id}: {name} {conditions[name]!r} is not one of {allowed}")
+        if value not in allowed:
+            raise ValueError(f"{run.id}: {name} {value!r} is not one of {allowed}")
     line = {
         "run": run.id,
         "date": run.date,
@@ -97,7 +102,7 @@ def row(run: runs.Run, conditions: dict, point: dict) -> dict:
             # config.json and the checkpoint's parameter count, not a file on disk
             "bytes_from": "config",
         },
-        "regime": conditions["regime"],
+        "regime": regime,
         "mode": conditions["mode"],
         "point": {"batch": batch, "context": context, "prompt": point["prompt"]},
         "ceiling": {
@@ -106,12 +111,14 @@ def row(run: runs.Run, conditions: dict, point: dict) -> dict:
             "tok_s": round(batch / at_peak_ms * 1e3, 1),
         },
         "measured": {"step_ms": round(point["step_ms"], 3), "repeats": point.get("repeats", 1)},
-        "share": round(at_peak_ms / point["step_ms"], 3),
+        "share": round(at_peak_ms / point["step_ms"], 3) if regime == "in" else None,
         "faced": faced,
         "sheet": conditions["sheet"],
         "sheet_commit": conditions["sheet_commit"],
         "raw": relative(conditions["raw"]),
     }
+    if "why" in point:
+        line["why"] = point["why"]
     if "note" in point:
         line["note"] = point["note"]
     for path in (line["sheet"], line["raw"]):

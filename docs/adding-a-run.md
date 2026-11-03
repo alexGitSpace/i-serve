@@ -143,7 +143,9 @@ a point prediction or a bound. `python3 bench/ledger.py` computes the ceiling,
 the share and the status of every point, once, and rewrites
 [benchmarks/ledger.jsonl](benchmarks/ledger.jsonl); the fields are the
 glossary's *Ledger*. A condition the run did not record is written as
-`not recorded`, never guessed.
+`not recorded`, never guessed. A step the ceiling's arithmetic does not cover
+still enters, with `regime: "out"` and a `why`, facing nothing and carrying no
+share: every decode step measured is a row.
 
 ## 5. The registry edit
 

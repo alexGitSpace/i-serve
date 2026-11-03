@@ -64,8 +64,17 @@ def test_share_is_the_ceiling_over_the_measurement():
     for r in ROWS:
         peak = ACCELERATORS[r["card"]].peak_bandwidth
         assert abs(r["ceiling"]["step_bytes"] / peak * 1e3 - r["ceiling"]["step_ms"]) < 1e-3
+        if r["regime"] != "in":
+            continue
         assert abs(r["ceiling"]["step_ms"] / r["measured"]["step_ms"] - r["share"]) < 1e-3
         assert 0 < r["share"] <= 1, (r["run"], r["share"])
+
+
+def test_a_row_out_of_regime_carries_no_share_and_faces_nothing():
+    """Out of regime is no share and nothing faced (GLOSSARY.md, *Regime*), and run 3's cached steps beat the ceiling."""
+    out = [r for r in ROWS if r["regime"] != "in"]
+    assert out and all(r["share"] is None and not r["faced"] and r["why"] for r in out)
+    assert max(r["ceiling"]["step_ms"] / r["measured"]["step_ms"] for r in out) > 1.3
 
 
 def test_the_shares_are_the_coefficients_the_reports_fitted():

@@ -317,8 +317,10 @@ LEDGER = {
 
 
 def ledger_points():
-    """The uncached sweep and the c = 13 control: run 1's fit faced on a third pod."""
-    for directory in ("run3-a-h00-clean", "run3-c-control"):
+    """Every decode step run 3 measured: run 1's fit faced where nothing was cached."""
+    # The control and the treatment differ only in caching on, and the treatment
+    # reused nothing (block C): both face run 1's fit.
+    for directory in ("run3-a-h00-clean", "run3-c-control", "run3-c-treatment"):
         for lv in levels(directory):
             yield {
                 "batch": int(lv["harness_load"]),
@@ -326,6 +328,21 @@ def ledger_points():
                 "prompt": int(lv["harness_prompt_tokens_nominal"]),
                 "step_ms": lv["median_itl_ms"],
                 "faced": [("l40s-run1", "point")],
+                "note": directory,
+            }
+    # With 80 % of each prompt cached the step ran faster than the ceiling allows,
+    # so the ceiling's premise -- each sequence reads its whole KV from memory --
+    # does not hold there (docs/benchmarks/l40s-run3.md section 4).
+    for directory in ("run3-a-h80", "run3-a-h80-ext"):
+        for lv in levels(directory):
+            yield {
+                "batch": int(lv["harness_load"]),
+                "context": SEAT_CONTEXT,
+                "prompt": int(lv["harness_prompt_tokens_nominal"]),
+                "step_ms": lv["median_itl_ms"],
+                "faced": [],
+                "regime": "out",
+                "why": "a shared cached prefix: cascade attention or L2 residency, unresolved",
                 "note": directory,
             }
 
