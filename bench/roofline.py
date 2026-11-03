@@ -70,6 +70,12 @@ class LinearAttention:
 NO_LINEAR_ATTENTION = LinearAttention(0, 0, 0, 0, 0, conv_kernel=1)
 
 
+def kv_bytes_per_token(attention_layers: int, kv_heads: int, head_dim: int,
+                       dtype_bytes: int) -> int:
+    """KV one token holds; the leading 2 is K and V. Free, so a weight file's geometry can use it."""
+    return 2 * kv_heads * head_dim * dtype_bytes * attention_layers
+
+
 @dataclass(frozen=True)
 class Model:
     """Architecture from config.json plus the checkpoint's parameter counts.
@@ -113,14 +119,9 @@ class Model:
 
     @property
     def kv_bytes_per_token(self) -> float:
-        """Read once per sequence per decode step. The leading 2 is K and V."""
-        return (
-            2
-            * self.num_kv_heads
-            * self.head_dim
-            * self.kv_dtype_bytes
-            * self.attention_layers
-        )
+        """Read once per sequence per decode step."""
+        return kv_bytes_per_token(self.attention_layers, self.num_kv_heads,
+                                  self.head_dim, self.kv_dtype_bytes)
 
     @property
     def state_bytes_per_sequence(self) -> int:

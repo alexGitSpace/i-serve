@@ -1,0 +1,323 @@
+{
+  "llama-2-7b.f16.ggml-org": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 32,
+      "layers": 32
+    },
+    "format": "gguf",
+    "roles": {
+      "decoder": {
+        "bytes": 12953075712,
+        "weights": 6476271616
+      },
+      "embedding": {
+        "bytes": 262144000,
+        "weights": 131072000
+      },
+      "lm_head": {
+        "bytes": 262144000,
+        "weights": 131072000
+      }
+    },
+    "url": "https://huggingface.co/ggml-org/Llama-2-7B-GGUF/resolve/89336df15f5c87d43a345a4830e4b6a97a0001b4/Llama-2-7B-F16.gguf"
+  },
+  "llama-2-7b.q4_0.ggml-org": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 32,
+      "layers": 32
+    },
+    "format": "gguf",
+    "roles": {
+      "decoder": {
+        "bytes": 3643817984,
+        "weights": 6476271616
+      },
+      "embedding": {
+        "bytes": 73728000,
+        "weights": 131072000
+      },
+      "lm_head": {
+        "bytes": 73728000,
+        "weights": 131072000
+      }
+    },
+    "url": "https://huggingface.co/ggml-org/Llama-2-7B-GGUF/resolve/89336df15f5c87d43a345a4830e4b6a97a0001b4/Llama-2-7B-Q4_0.gguf"
+  },
+  "llama-2-7b.q4_0.thebloke": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 32,
+      "layers": 32
+    },
+    "format": "gguf",
+    "roles": {
+      "decoder": {
+        "bytes": 3643817984,
+        "weights": 6476271616
+      },
+      "embedding": {
+        "bytes": 73728000,
+        "weights": 131072000
+      },
+      "lm_head": {
+        "bytes": 107520000,
+        "weights": 131072000
+      }
+    },
+    "url": "https://huggingface.co/TheBloke/Llama-2-7B-GGUF/resolve/b4e04e128f421c93a5f1e34ac4d7ca9b0af47b80/llama-2-7b.Q4_0.gguf"
+  },
+  "llama-3.1-8b-instruct-fp8.nvidia": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 32
+    },
+    "format": "safetensors",
+    "roles": {
+      "decoder": {
+        "bytes": 6979856384
+      },
+      "embedding": {
+        "bytes": 1050673152
+      },
+      "lm_head": {
+        "bytes": 1050673152
+      }
+    },
+    "url": "https://huggingface.co/nvidia/Llama-3.1-8B-Instruct-FP8/resolve/42d9515ebd69eea3a87351d079c671c3c5ff0a31/"
+  },
+  "llama-3.1-8b-instruct-nvfp4.nvidia": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 32
+    },
+    "format": "safetensors",
+    "roles": {
+      "decoder": {
+        "bytes": 3926403072
+      },
+      "embedding": {
+        "bytes": 1050673152
+      },
+      "lm_head": {
+        "bytes": 1050673152
+      }
+    },
+    "url": "https://huggingface.co/nvidia/Llama-3.1-8B-Instruct-NVFP4/resolve/bdb54e24298451af785c0ac63c1b485e9b7400a2/"
+  },
+  "llama-3.1-8b-instruct.q4_k_m.lmstudio": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 32
+    },
+    "format": "gguf",
+    "roles": {
+      "decoder": {
+        "bytes": 4186456320,
+        "weights": 6979588160
+      },
+      "embedding": {
+        "bytes": 295501824,
+        "weights": 525336576
+      },
+      "lm_head": {
+        "bytes": 430940160,
+        "weights": 525336576
+      }
+    },
+    "url": "https://huggingface.co/lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/8601e6db71269a2b12255ebdf09ab75becf22cc8/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf"
+  },
+  "llama-3.1-8b-instruct.q4_k_m.ollama": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 32
+    },
+    "format": "gguf",
+    "roles": {
+      "decoder": {
+        "bytes": 4186456320,
+        "weights": 6979588160
+      },
+      "embedding": {
+        "bytes": 295501824,
+        "weights": 525336576
+      },
+      "lm_head": {
+        "bytes": 430940160,
+        "weights": 525336576
+      }
+    },
+    "url": "https://registry.ollama.ai/v2/library/llama3.1/blobs/sha256:667b0c1932bc6ffc593ed1d03f895bf2dc8dc6df21db3042284a6f4416b06a29"
+  },
+  "llama-3.1-8b-instruct.unsloth": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 32
+    },
+    "format": "safetensors",
+    "roles": {
+      "decoder": {
+        "bytes": 13959176192
+      },
+      "embedding": {
+        "bytes": 1050673152
+      },
+      "lm_head": {
+        "bytes": 1050673152
+      }
+    },
+    "url": "https://huggingface.co/unsloth/Llama-3.1-8B-Instruct/resolve/4699cc75b550f9c6f3173fb80f4703b62d946aa5/"
+  },
+  "llama-3.3-70b-instruct-fp8.nvidia": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 80
+    },
+    "format": "safetensors",
+    "roles": {
+      "decoder": {
+        "bytes": 68453684224
+      },
+      "embedding": {
+        "bytes": 2101346304
+      },
+      "lm_head": {
+        "bytes": 2101346304
+      }
+    },
+    "url": "https://huggingface.co/nvidia/Llama-3.3-70B-Instruct-FP8/resolve/fde04ee76a27704c88f569542ef023b57d4d0362/"
+  },
+  "llama-3.3-70b-instruct.q4_k_m.lmstudio": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 80
+    },
+    "format": "gguf",
+    "roles": {
+      "decoder": {
+        "bytes": 41059647744,
+        "weights": 68452360256
+      },
+      "embedding": {
+        "bytes": 591003648,
+        "weights": 1050673152
+      },
+      "lm_head": {
+        "bytes": 861880320,
+        "weights": 1050673152
+      }
+    },
+    "url": "https://huggingface.co/lmstudio-community/Llama-3.3-70B-Instruct-GGUF/resolve/3a489fd247ce24848d8d8a3fadd707088665681f/Llama-3.3-70B-Instruct-Q4_K_M.gguf"
+  },
+  "qwen3-32b": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 64
+    },
+    "format": "safetensors",
+    "roles": {
+      "decoder": {
+        "bytes": 62412597248
+      },
+      "embedding": {
+        "bytes": 1555824640
+      },
+      "lm_head": {
+        "bytes": 1555824640
+      }
+    },
+    "url": "https://huggingface.co/Qwen/Qwen3-32B/resolve/9216db5781bf21249d130ec9da846c4624c16137/"
+  },
+  "qwen3-32b-fp8": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 64
+    },
+    "format": "safetensors",
+    "roles": {
+      "decoder": {
+        "bytes": 31210784768
+      },
+      "embedding": {
+        "bytes": 1555824640
+      },
+      "lm_head": {
+        "bytes": 1555824640
+      }
+    },
+    "url": "https://huggingface.co/Qwen/Qwen3-32B-FP8/resolve/aa55da1ecc13d006e8b8e4f54579b1ea8c3db2df/"
+  },
+  "qwen3-32b.q4_k_m.ollama": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 64
+    },
+    "format": "gguf",
+    "roles": {
+      "decoder": {
+        "bytes": 19119558656,
+        "weights": 31206298624
+      },
+      "embedding": {
+        "bytes": 437575680,
+        "weights": 777912320
+      },
+      "lm_head": {
+        "bytes": 638131200,
+        "weights": 777912320
+      }
+    },
+    "url": "https://registry.ollama.ai/v2/library/qwen3/blobs/sha256:3291abe70f16ee9682de7bfae08db5373ea9d6497e614aaad63340ad421d6312"
+  },
+  "qwen3-8b-awq": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 36
+    },
+    "format": "safetensors",
+    "roles": {
+      "decoder": {
+        "bytes": 3609159680
+      },
+      "embedding": {
+        "bytes": 1244659712
+      },
+      "lm_head": {
+        "bytes": 1244659712
+      }
+    },
+    "url": "https://huggingface.co/Qwen/Qwen3-8B-AWQ/resolve/4da05a8edb55c6046cce958586c33b61da07bb79/"
+  },
+  "qwen3-8b-nvfp4.nvidia": {
+    "attention": {
+      "head_dim": 128,
+      "kv_heads": 8,
+      "layers": 36
+    },
+    "format": "safetensors",
+    "roles": {
+      "decoder": {
+        "bytes": 3907612928
+      },
+      "embedding": {
+        "bytes": 1244659712
+      },
+      "lm_head": {
+        "bytes": 1244659712
+      }
+    },
+    "url": "https://huggingface.co/nvidia/Qwen3-8B-NVFP4/resolve/ccd10a893cbca613259517c3efe08e151ddf2b8e/"
+  }
+}

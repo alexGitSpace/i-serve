@@ -645,6 +645,20 @@ tokenizer, chat template) followed by the tensors, each with its own type.
 `Q4_K_M` names a file mix, mostly `Q4_K` with `Q6_K` on the output projection
 and some `ffn_down` and `attn_v` tensors.
 
+**Q4_0** — llama.cpp's older 4-bit block: 32 weights and one F16 scale in 18 B,
+4.5 bpw. A `Q4_0` file may still carry its output projection in `Q6_K`.
+
+**AWQ** (activation-aware weight quantisation) — 4-bit integer weights in groups
+(128 in Qwen's files) with an F16 scale and a zero point per group, packed into
+`int32`; the embedding and `lm_head` usually stay BF16.
+
+**NVFP4** — NVIDIA's 4-bit float (E2M1) with an FP8 scale per 16 weights and one
+FP32 scale per tensor: 4.5 bpw on the decoder; NVIDIA's own files keep the
+embedding and `lm_head` in BF16.
+
+**MXFP4** — the OCP microscaling 4-bit float: an 8-bit power-of-two scale per
+32 weights, 4.25 bpw; gpt-oss ships its experts in it.
+
 **MLX affine quantisation** (`bits`, `group_size`) — weights packed into
 `uint32`, with one BF16 scale and one BF16 bias per group of `group_size`
 weights: 4-bit is 4.5 bpw at group 64 and 4.25 at group 128.
@@ -665,6 +679,7 @@ jitter for everyone else.
 from the prompt) proposes several tokens and the served model checks them all in
 one forward pass, keeping the accepted run. The output distribution is unchanged;
 what it buys is fewer memory-bound decode steps per token, paid for in compute.
+
 
 **Prefix caching** — reusing the KV cache of a shared prompt prefix (system prompt,
 few-shot examples) across requests, removing that part of prefill entirely. On by
@@ -1487,6 +1502,7 @@ datasheet: provider, instance, kernel, driver, and on a laptop the thermal
 state. Recorded because one server line ran 16–22 % apart on two MI300X
 droplets of one product ([benchmarks/mi300x-run2.md](benchmarks/mi300x-run2.md)).
 
+
 **Coefficients in use** — of a card, the `ACCELERATORS` entry its latest run
 trusted: the coefficients that run fitted, or else the ones its predictions were
 printed from. The page computes a card on them unless the reader picks another
@@ -1726,6 +1742,14 @@ vision tower, MTP head), read from the safetensors headers at a pinned
 revision by `bench/models/snapshot.py`. It needs the network, so it is run by
 hand when a model is added. The `Model` literals in `bench/roofline.py` are
 checked against it.
+
+**Weight file snapshot** (`bench/models/weight_files.json`) — one weight file's
+bytes per role (and, for GGUF, its weights per role) with its KV geometry, read
+from the file's header at a pinned URL by `bench/models/weight_file.py`; every
+tensor's size is checked against its slot in the file. A decode step reads every
+role but the embedding, unless the head is tied to it. Run by hand when a claim
+or a probe names a new file. Unlike a checkpoint snapshot it is not a model the
+calculator offers.
 
 **`--what-if`** (`bench/predictions.py`) — prints one operating point of the
 reader's choosing — card, context length, prompt length, TPOT and TTFT targets,

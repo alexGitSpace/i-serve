@@ -38,21 +38,28 @@ def role(name: str) -> str:
     return "decoder"                  # attention, linear attention, dense FFN, router, norms
 
 
-def parameters(base: str) -> dict[str, int]:
-    """Every tensor in every shard, its element count summed under its role."""
+def tensors(base: str) -> list[tuple[str, dict]]:
+    """Every tensor's header entry (dtype, shape, data_offsets) in every shard."""
     try:
         index = json.loads(fetch(base + "model.safetensors.index.json"))
         shards = sorted(set(index["weight_map"].values()))
     except urllib.error.HTTPError:
         shards = ["model.safetensors"]
-    roles: dict[str, int] = {}
+    out: list[tuple[str, dict]] = []
     for shard in shards:
         # A safetensors file opens with an 8-byte little-endian header length.
         length = struct.unpack("<Q", fetch(base + shard, "0-7"))[0]
         header = json.loads(fetch(base + shard, f"8-{7 + length}"))
         header.pop("__metadata__", None)
-        for name, tensor in header.items():
-            roles[role(name)] = roles.get(role(name), 0) + math.prod(tensor["shape"])
+        out += header.items()
+    return out
+
+
+def parameters(base: str) -> dict[str, int]:
+    """Every tensor in every shard, its element count summed under its role."""
+    roles: dict[str, int] = {}
+    for name, tensor in tensors(base):
+        roles[role(name)] = roles.get(role(name), 0) + math.prod(tensor["shape"])
     return dict(sorted(roles.items()))
 
 
