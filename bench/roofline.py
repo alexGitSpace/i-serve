@@ -502,11 +502,7 @@ def aggregate_tokens_per_sec(
 
 def cost_per_1m_tokens(
         aggregate_tokens_per_sec: float, hourly_rate: float) -> float:
-    """SLO.md section 7: hourly rate over tokens delivered per hour.
-
-    Both are arguments: the rate is a contract, not physics, and one function
-    prices a measured run and a predicted one alike.
-    """
+    """SLO.md section 7. The rate is an argument: a contract, not physics, for measured and predicted alike."""
     return hourly_rate / (aggregate_tokens_per_sec * 3600) * 1e6
 
 

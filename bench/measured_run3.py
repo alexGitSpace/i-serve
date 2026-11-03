@@ -1,23 +1,10 @@
 """Run 3 scored: prefix caching, priced in seats -- SLO.md section 9.
 
-Third sibling of measured.py (run 1) and measured_run2.py (run 2), and the same
-rule holds: one module per run, because the run is the unit a coefficient belongs
-to and merging two of them is how a fitted number starts scoring itself.
-
-What is different here is the evidence, not the argument. Runs 1 and 2 were
-transcribed by hand off `vllm bench serve` output into a levels.tsv; run 3 was
-driven by bench/harness.py, which writes one JSON file per level. So this module
-reads the artefacts directly and there is nothing between the card and the table
-below to mistype -- which also means a level's `harness_*` fields, including the
-gates it fired, are available here rather than only in a console log.
-
-The predictions this scores were written in
-docs/benchmarks/runsheets/l40s-run-3.md before the card was rented, and every coefficient used to make them (eff_mem 0.83,
-mfu 0.439, I(n) = 1.640 n - 6.36) comes from run 1. None was fitted to anything
-below.
-
-The argument is docs/benchmarks/l40s-run3.md; this file is the arithmetic behind
-it, so a figure quoted there fails here rather than drifting silently.
+One module per run, as measured.py and measured_run2.py: a coefficient belongs to
+its run. It reads bench/harness.py's per-level JSON directly, so nothing between
+the card and the tables is transcribed. Predictions: docs/benchmarks/runsheets/
+l40s-run-3.md, every coefficient from run 1; the argument:
+docs/benchmarks/l40s-run3.md.
 
     python3 bench/measured_run3.py
 """
@@ -46,10 +33,8 @@ LOGGED_KV_TOKENS_CACHE_ON = 176_227
 LOGGED_KV_GIB = (23.23, 24.22)
 LOGGED_MAX_CONCURRENCY = (18.78, 19.58)
 
-# The two facts this build's startup log does NOT carry. Run 2 reported the first
-# from its launch command; run 3 passed neither, so both are defaults -- and the
-# claim that the geometry matches runs 1-2 rests on the c=13 decode step (block C),
-# not on a log line. Named here so the gap is visible in the code as well.
+# Neither is in this build's startup log nor passed at launch, so both are
+# defaults; the geometry's match with runs 1-2 rests on the c=13 step (block C).
 UNLOGGED = ("max_num_batched_tokens", "max_num_seqs")
 
 # Run 1's interference fit, at 4 000-token prompts and mnbt 2 048. The whole of
@@ -57,8 +42,7 @@ UNLOGGED = ("max_num_batched_tokens", "max_num_seqs")
 INTERFERENCE_SLOPE = 1.640
 INTERFERENCE_INTERCEPT = -6.36
 
-# The same quantity, measured at c=13 / ctx 4 100 / mnbt 2 048, across every run
-# that has measured it. Three pods, two drivers, twelve days.
+# The c=13 / ctx 4 100 / mnbt 2 048 step, in every run that measured it.
 DECODE_STEP_C13 = (33.79, 33.71, 33.80, 33.677, 33.686)
 
 # Run 2's block A, for the one comparison block B exists to make.
@@ -112,13 +96,9 @@ def dollars_per_1m(tokens_per_second):
 
 
 def slo_seat_rows():
-    """The two levels run 3 ships: the largest load still inside the TPOT target.
+    """The two levels run 3 ships: per hit rate, the widest load whose p99 TPOT is inside the target.
 
-    This rule -- take the widest level whose p99 TPOT is under the interactive
-    target, at each hit rate -- decides the seat counts and the cost figures the
-    README and SLO.md section 7 both quote. It lived inside cost()'s printer
-    until the README grew a test that needs the same two rows; a number quoted in
-    two places must be computed in one.
+    The README and SLO.md section 7 quote both rows, so they are computed here once.
     """
     unc = levels("run3-a-h00-clean")
     cached = levels("run3-a-h80") + levels("run3-a-h80-ext")
