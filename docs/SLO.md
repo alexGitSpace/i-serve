@@ -59,8 +59,9 @@ SLO is as much an engineering decision as the lower one.
 | | Value | Source |
 |---|---|---|
 | Model | Qwen3-8B, BF16 | `config.json` |
-| Parameters, total | 8.2e9 | model card — used for memory |
+| Parameters, total | 8.2e9 | model card |
 | Parameters, non-embedding | 6.95e9 | model card — used for FLOPs |
+| Parameters by role | decoder 6 946 075 648, `lm_head` 622 329 856, embedding 622 329 856 (untied) | safetensors headers, `bench/models/checkpoints.json` — used for memory |
 | Layers `L` | 36 | `num_hidden_layers` |
 | KV heads `n_kv` | 8 | `num_key_value_heads` (GQA, 32 Q heads) |
 | `head_dim` | 128 | `head_dim` |
@@ -74,9 +75,17 @@ SLO is as much an engineering decision as the lower one.
 Derived constants:
 
 ```
-weights_bytes      = 8.2e9 × 2                    = 16.4 GB
+weights held       = 8 190 735 360 × 2            = 16.38 GB   every role, resident
+weights read       = (6 946 075 648 + 622 329 856) × 2
+                                                  = 15.14 GB   per forward pass
 kv_bytes_per_token = 2 × 8 × 128 × 2 × 36         = 147 456 B  (147 KB)
 ```
+
+The two weight figures differ by the embedding table, 1.24 GB. A pass looks up
+one row of it per token, so it is held and never read in full; `lm_head`, a
+matrix of the same shape, is multiplied in full every pass. Capacity subtracts
+what is held, every time and bandwidth figure reads what is read. Until
+2026-11-05 this repository counted the table as read; §9 says what that moved.
 
 147 KB of HBM per token of context. GQA is what keeps it there — without shared
 KV heads it would be 590 KB, four times the memory bill for identical output.
@@ -102,16 +111,16 @@ the ratio; the notation in [GLOSSARY.md](GLOSSARY.md) (`t_mem_real`,
 `t_compute_real`) is the same convention.
 
 ```
-t_mem     = 16.4e9 / 5.3e12               ÷ 0.70  =  4.42 ms   → 226 tok/s
+t_mem     = 15.14e9 / 5.3e12              ÷ 0.70  =  4.08 ms   → 245 tok/s
 t_compute = 2 × 6.95e9 × 1 / 1.307e15     ÷ 0.45  =  0.024 ms
-max()                                             =  4.42 ms   memory-bound, 187×
+max()                                             =  4.08 ms   memory-bound, 173×
 ```
 
-187× is not "somewhat memory-bound". During decode the matrix cores idle 99.5% of
+173× is not "somewhat memory-bound". During decode the matrix cores idle 99.4% of
 the time and the accelerator behaves as an expensive memory bus. Every batching
 mechanism in this stack exists to reclaim that idle capacity.
 
-The 187× is a *lower* bound on how memory-bound decode is. `mfu = 0.45` was
+The 173× is a *lower* bound on how memory-bound decode is. `mfu = 0.45` was
 measured on prefill, where the matmuls are large; a decode step multiplies a
 matrix by a single vector per sequence and reaches nowhere near that utilisation.
 Using the prefill coefficient therefore overstates the compute side, and a
@@ -120,13 +129,13 @@ measured decode MFU would only widen the gap — see §9.
 ### TTFT floor — prefill, 2 000-token prompt
 
 ```
-t_mem     = (16.4e9 + 2000 × 147 456) / 5.3e12  ÷ 0.70  =  4.50 ms
-t_compute = 2 × 6.95e9 × 2000 / 1.307e15        ÷ 0.45  = 47.27 ms
-max()                                                   = 47.3 ms   compute-bound, 10.5×
+t_mem     = (15.14e9 + 2000 × 147 456) / 5.3e12  ÷ 0.70  =  4.16 ms
+t_compute = 2 × 6.95e9 × 2000 / 1.307e15         ÷ 0.45  = 47.27 ms
+max()                                                    = 47.3 ms   compute-bound, 11.4×
 ```
 
 The memory side carries the KV the prompt *writes*, which an earlier version of
-this section omitted. It is 0.29 GB against 16.4 GB of weights here and does not
+this section omitted. It is 0.29 GB against 15.1 GB of weights read here and does not
 move the verdict, but it grows linearly with the prompt: at a 32 000-token
 reasoning prompt it is 4.72 GB, and stating it is what keeps the two phases
 symmetric — decode reads KV, prefill writes it. Not modelled either way:
@@ -147,20 +156,20 @@ predicted-vs-measured row name the one it used, are in §9.
 |---|---|---|---|---|---|
 | Memory | 192 GiB @ 5.3 TB/s | 191.69 GiB visible | 191.69 GiB visible | 48 GB @ 864 GB/s | 44.39 GiB visible |
 | BF16 dense | 1.307 PFLOP/s | — | — | 362 TFLOP/s | — |
-| `achieved_bandwidth` | 0.70 assumed | **0.46 measured** | **0.57 measured** | 0.70 assumed | **0.83 measured** |
+| `achieved_bandwidth` | 0.70 assumed | **0.43 measured** | **0.53 measured** | 0.70 assumed | **0.78 measured** |
 | `mfu` | 0.45 assumed | **0.166 measured** | **0.247 measured** | 0.45 assumed | **0.439 measured** |
-| TPOT floor, batch 1, empty context | 4.42 ms | 6.73 ms at the fit | 5.43 ms at the fit | 27.1 ms | **22.9 ms** |
+| TPOT floor, batch 1, empty context | 4.08 ms | 6.64 ms at the fit | 5.39 ms at the fit | 25.0 ms | **22.5 ms** |
 | TTFT floor, 2 000-token prompt | 47.3 ms | 128.1 ms at the fit; **116.4 ms** measured | 86.1 ms at the fit; **80.9 ms** measured | 170.6 ms | 174.8 ms |
 | Queue share of the 300 ms TTFT budget | 84% | 61% from the measured | 73% from the measured | 43% | 42% |
 | KV space at `gpu_memory_utilization = 0.9` | 169 GB | **165.8 GB** | **165.8 GB** | 26.8 GB | **24.9 GB** |
 | Sequences at 4 000 context — memory allows | 286 | 281, from the logged blocks | 281, from the logged blocks | 45 | **41** |
-| Sequences at 4 000 context — a 50 ms TPOT allows | 286 | **8–32** as served | **more than 32** as served | 23 | **32** decode step, **12** as served |
-| Which limit binds | a tie, counted as latency | **latency, as served**; running saturates at ~100 | **latency, as served**, past 32; running saturates at ~100 | latency, by 2× | latency, by 3.4× |
+| Sequences at 4 000 context — a 50 ms TPOT allows | 288 | **8–32** as served | **more than 32** as served | 25 | **31** decode step, **12** as served |
+| Which limit binds | capacity, by two seats | **latency, as served**; running saturates at ~100 | **latency, as served**, past 32; running saturates at ~100 | latency, by 1.8× | latency, by 3.4× |
 
 The *run* columns are measurement, except the cells marked as a floor at the
 run's fit or as derived from its logged pool; the *derived* columns keep their
 uncalibrated coefficients so a prediction can still be printed against them
-(§9). Every L40S figure, and the difference between 32 and 12, is argued in
+(§9). Every L40S figure, and the difference between 31 and 12, is argued in
 [benchmarks/l40s-baseline.md](benchmarks/l40s-baseline.md); every MI300X run 1
 figure in [benchmarks/mi300x-run1.md](benchmarks/mi300x-run1.md), including why
 its running count saturated below both limits this section derives. The run 2
@@ -170,8 +179,8 @@ by the droplet, not the configuration
 
 The last row is why this card was chosen for the first runs rather than a
 cheaper one.
-On MI300X the two derived limits coincide at 286 (§6), and a coincidence
-teaches nothing about which one is which. On L40S the SLO permits 23 sequences
+On MI300X the two derived limits land two seats apart, 286 and 288 (§6), and a
+near-coincidence teaches little about which one is which. On L40S the SLO permits 25 sequences
 while memory holds 45, so `max_num_seqs` has to be *derived* rather than read off
 the capacity — and `min(SLO limit, memory limit)` becomes a decision instead of a
 tie. The choice paid off in a way the derivation did not anticipate: measured,
@@ -179,10 +188,10 @@ the two limits are **12 and 41**, further apart than predicted and for a reason
 no coefficient covers (§9).
 
 An RTX 4090 was rejected on the same arithmetic: at 1 008 GB/s its decode floor is
-better than the L40S's (23.2 ms), but 165 TFLOP/s dense puts its TTFT floor at
+better than the L40S's (21.5 ms), but 165 TFLOP/s dense puts its TTFT floor at
 374 ms for a 2 000-token prompt — above the *entire* 300 ms budget, making the
 interactive class physically unreachable. An L4 fails earlier still: 300 GB/s gives
-a 78 ms TPOT floor at batch 1, against a 50 ms target.
+a 72 ms TPOT floor at batch 1, against a 50 ms target.
 
 ### What the floors mean for the targets
 
@@ -283,19 +292,19 @@ Decode step, 4 000 tokens of context per sequence:
 | | batch 1 | batch 64 |
 |---|---|---|
 | KV in `bytes_moved` | 0.59 GB | 37.75 GB |
-| `bytes_moved` | 16.99 GB | 54.15 GB |
-| TPOT | 4.58 ms | 14.6 ms |
-| tok/s per user | 218 | 68 |
-| **tok/s aggregate** | **218** | **4 384** |
-| memory : compute ratio | 194× | 9.6× |
+| `bytes_moved` | 15.73 GB | 52.89 GB |
+| TPOT | 4.24 ms | 14.3 ms |
+| tok/s per user | 236 | 70 |
+| **tok/s aggregate** | **236** | **4 490** |
+| memory : compute ratio | 179× | 9.4× |
 
-20× the throughput for 3.2× the per-user latency. Tuning is the search for a
+19× the throughput for 3.4× the per-user latency. Tuning is the search for a
 point on this curve; the SLO is what says where to stop.
 
 Both columns carry the 4 000 tokens of context stated above, which is why the
-batch-1 figure here is 4.58 ms rather than the 4.42 ms floor in §4: a floor
-assumes an empty cache, an operating point does not. The KV term is only 3.5% of
-the traffic at batch 1 and 70% of it at batch 64 — that swing, not either number
+batch-1 figure here is 4.24 ms rather than the 4.08 ms floor in §4: a floor
+assumes an empty cache, an operating point does not. The KV term is only 3.8% of
+the traffic at batch 1 and 71% of it at batch 64 — that swing, not either number
 alone, is what batching actually is.
 
 ---
@@ -303,21 +312,22 @@ alone, is what batching actually is.
 ## 6. Concurrency ceiling
 
 ```
-KV space   = 192 GiB × 0.9 (gpu_memory_utilization) − 16.4 GB = 169 GB
-           = 169e9 / 147 456                                  ≈ 1.15 M KV tokens
+KV space   = 192 GiB × 0.9 (gpu_memory_utilization) − 16.38 GB held = 169 GB
+           = 169e9 / 147 456                                       ≈ 1.15 M KV tokens
              ≈ 286 sequences at 4 000 tokens of context
 
-at that fill:  bytes_moved = 185.1 GB  →  34.9 ms  ÷ 0.70  =  49.9 ms TPOT
+at that fill:  bytes_moved = 183.8 GB  →  34.7 ms  ÷ 0.70  =  49.5 ms TPOT
 ```
 
 Two conclusions:
 
-**Memory capacity and the interactive latency budget bind at the same point.**
-A full card lands at 49.9 ms TPOT against a 50 ms target. (Derived at 192e9 B,
-before MI300X run 1 read the card as 192 GiB, the two sat 8% apart.) Raising
-`gpu_memory_utilization` therefore buys nothing — the SLO breaks at the same
-moment the memory runs out. It buys nothing on the L40S either, for the opposite
-reason: there the latency limit is reached at 23 sequences while 45 already fit,
+**Memory capacity and the interactive latency budget bind two seats apart.**
+A full card lands at 49.5 ms TPOT against a 50 ms target, and the target alone
+would allow 288. (Derived at 192e9 B, before MI300X run 1 read the card as 192
+GiB, the two sat 8% apart; with the embedding table counted as read, they tied
+at 286.) Raising `gpu_memory_utilization` therefore buys at most those two seats
+— the SLO breaks almost as the memory runs out. It buys nothing on the L40S, for
+the opposite reason: there the latency limit is reached at 25 sequences while 45 already fit,
 so the spare seats are idle capacity, not a constraint. Measured on the L40S the
 gap is wider still, 12 against 41 — the idle seats are real, and paying for more
 capacity would buy more of them.
@@ -325,8 +335,8 @@ capacity would buy more of them.
 **`max_num_seqs` is derived, not discovered** — the `min()` of a latency limit
 and a capacity limit, never trial and error. Which of the two binds is a
 property of the card and the target rather than a general rule: on MI300X
-the two tie (286 fit, 286 the SLO permits, and a tie counts as latency-bound),
-on L40S latency binds (23 permitted against 45 that fit; measured, 12 against
+capacity binds by two seats (286 fit, 288 the SLO permits), on L40S latency
+binds (25 permitted against 45 that fit; measured, 12 against
 41). Measured on the MI300X, latency bound as served, between 8 and 32 seats,
 consistent with prefill interference at an `mfu` of 0.166 rather than with the
 decode step; the pool and the cap were never reached, because at 4 000 / 200 tokens and a
@@ -350,7 +360,7 @@ Halving KV bytes per token doubles the number of tokens that fit in the same
 
 ```
 FP8 KV:  73 728 B/token  →  2.29 M KV tokens  →  ~573 sequences at 4 k context
-         TPOT unchanged at ~49.9 ms, aggregate throughput ~2×
+         TPOT unchanged at ~49.5 ms, aggregate throughput ~2×
 ```
 
 TPOT holds because `bytes_moved` at the new ceiling is the one it replaced:
@@ -358,17 +368,18 @@ TPOT holds because `bytes_moved` at the new ceiling is the one it replaced:
 ceiling itself floors to 573).
 
 **What FP8 KV cannot do is change which limit binds.** Both limits have the form
-`n = (X − weights) / (context_len × kv_bytes_per_token)`, differing only in `X`
-— `tpot_target × bandwidth × eff_mem` for latency, `memory_bytes ×
-gpu_memory_utilization` for capacity. `kv_bytes_per_token` divides both, so
+`n = (X − W) / (context_len × kv_bytes_per_token)`, differing in `X` —
+`tpot_target × bandwidth × eff_mem` for latency, `memory_bytes ×
+gpu_memory_utilization` for capacity — and in `W`, the weights read for latency
+and the weights held for capacity. `kv_bytes_per_token` divides both, so
 halving it doubles both and cancels out of their ratio, as does `context_len`:
 
 ```
-ratio = (X_latency − weights) / (X_memory − weights)
+ratio = (X_latency − W_read) / (X_memory − W_held)
 ```
 
-MI300X therefore stays tied at FP8, and the L40S stays
-latency-bound by the same 2×. The terms left in that expression name the knobs
+MI300X therefore stays capacity-bound by the same two-seat margin at FP8 (573
+against 577), and the L40S stays latency-bound by the same 1.8×. The terms left in that expression name the knobs
 that *do* move it: the weights (quantise them), the bandwidth (a different
 card), or the target itself.
 
@@ -378,8 +389,8 @@ both hold** ([benchmarks/l40s-run2.md](benchmarks/l40s-run2.md) §5):
 2.000×, exact — seats at 4 100 context from 41 to 82, and the decode step at 26
 sequences came out 4.8% from the step at 13 sequences in BF16, which is the "same
 TPOT at twice the occupancy" claim within the run's own noise. Which limit binds
-did not move: latency still binds, 65 against 90 at FP8 where it was 32 against
-45, and the ratio is 1.38 against 1.41.
+did not move: latency still binds, 62 against 90 at FP8 where it was 31 against
+45 at run 1's coefficient, the ratio 1.45 in both.
 
 Two things the derivation above did not anticipate, both from the same run:
 
@@ -396,10 +407,10 @@ Two things the derivation above did not anticipate, both from the same run:
 
 ### The knob that could close the rest: prefix caching
 
-Run 2 left nineteen seats unaccounted for and one candidate eliminated. The
-decode step permits **31** sequences at 4 000 tokens of context; the number an
+Run 2 left eighteen seats unaccounted for and one candidate eliminated. The
+decode step permits **30** sequences at 4 100 tokens of context; the number an
 operator can promise against a 50 ms TPOT is **12**, and
-`max_num_batched_tokens` buys two of the missing nineteen at six times the TTFT
+`max_num_batched_tokens` buys two of the missing eighteen at six times the TTFT
 p50 ([benchmarks/l40s-run2.md](benchmarks/l40s-run2.md) §4). The knob only
 decides *who waits* for prefill work the load creates. Closing the rest requires
 removing the work.
@@ -414,21 +425,21 @@ card.** It reuses the KV of a shared prompt prefix across requests, so:
    so caching saves *computing and writing* KV and never reading it. The decode
    step is the one quantity here reproducible to 0.24 %, and at nine matched
    concurrencies it **fell by 14–32 %** when 3 200 of 4 000 prompt tokens were
-   shared. Its slope went from 0.895 to 0.367 ms per seat, against 0.843
-   predicted: the per-seat cost behaves as ~1 785 tokens of context where a seat's
+   shared. Its slope went from 0.895 to 0.367 ms per seat, against 0.897
+   predicted: the per-seat cost behaves as ~1 680 tokens of context where a seat's
    unique content is ~900. Cascade attention would have taken it to ~900 tokens
-   and 0.185 ms per seat, so **the fall is real and neither hypothesis fits it**.
+   and 0.197 ms per seat, so **the fall is real and neither hypothesis fits it**.
    The mechanism is unidentified and is §10's first open item; what this section
    may no longer assume is that the latency limit is independent of `h`.
 2. It **does** move the capacity limit, and hard: the shared blocks are stored
    once instead of once per sequence. With a 3 200-token prefix shared by every
    request, the pool's 169 833 logged tokens seat `(169 833 − 3 200) / 900 ≈ 185`
    sequences instead of 41. On the L40S that is worth nothing — latency binds at
-   a third of even the old figure — and on the MI300X, where the two derived
-   limits tie (§6), it would be the whole story. The same flag is a capacity knob
+   a third of even the old figure — and on the MI300X, where capacity binds two
+   seats short of latency (§6), it would buy those two seats and no more. The same flag is a capacity knob
    or a no-op depending on the card.
 3. It removes **prefill work**, which is the term that actually separates 12 from
-   31. This is the channel the section was built on, and it is the one that came
+   30. This is the channel the section was built on, and it is the one that came
    through the measurement intact: run 3 fitted the interference at `h` = 0.8 to
    0.302 `n` against 1.559 `n` at `h` = 0 — a ratio of **0.194 where (1 − `h`) =
    0.200**.
@@ -450,20 +461,20 @@ cache — removes that share of the prefill work, so the served step becomes
 ```
 TPOT(n, h)  =  step(n) + (1 − h) × I(n)
 step(n)     =  (weights + n × context_len × kv_per_token) / (bandwidth × eff_mem)
-            =  22.87 + 0.843 n   ms      (L40S, eff_mem = 0.83, 4 100 tokens)
+            =  22.46 + 0.897 n   ms      (L40S, eff_mem = 0.78, 4 100 tokens)
 ```
 
 Solving `TPOT(n, h) = 50 ms`:
 
 | Cache hit rate `h` | 0 | 0.25 | 0.50 | 0.70 | 0.80 | 0.90 | 0.95 | 1.0 |
 |---|---|---|---|---|---|---|---|---|
-| Seats at 50 ms TPOT p50 | **13.5** | 15.4 | 18.2 | 21.8 | **24.3** | 27.6 | 29.7 | **32.2** |
-| Of the 18.7 missing, closed | 0% | 10% | 25% | 44% | 58% | 75% | 87% | 100% |
+| Seats at 50 ms TPOT p50 | **13.4** | 15.2 | 17.9 | 21.2 | **23.5** | 26.6 | 28.5 | **30.7** |
+| Of the 17.3 missing, closed | 0% | 11% | 26% | 45% | 59% | 76% | 87% | 100% |
 | **Measured, run 3 (TPOT p99)** | **12.5** | — | — | — | **37.8** | — | — | — |
 
 **The two measured cells are the whole of what run 3 changed here.** The `h` = 0
 cell lands within a seat of the row above it, which is the model working. The
-`h` = 0.8 cell is 56 % higher than the row predicts, and the row is low for one
+`h` = 0.8 cell is 61 % higher than the row predicts, and the row is low for one
 reason: it holds `step(n)` fixed while `h` moves, and channel 1 above says why
 that seemed safe. The interference half of the formula was right to 3 %; the
 step half was wrong, in the direction that gives an operator *more* than the
@@ -474,7 +485,7 @@ is "at least this many seats".
 The model is stated on the TPOT **p50** basis because that is where three
 measured points exist; the SLO metric is p99 and sits about one seat lower
 throughout (measured: p50 crosses between 13 and 14, p99 at ~12). Its own
-zero-cache prediction, 13.5 seats, reproduces that measured p50 crossing — which
+zero-cache prediction, 13.4 seats, reproduces that measured p50 crossing — which
 is the only validation it has, and it is a validation against the data it was
 fitted to.
 
@@ -669,8 +680,7 @@ the answering phase in TPOT. The clean one-to-one correspondence is gone.
 **Concurrency collapses.** Reasoning tokens enter the KV cache like any others.
 The §6 ceiling assumed 4 000 tokens of context per sequence; a reasoning request
 can reach 32 000. At that length the same 1.15 M KV tokens support roughly
-**35 concurrent sequences instead of 286** — an eightfold reduction, and the neat
-coincidence between memory capacity and latency budget no longer holds.
+**35 concurrent sequences instead of 286** — an eightfold reduction.
 
 **TPOT is not stationary within a request.** `bytes_moved` grows as the trace
 grows, so each decode step is slower than the last. The derivations above
@@ -698,30 +708,54 @@ faced by run 2, which did not produce them** (2026-08-23,
 [benchmarks/l40s-run2.md](benchmarks/l40s-run2.md)). That second step is what this
 section requires before a fitted number counts, and it has now happened once.
 
-### `achieved_bandwidth` — 0.70 assumed, 0.83 measured, 0.83 confirmed
+### `achieved_bandwidth` — 0.70 assumed, 0.78 measured, 0.78 confirmed
 
 Fitted against the **median ITL** of twelve benchmark levels, which is the
 closest thing `vllm bench serve` reports to a pure decode step; the spread across
-all twelve is ±0.02. The assumption was pessimistic by 19%, and since the
+all twelve is ±0.02. The assumption was pessimistic by 11%, and since the
 coefficient enters as a divisor the error passes straight through to every decode
 floor and to `max_num_seqs`.
 
 Two things about it that matter more than the value:
 
-- **It belongs to a card and a phase.** 0.83 is L40S × decode × BF16 KV ×
+- **It belongs to a card and a phase.** 0.78 is L40S × decode × BF16 KV ×
   vLLM 0.27.1 × FlashAttention 2. The MI300X figures in this document keep 0.70
-  as the prior; MI300X run 1 fitted 0.46 against it, and transplanting either
+  as the prior; MI300X run 1 fitted 0.43 against it, and transplanting either
   card's measurement to the other would produce a table that looks calibrated
   and is not.
 - **The direction stated in earlier versions of this section was wrong.** It
   expected efficiency to be *worst* at batch 1, where launch and attention
-  overhead amortise over nothing. Batch 1 measured 0.867, the best point in the
-  sweep, and efficiency falls slowly to 0.80 at the capacity ceiling. A decode
+  overhead amortise over nothing. Batch 1 measured 0.803, the best point in the
+  sweep, and every level with more sequences reads 0.77–0.79, the capacity
+  ceiling 0.775. A decode
   step at batch 1 is one long streaming read of contiguous weights; adding
   sequences adds scattered KV blocks, and it is the scattered half that costs.
   The one-scalar model in `bench/roofline.py` stands — a two-parameter fit to one
   run's twelve points would be over-fitting — but the residual now has a known
   shape and a known sign.
+
+### What moved when the embedding table left the count
+
+Until 2026-11-05 every byte figure here counted all of Qwen3-8B's 8.2e9
+parameters as read by every pass. The embedding table is a lookup (§3), so a
+step reads 15.14 GB of weights, not 16.4 — 7.7 % less; for run 5's
+Llama-3.3-70B, whose table is a smaller share, 2.9 % less. A fitted `eff_mem` is a share of that
+count, so each one fell with it, refitted on the same raw files: L40S run 1
+0.83 → 0.78, MI300X run 1 0.46 → 0.43, MI300X run 2 0.57 → 0.53. No measurement
+moved. Reports and runsheets dated before the change keep the figures they were
+written with.
+
+Three verdicts moved with the count:
+
+- **The MI300X tie is gone.** 286 seats fit and 286 met the target; now 286 fit
+  and 288 meet it, so capacity binds, by two seats (§6).
+- **Run 2's check loosened.** The c = 13 mean sits 0.86 % from the prediction,
+  where it sat 0.01 %; the worst-step bound over-counts by up to 10.1 %.
+- **Run 5's c = 16 crosses run 2's floor.** The 70B's step measured 30.95 ms
+  against a 32.43 ms floor at 0.53. Under the old count it held by 0.1 ms, and
+  that margin was the count's own error: it overstated the 8B the coefficient
+  was fitted on by 7.7 % and the 70B it was carried to by 2.9 %. A coefficient
+  carried between models carries its byte count's mistakes with it.
 
 ### `mfu` — 0.45 assumed, 0.439 measured on the L40S
 
@@ -733,7 +767,7 @@ confirmation rather than a correction.
 step under chunked prefill should be the decode step plus the compute of the
 prefill chunk sharing it — a quantity that needs `mfu`, at chunk sizes of 499 to
 4 000 tokens, none of them the 4 000-token uncontended prefill it was fitted to.
-Predicted 77.5 / 122.2 / 211.8 / 383.6 ms against measured ITL p99 of 70.6 / 114.2
+Predicted 77.8 / 122.5 / 212.1 / 383.9 ms against measured ITL p99 of 70.6 / 114.2
 / 198.2 / 364.9. It is an upper bound at every chunk size, high by 5–10%, and the
 excess barely drifts across an eightfold range. One point at one prompt length
 turns out to price a chunk.
@@ -780,20 +814,20 @@ says nothing about this document's baseline.
 
 Run 1 was therefore reported against the *uncalibrated* 0.70 and 0.45, with the
 recalibrated rows marked as fitted. **A revised coefficient may only be validated
-by a later run it did not see** — which made the 0.83 rows of run 1 a hypothesis
+by a later run it did not see** — which made the fitted rows of run 1 a hypothesis
 for run 2 rather than a result.
 
-**Run 2 was that run, and 0.83 came through it.** Every row of its
+**Run 2 was that run, and run 1's coefficient came through it.** Every row of its
 predicted-vs-measured table is unfitted. The load-bearing one: six BF16 launches
 at 13 sequences — four chunk sizes, two attention backends, three separate starts
 of one configuration, a different pod and a different driver — put the decode step
-within 1.1% of each other, and their mean is 0.01% from the prediction. At 32
-sequences the miss is 1.5%; under a Poisson arrival process it is under 2.2% up to
-the goodput peak; with the KV dtype halved it is under 5% at three concurrencies.
+within 1.1% of each other, and their mean is 0.86% from the prediction. At 32
+sequences the miss is 1.4%; under a Poisson arrival process it is under 3.0% up to
+the goodput peak; with the KV dtype halved it is under 3.6% at three concurrencies.
 The coefficient is now a measured property of L40S × decode × vLLM 0.27.1, no
-longer a fit. The MI300X's first fit, `eff_mem` 0.46 and `mfu` 0.166, was faced
+longer a fit. The MI300X's first fit, `eff_mem` 0.43 and `mfu` 0.166, was faced
 by MI300X run 2 on a second droplet and missed there every time, too long, by
-13–34 % on the decode step and 25–58 % on TTFT. That droplet fitted 0.57 and
+15–33 % on the decode step and 25–58 % on TTFT. That droplet fitted 0.53 and
 0.247. Two droplets, two fits, and no third to say which is the card
 ([benchmarks/mi300x-run2.md](benchmarks/mi300x-run2.md) §3).
 
@@ -802,16 +836,16 @@ one-directional 8% once the card saturates and the queueing model behind the
 prediction stops holding. And it is only checkable where the **median ITL is still
 a decode step**: at `max_num_batched_tokens` 512 or 1 024 with 32 sequences,
 prefill occupies the majority of scheduler steps and the median moves into them,
-reading 79.6 and 115.2 ms against a 49.8 ms step. The proxy this section calibrates
+reading 79.6 and 115.2 ms against a 51.2 ms step. The proxy this section calibrates
 against has a validity condition, and run 2 found its edge.
 
 **Run 3 faced them a third time, and added a limit of a different kind.** Its
-uncached sweep at nine concurrencies reproduces the step model to 6% on the slope
-and 3% on the intercept, and its c = 13 control lands 0.3% from the same level in
+uncached sweep at nine concurrencies reproduces the step model to 0.2% on the slope
+and 1.3% on the intercept, and its c = 13 control lands 0.3% from the same level in
 runs 1 and 2 — five measurements of one quantity across three pods, two drivers
 and twelve days, total spread **0.37%**. What run 3 found is not a coefficient
 that drifted but **a term the model does not contain**: with a shared prefix the
-measured slope is 0.367 ms per seat where the model says 0.843, so `eff_mem` is
+measured slope is 0.367 ms per seat where the model says 0.897, so `eff_mem` is
 sound and `context_len` is not the context the hardware is paying for. A
 coefficient validated at `h` = 0 may not be carried into `h` > 0 without saying so
 (§6, channel 1).
@@ -839,10 +873,10 @@ the same three, held to 0.24%.
 - [x] Validate floors against `vllm bench serve` — run 1, 2026-08-18, L40S only
 - [x] Calibrate `eff_mem` and `mfu` from measurement, recording per row which
       coefficient was used and whether it was fitted to that same run (§9) —
-      done for the L40S; MI300X run 1 fitted 0.46 / 0.166, and MI300X run 2
-      faced them on another droplet and fitted 0.57 / 0.247 there
-- [x] Re-face the calibrated 0.83 with a run that did not produce it (§9) —
-      run 2, 2026-08-23; it holds to 0.01% at 13 sequences and under 5% wherever
+      done for the L40S; MI300X run 1 fitted 0.43 / 0.166, and MI300X run 2
+      faced them on another droplet and fitted 0.53 / 0.247 there
+- [x] Re-face the calibrated 0.78 with a run that did not produce it (§9) —
+      run 2, 2026-08-23; it holds to 0.9% at 13 sequences and under 4% wherever
       the median ITL is still a decode step
 - [x] Measure TTFT against its target under a **finite** `--request-rate`; run 1
       was a closed loop and cannot answer it — run 2 §3. TTFT p99 crosses 300 ms
@@ -855,7 +889,7 @@ the same three, held to 0.24%.
 - [x] Confirm FP8 KV doubles concurrency at constant TPOT — run 2 §5, 2.000× on
       the pool, 41 → 82 seats, and faster at equal concurrency besides
 - [x] **Find what does close the decode-step-to-TPOT-p99 gap**, now that the
-      chunk size is measured to be worth two seats of nineteen: prefix caching,
+      chunk size is measured to be worth two seats of eighteen: prefix caching,
       a prompt-length cap, or separating the prefill and decode pools — answered
       by arithmetic in §6, 2026-08-26. All three attack prefill work per unit
       time; prefix caching is the one that removes it on a single card, and its
@@ -878,7 +912,7 @@ the same three, held to 0.24%.
       replacement is unnamed
 - [ ] **Identify the mechanism behind the decode-step fall at `h` > 0** — the item
       the one above turned into. The measured per-seat cost at `h` = 0.8 behaves
-      as ~1 785 tokens of context where a seat's unique content is ~900, so the
+      as ~1 680 tokens of context where a seat's unique content is ~900, so the
       shared prefix is read less than once per sequence and more than once per
       batch. Two candidates, neither measured, both testable without a profiler:
       a `--disable-cascade-attn` A/B at c = 24 and c = 40, and one sweep at a
@@ -1000,8 +1034,8 @@ per seat at 4 200 tokens         held           moved per step
 
 **The state is cheap to hold and costly to move.** It is 27 % of what a seat
 holds and 43 % of what a seat moves. The seat still costs 2.6 times less traffic
-than Qwen3-8B's: the L40S at 50 ms seats **74 against 31**, and MI300X run 2's
-coefficients give 553 against 217. Both models are latency-bound, and their
+than Qwen3-8B's: the L40S at 50 ms seats **74 against 29**, and MI300X run 2's
+coefficients give 517 against 202. Both models are latency-bound, and their
 prefill floors land within 1 % of each other.
 
 The state's shapes and dtype are what vLLM v0.27.1 allocates:
@@ -1017,7 +1051,7 @@ Qwen3.6-35B-A3B: 40 layers × 256 experts × 3 × 2 048 × 512  = 32.2e9 routed 
 weights           = 34.66e9 × 2                          = 69.3 GB  every expert resident
 active            = 33.64e9 − 32.21e9 × 248/256          = 2.44e9   FLOPs per token
 share read (n)    = 1 − (1 − 8/256)^n                    for n tokens in one pass
-                    n = 1: 3.1 %    n = 32: 64 %    n = 128: 98 %    n = 380: 100 %
+                    n = 1: 3.1 %    n = 32: 64 %    n = 128: 98 %    n = 335: 100 %
 ```
 
 Memory holds every expert, compute multiplies through 8 of 256, and a pass
@@ -1029,9 +1063,9 @@ two is found by bisection. Dense weights make the bracket a single point, and
 the answer is §4's number untouched.
 
 **At the seat counts a card actually ships, an MoE reads every expert.** On
-MI300X run 2's coefficients it seats 380, latency-bound, with 100 % of experts
-read per step. Its decode step therefore reads every one of its 69.3 GB, like
-a dense model of that size, while its KV per token is 20 KiB. Its TTFT floor is
+MI300X run 2's coefficients it seats 335, latency-bound, with 100 % of experts
+read per step. Its decode step therefore reads 68.3 GB, every expert and all
+but the embedding table, like a dense model of that size, while its KV per token is 20 KiB. Its TTFT floor is
 **60 ms against Qwen3-8B's 172 ms**. What the experts buy
 here is prefill compute, not decode bandwidth. The model does not fit an L40S:
 69.3 GB against 43.2 GB.

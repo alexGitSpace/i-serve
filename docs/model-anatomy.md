@@ -76,13 +76,14 @@ That `L` is the trailing factor in `kv_bytes_per_token`.
 flows down the diagram grows with `B_tokens`; the matrices it passes through do
 not.
 
-> **Where the two parameter counts are each slightly wrong.** `P_total` (memory)
-> counts the embedding table as fully read, which a gather does not do. `P_compute`
-> (FLOPs) drops both vocab-sized matrices, but `lm_head` is a real matmul and does
-> contribute. The two errors point in opposite directions and are each far smaller
-> than the margin by which the roofline is won on either side, and smaller than the
-> `eff_mem` / `mfu` error bars ([SLO.md](SLO.md) §9). Stating that out loud is the
-> point; correcting it would be false precision.
+> **Where the parameter counts were wrong, and where one still is.** The memory
+> side counted the embedding table as fully read, which a gather does not do —
+> 7.7 % of Qwen3-8B's step. It was called too small to correct, and it was not: a
+> fitted `eff_mem` is a share of that count, and carrying one between models
+> carried the error with it ([SLO.md](SLO.md) §9). Memory now reads every role
+> but the table. `P_compute` (FLOPs) still drops both vocab-sized matrices,
+> though `lm_head` is a real matmul; that error sits on the side the roofline
+> loses by two orders of magnitude in decode, and inside `mfu`'s fit in prefill.
 
 ---
 

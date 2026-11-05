@@ -9,6 +9,12 @@ predicted_with: l40s-run1
 
 # L40S run 3 — prefix caching, priced in seats
 
+> **Counted before 2026-11-05.** The ceilings, floors, shares and fitted `eff_mem`
+> below count the embedding table as read by every pass; the repository no longer
+> does ([SLO.md §9](../SLO.md#what-moved-when-the-embedding-table-left-the-count)).
+> The measured figures are unchanged. Each decode step's current share is its
+> row in [ledger.jsonl](ledger.jsonl).
+
 Runs 1 and 2 measured a card and a service with the feature **off**. This run is
 the first that varies the one quantity `docs/SLO.md` §6 could only derive: the
 prefix cache hit rate `h`. It is also the first driven by `bench/harness.py`

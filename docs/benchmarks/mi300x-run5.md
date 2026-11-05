@@ -9,6 +9,16 @@ predicted_with: mi300x-run2
 
 # MI300X run 5 — 2026-10-17
 
+> **Counted before 2026-11-05.** The ceilings, floors, shares and fitted `eff_mem`
+> below count the embedding table as read by every pass; the repository no longer
+> does ([SLO.md §9](../SLO.md#what-moved-when-the-embedding-table-left-the-count)).
+> The measured figures are unchanged. Each decode step's current share is its
+> row in [ledger.jsonl](ledger.jsonl).
+>
+> Under the current count the 70B's c = 16 step crosses run 2's floor: 30.95 ms
+> measured against 32.43 ms. The margin it held by here, 0.1 ms, was the old
+> count's own error.
+
 Two engines of one model on one card, first with the card's compute units split
 between them, then with each process held to one hardware queue. After that,
 InferenceX's Llama-3.3-70B FP8 server line at TP = 1, faced with a ceiling

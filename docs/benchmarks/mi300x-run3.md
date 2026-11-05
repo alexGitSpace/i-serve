@@ -9,6 +9,12 @@ predicted_with: mi300x-run2
 
 # MI300X run 3 — 2026-09-29
 
+> **Counted before 2026-11-05.** The ceilings, floors, shares and fitted `eff_mem`
+> below count the embedding table as read by every pass; the repository no longer
+> does ([SLO.md §9](../SLO.md#what-moved-when-the-embedding-table-left-the-count)).
+> The measured figures are unchanged. Each decode step's current share is its
+> row in [ledger.jsonl](ledger.jsonl).
+
 Two engines of one model on one card, and the prefix router in front of them.
 Every prediction the run faced was written in
 `docs/benchmarks/runsheets/mi300x-run-3.md` from `bench/predictions.py`

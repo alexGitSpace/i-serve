@@ -10,6 +10,12 @@ fitted: l40s-run1
 
 # L40S baseline — run 1, 2026-08-18
 
+> **Counted before 2026-11-05.** The ceilings, floors, shares and fitted `eff_mem`
+> below count the embedding table as read by every pass; the repository no longer
+> does ([SLO.md §9](../SLO.md#what-moved-when-the-embedding-table-left-the-count)).
+> The measured figures are unchanged. Each decode step's current share is its
+> row in [ledger.jsonl](ledger.jsonl).
+
 The first measurements this repository has. Everything in `docs/SLO.md` was a
 prediction until this run faced it; this file is where the predictions were
 scored and where two empirical coefficients stopped being guesses.

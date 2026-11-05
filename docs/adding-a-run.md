@@ -13,7 +13,7 @@ run adds is not a number but a row where a prediction could have been wrong.
 
 A coefficient a run fitted is a hypothesis until a *later* run it did not see
 confirms it ([SLO.md §9](SLO.md#9-assumptions-and-how-they-get-validated)):
-`eff_mem` 0.83 was fitted on run 1 and stood on runs 2 and 3, which is the
+`eff_mem` 0.78 was fitted on run 1 and stood on runs 2 and 3, which is the
 only reason the front page may quote a floor built on it. That is why one run
 is never enough, why the same card is worth a second run, and why the unit of
 contribution is a run rather than a card. Two of an accelerator's six fields

@@ -10,6 +10,12 @@ fitted: mi300x-run2
 
 # MI300X run 2 — 2026-09-27
 
+> **Counted before 2026-11-05.** The ceilings, floors, shares and fitted `eff_mem`
+> below count the embedding table as read by every pass; the repository no longer
+> does ([SLO.md §9](../SLO.md#what-moved-when-the-embedding-table-left-the-count)).
+> The measured figures are unchanged. Each decode step's current share is its
+> row in [ledger.jsonl](ledger.jsonl).
+
 The card configured for itself, one lever at a time: five server configurations
 in one sweep, each against `b2048`, this run's replay of MI300X run 1's server
 line. Every prediction it faced was written in

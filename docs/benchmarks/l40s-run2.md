@@ -9,6 +9,12 @@ predicted_with: l40s-run1
 
 # L40S run 2 — the scheduler, the arrival rate, and FP8 KV
 
+> **Counted before 2026-11-05.** The ceilings, floors, shares and fitted `eff_mem`
+> below count the embedding table as read by every pass; the repository no longer
+> does ([SLO.md §9](../SLO.md#what-moved-when-the-embedding-table-left-the-count)).
+> The measured figures are unchanged. Each decode step's current share is its
+> row in [ledger.jsonl](ledger.jsonl).
+
 Run 1 calibrated the card. This run is the first that faced those coefficients
 without having produced them, which is the only way `docs/SLO.md` §9 allows a
 fitted number to become a result. It also asked three questions run 1 could not:
