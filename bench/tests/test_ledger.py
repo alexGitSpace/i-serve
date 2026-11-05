@@ -74,24 +74,25 @@ def test_a_row_out_of_regime_carries_no_share_and_faces_nothing():
     """Out of regime is no share and nothing faced (GLOSSARY.md, *Regime*), and run 3's cached steps beat the ceiling."""
     out = [r for r in ROWS if r["regime"] != "in"]
     assert out and all(r["share"] is None and not r["faced"] and r["why"] for r in out)
-    assert max(r["ceiling"]["step_ms"] / r["measured"]["step_ms"] for r in out) > 1.3
+    assert max(r["ceiling"]["step_ms"] / r["measured"]["step_ms"] for r in out) > 1.28
 
 
 def test_the_shares_are_the_coefficients_the_reports_fitted():
-    """L40S run 1 fitted 0.83, MI300X run 1 0.46 and run 2 0.57: the ledger reads the same."""
-    assert abs(statistics.mean(r["share"] for r in by_run("l40s-1")) - 0.83) < 0.01
-    assert abs(statistics.mean(r["share"] for r in by_run("mi300x-1")) - 0.46) < 0.01
-    assert abs(statistics.mean(r["share"] for r in by_run("mi300x-2")) - 0.57) < 0.01
+    """L40S run 1 fitted 0.78, MI300X run 1 0.43 and run 2 0.53: the ledger reads the same."""
+    assert abs(statistics.mean(r["share"] for r in by_run("l40s-1")) - 0.78) < 0.01
+    assert abs(statistics.mean(r["share"] for r in by_run("mi300x-1")) - 0.43) < 0.01
+    assert abs(statistics.mean(r["share"] for r in by_run("mi300x-2")) - 0.53) < 0.01
 
 
 def test_the_verdicts_are_the_reports():
-    """0.83 survived runs 2-3; run 1's MI300X fit missed on run 2's droplet; run 5's floor held."""
+    """0.78 survived runs 2-3; run 1's MI300X fit missed on run 2's droplet; run 5's c = 16 crossed run 2's floor."""
     for run_id in ("l40s-2", "l40s-3"):
         assert {f["status"] for r in by_run(run_id) for f in r["faced"]
                 if f["with"] == "l40s-run1"} == {"survived"}, run_id
     assert {f["status"] for r in by_run("mi300x-2") for f in r["faced"]
             if f["with"] == "mi300x-run1"} == {"falsified"}
-    assert {f["status"] for r in by_run("mi300x-5") for f in r["faced"]} == {"survived"}
+    assert {r["point"]["batch"]: f["status"] for r in by_run("mi300x-5") for f in r["faced"]} == \
+        {4: "survived", 16: "falsified", 64: "survived"}
 
 
 def test_a_bound_survives_only_when_the_step_does_not_cross_it():

@@ -135,10 +135,11 @@ def decode_table() -> None:
     print()
     print("DECODE STEP -- predicted against the measured median ITL")
     print("Two prediction columns, because a coefficient fitted to this run is not")
-    print("evidence about it. 0.70 was the assumption; 0.83 is what these rows fitted.")
+    print(f"evidence about it. {L40S.achieved_bandwidth:.2f} was the assumption; "
+          f"{L40S_RUN1.achieved_bandwidth} is what these rows fitted.")
     print()
     print(f"{'level':>14} {'ctx':>6} {'@0.70':>9} {'err':>8} "
-          f"{'@0.83*':>9} {'err':>8} {'measured':>9} {'implied':>8}")
+          f"{f'@{L40S_RUN1.achieved_bandwidth}*':>9} {'err':>8} {'measured':>9} {'implied':>8}")
     print(f"{'':>14} {'':>6} {'ms':>9} {'':>8} {'ms':>9} {'':>8} {'ms':>9} {'eff':>8}")
     rule()
     for lv in levels():

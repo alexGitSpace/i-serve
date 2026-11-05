@@ -6,7 +6,7 @@ run is the unit that a coefficient belongs to, and merging two of them into one
 loader is how a fitted number quietly starts scoring itself.
 
 What makes this run different from run 1, and the whole reason it exists:
-`eff_mem = 0.83` and `mfu = 0.439` were fitted to run 1's twelve levels. Here they
+`L40S_RUN1`'s eff_mem and mfu were fitted to run 1's twelve levels. Here they
 face 22 levels they never saw, on a different pod under a different driver, at
 four chunk sizes, under two attention backends, and with the KV dtype halved.
 Every prediction printed below is therefore *unfitted* -- the column run 1's table
@@ -192,7 +192,7 @@ def checkpoint() -> None:
 
 def unfitted_decode_table() -> None:
     print()
-    print("DECODE STEP -- run 1's eff_mem 0.83 against levels it never saw")
+    print(f"DECODE STEP -- run 1's eff_mem {L40S_RUN1.achieved_bandwidth} against levels it never saw")
     print("No column here is fitted. That is the whole point of the run.")
     print()
     print(f"{'level':>16} {'mnbt':>6} {'n':>5} {'predicted':>10} {'measured':>9} "
@@ -378,7 +378,7 @@ def ledger_points():
 if __name__ == "__main__":
     print(f"Run: {RUN}   raw evidence: docs/benchmarks/raw/{RUN}/")
     print("Argument and conclusions: docs/benchmarks/l40s-run2.md")
-    print("Coefficients: eff_mem 0.83 and mfu 0.439, fitted to run 1, "
+    print(f"Coefficients: eff_mem {L40S_RUN1.achieved_bandwidth} and mfu {L40S_RUN1.mfu}, fitted to run 1, "
           "NOT to anything below.")
     checkpoint()
     unfitted_decode_table()

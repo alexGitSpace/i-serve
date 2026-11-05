@@ -30,11 +30,17 @@
   // A dense model's experts weigh 0 and its linear layers number 0, so these
   // reduce to the dense formulas exactly, as in roofline.py.
   function shareRead(e, tokens) { return 1 - (1 - e.per_token / e.count) ** tokens; }
-  function weightsBytes(m) { return m.params_total * m.weight_dtype_bytes; }
-  function weightsReadBytes(m, tokens) {
-    const skipped = m.experts.params * (1 - shareRead(m.experts, tokens));
-    return (m.params_total - skipped) * m.weight_dtype_bytes;
+  // Bytes per tensor role, as roofline.Weights: the embedding table is held, never read.
+  function weightsBytes(m) {
+    const w = m.weights;
+    return w.decoder + w.lm_head + w.embedding + w.routed_experts;
   }
+  function weightsRead(m, shareRouted) {
+    const w = m.weights;
+    return w.decoder + w.lm_head + w.routed_experts * shareRouted;
+  }
+  function weightsReadBytes(m, tokens) { return weightsRead(m, shareRead(m.experts, tokens)); }
+  function weightsReadAllBytes(m) { return weightsRead(m, 1.0); }
   function paramsActive(m) {
     const unrouted = 1 - m.experts.per_token / m.experts.count;
     return m.params_non_embedding - m.experts.params * unrouted;
@@ -103,7 +109,7 @@
     if (ctx <= 0) throw new Error("context_len must be positive");
     const byteBudget = tpotTarget * a.peak_bandwidth * a.achieved_bandwidth;
     const perSeq = seatStepBytes(m, ctx);
-    let byBandwidth = (byteBudget - weightsBytes(m)) / perSeq;
+    let byBandwidth = (byteBudget - weightsReadAllBytes(m)) / perSeq;
     // Every expert read and none: one number for dense weights, a bracket to bisect under MoE.
     let lo = Math.max(Math.floor(byBandwidth), 0);
     let hi = Math.floor((byteBudget - weightsReadBytes(m, 0)) / perSeq);
@@ -120,7 +126,7 @@
   }
   function seatsUnderPrefillInterference(m, a, ctx, tpotTarget, slope, intercept, hitRate) {
     const stepPerSeat = seatStepBytes(m, ctx) / (a.peak_bandwidth * a.achieved_bandwidth);
-    const stepAtZero = weightsBytes(m) / (a.peak_bandwidth * a.achieved_bandwidth);
+    const stepAtZero = weightsReadAllBytes(m) / (a.peak_bandwidth * a.achieved_bandwidth);
     const uncached = 1.0 - hitRate;
     const denominator = stepPerSeat + uncached * slope;
     if (denominator <= 0) throw new Error("non-positive interference slope");
@@ -229,7 +235,7 @@
         fit: { slope_s_per_seat: fit.slope_s_per_seat, intercept_s: fit.intercept_s,
                provenance: fit.provenance },
         note: h > 0.5
-          ? "a floor, not an estimate: at h = 0.8 run 3 measured 37.8 seats against 24.3 predicted (docs/SLO.md section 6)"
+          ? "a floor, not an estimate: at h = 0.8 run 3 measured 37.8 seats against 23.5 predicted (docs/SLO.md section 6)"
           : null,
       };
       if (shipped > 0) {
@@ -250,6 +256,7 @@
 
   return {
     FLOPS_PER_MAC, STATE_PASSES, pyRound, withKvDtype, shareRead, weightsBytes, weightsReadBytes,
+    weightsReadAllBytes,
     paramsActive, attentionLayers, kvBytesPerToken, stateBytesPerSequence, stateTokens,
     seatStepBytes, decodeStepBytes, prefillBytes, kvCacheTokens, roofline, tpotFloor, ttftFloor,
     maxNumSeqsFromSlo, seatsUnderPrefillInterference, concurrencyCeiling, maxNumSeqs,

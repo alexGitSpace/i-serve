@@ -93,6 +93,7 @@ def model_data() -> dict:
             "num_kv_heads": m.num_kv_heads,
             "head_dim": m.head_dim,
             "weight_dtype_bytes": m.weight_dtype_bytes,
+            "weights": dataclasses.asdict(m.roles),
             "kv_dtype_bytes": m.kv_dtype_bytes,
             "experts": dataclasses.asdict(m.experts),
             "linear": dataclasses.asdict(m.linear),

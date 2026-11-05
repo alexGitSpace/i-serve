@@ -77,15 +77,47 @@ def kv_bytes_per_token(attention_layers: int, kv_heads: int, head_dim: int,
 
 
 @dataclass(frozen=True)
-class Model:
-    """Architecture from config.json plus the checkpoint's parameter counts.
+class Weights:
+    """Bytes per tensor role (GLOSSARY.md, *Tensor role*): all resident, each read its own way."""
 
-    Memory reads every weight, compute skips the embedding lookup. Empty experts
-    and linear are dense full attention (SLO.md section 11).
+    decoder: float                # read in full by every pass, the routed experts excluded
+    lm_head: float = 0.0          # read in full by every pass; a tied table is filed here
+    embedding: float = 0.0        # a lookup reads one row per token: counted as no read
+    routed_experts: float = 0.0   # read as routed, Experts.share_read
+
+    @property
+    def resident(self) -> float:
+        return self.decoder + self.lm_head + self.embedding + self.routed_experts
+
+    def read(self, share_routed: float) -> float:
+        return self.decoder + self.lm_head + self.routed_experts * share_routed
+
+    def times(self, n: int) -> "Weights":
+        """n engines' copies on one card."""
+        return Weights(self.decoder * n, self.lm_head * n, self.embedding * n,
+                       self.routed_experts * n)
+
+
+def weights_of(roles: dict) -> Weights:
+    """A weight file snapshot's roles (bench/models/weight_files.json); no lm_head means tied."""
+    b = {name: r["bytes"] for name, r in roles.items()}
+    if set(b) - {"decoder", "embedding", "lm_head"}:
+        raise ValueError(f"roles {sorted(b)}: only decoder, embedding and lm_head are priced")
+    if "lm_head" not in b:
+        return Weights(decoder=b["decoder"], lm_head=b["embedding"])
+    return Weights(decoder=b["decoder"], lm_head=b["lm_head"], embedding=b["embedding"])
+
+
+@dataclass(frozen=True)
+class Model:
+    """Architecture from config.json plus the checkpoint's bytes per role.
+
+    Memory reads every role but the embedding table, compute skips its lookup.
+    Empty experts and linear are dense full attention (SLO.md section 11).
     """
 
     name: str
-    params_total: float           # memory side: all weights are read
+    params_total: float           # every weight; bytes come from `weights`
     params_non_embedding: float   # compute side: embeddings contribute no FLOPs
     num_layers: int               # config.json: num_hidden_layers
     num_kv_heads: int             # config.json: num_key_value_heads (GQA groups)
@@ -95,16 +127,30 @@ class Model:
     experts: Experts = NO_EXPERTS
     linear: LinearAttention = NO_LINEAR_ATTENTION
     provenance: str = ""          # where the figures came from, read by the printers
+    weights: Weights | None = None  # None: params_total at weight_dtype_bytes, all of it read
+
+    @property
+    def roles(self) -> Weights:
+        """`weights`, or the default derived on each call, so replace() cannot leave it stale."""
+        if self.weights is not None:
+            return self.weights
+        w = self.weight_dtype_bytes
+        return Weights(decoder=(self.params_total - self.experts.params) * w,
+                       routed_experts=self.experts.params * w)
 
     @property
     def weights_bytes(self) -> float:
-        """Resident, and read in full by any pass that routes to every expert."""
-        return self.params_total * self.weight_dtype_bytes
+        """Resident: every role, the embedding table included."""
+        return self.roles.resident
 
     def weights_read_bytes(self, tokens: int) -> float:
-        """Read by one forward pass over `tokens` tokens: all but the experts none of them routed to."""
-        skipped = self.experts.params * (1 - self.experts.share_read(tokens))
-        return (self.params_total - skipped) * self.weight_dtype_bytes
+        """Read by one forward pass over `tokens` tokens: no embedding table, routed experts as routed."""
+        return self.roles.read(self.experts.share_read(tokens))
+
+    @property
+    def weights_read_all_bytes(self) -> float:
+        """Read by a pass that routes to every expert: the bound a dense model meets exactly."""
+        return self.roles.read(1.0)
 
     @property
     def params_active(self) -> float:
@@ -180,6 +226,9 @@ QWEN3_8B = Model(
     num_kv_heads=8,
     head_dim=128,
     provenance="config.json and the model card; docs/model-anatomy.md",
+    # BF16, bench/models/checkpoints.json: the card's 8.2e9 rounds these.
+    weights=Weights(decoder=2 * 6_946_075_648, lm_head=2 * 622_329_856,
+                    embedding=2 * 622_329_856),
 )
 
 # Priced, never served or measured here. Parameters: bench/models/checkpoints.json
@@ -197,6 +246,8 @@ QWEN3_5_9B = Model(
                            head_k_dim=128, head_v_dim=128, conv_kernel=4),
     provenance="config.json and the safetensors headers at c202236; "
                "never served or measured here, docs/audience.md",
+    weights=Weights(decoder=2 * 6_919_565_824, lm_head=2 * 1_017_118_720,
+                    embedding=2 * 1_017_118_720),
 )
 
 # Qwen3.8-Max's architecture (qwen3_5_moe_text) at a size one card holds.
@@ -212,6 +263,8 @@ QWEN3_6_35B_A3B = Model(
                            head_k_dim=128, head_v_dim=128, conv_kernel=4),
     provenance="config.json and the safetensors headers at 995ad96; "
                "never served or measured here, docs/audience.md",
+    weights=Weights(decoder=2 * 1_431_237_248, lm_head=2 * 508_559_360,
+                    embedding=2 * 508_559_360, routed_experts=2 * 32_212_254_720),
 )
 
 MI300X = Accelerator(
@@ -221,7 +274,7 @@ MI300X = Accelerator(
     peak_flops=1.307e15,
     achieved_bandwidth=0.70,    # unvalidated; SLO.md section 9, not measured on this card
     mfu=0.45,                   # unvalidated; prefill figure, not measured on this card
-    provenance="prior, unvalidated; MI300X run 1 measured 0.46 / 0.166 against it",
+    provenance="prior, unvalidated; MI300X run 1 measured 0.43 / 0.166 against it",
 )
 
 L40S = Accelerator(
@@ -242,7 +295,7 @@ L40S_RUN1 = Accelerator(
     memory_bytes=48e9,
     peak_bandwidth=864e9,
     peak_flops=362.05e12,
-    achieved_bandwidth=0.83,    # measured, decode, median ITL, twelve levels
+    achieved_bandwidth=0.78,    # measured, decode, median ITL, twelve levels
     mfu=0.439,                  # measured, prefill, one uncontended request
     provenance="measured (run 1, 2026-08-18); survived runs 2-3",
 )
@@ -255,7 +308,7 @@ MI300X_RUN1 = Accelerator(
     memory_bytes=192 * 2**30,
     peak_bandwidth=5.3e12,
     peak_flops=1.307e15,
-    achieved_bandwidth=0.46,    # measured, decode, median ITL, five levels, 0.41-0.49
+    achieved_bandwidth=0.43,    # measured, decode, median ITL, five levels, 0.39-0.45
     mfu=0.166,                  # measured, prefill, one uncontended 4 000-token request
     provenance="measured (MI300X run 1, 2026-09-27); MI300X run 2, on another droplet, "
                "ran 21 % faster decode and 33 % faster prefill at the same server line",
@@ -269,7 +322,7 @@ MI300X_RUN2 = Accelerator(
     memory_bytes=192 * 2**30,
     peak_bandwidth=5.3e12,
     peak_flops=1.307e15,
-    achieved_bandwidth=0.57,    # measured, decode, median ITL, seven levels, 0.52-0.62
+    achieved_bandwidth=0.53,    # measured, decode, median ITL, seven levels, 0.49-0.57
     mfu=0.247,                  # measured, prefill, one uncontended 4 000-token request
     provenance="measured (MI300X run 2, 2026-09-27), on a second droplet; every later "
                "MI300X run predicted from it",
@@ -395,7 +448,7 @@ def max_num_seqs_from_slo(
 
     # by_bandwidth: the memory *bus* inside a time budget. "memory" already
     # names the capacity limit in concurrency_ceiling.
-    by_bandwidth = (byte_budget - model.weights_bytes) / per_seq
+    by_bandwidth = (byte_budget - model.weights_read_all_bytes) / per_seq
 
     # Every expert read and none bracket the limit; dense weights make it one
     # point, MoE is bisected inside it (SLO.md section 11).
@@ -436,7 +489,7 @@ def seats_under_prefill_interference(
 
     step_per_seat = seat_step_bytes(model, context_len) / \
                     (accel.peak_bandwidth * accel.achieved_bandwidth)
-    step_at_zero = model.weights_bytes / \
+    step_at_zero = model.weights_read_all_bytes / \
                     (accel.peak_bandwidth * accel.achieved_bandwidth)
 
     uncached = 1.0 - hit_rate

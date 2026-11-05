@@ -171,9 +171,9 @@ def decode_table() -> None:
     cases = [
         # accel, batch, context_len
         (MI300X,  64, 4000),   # section 5, the batching table
-        (MI300X, 286, 4000),   # section 6, the full card: 49.9 ms against 50
-        (L40S,    45, 4000),   # its capacity limit -- 71 ms, well past the SLO
-        (L40S,    23, 4000),   # its latency limit -- 49.55 ms, what ships
+        (MI300X, 286, 4000),   # section 6, the full card: 49.5 ms against 50
+        (L40S,    45, 4000),   # its capacity limit -- 68.9 ms, well past the SLO
+        (L40S,    25, 4000),   # its latency limit -- 49.41 ms, what ships
         (L40S,     1, 4000),
         (L40S,     1,    0),   # section 4: the floor is taken at empty context
     ]
@@ -205,9 +205,9 @@ def latency_limit_table() -> None:
     """
     cases = [
         # accel, context_len, tpot_target -- the latency half of section 6
-        (L40S,   4000, 0.050),   # 23 by latency; 45 fit, so latency binds
-        (L40S,   4000, 0.030),   # same card, tighter target: 2 sequences
-        (MI300X, 4000, 0.050),   # 286 by latency; 286 fit, a tie
+        (L40S,   4000, 0.050),   # 25 by latency; 45 fit, so latency binds
+        (L40S,   4000, 0.030),   # same card, tighter target: 5 sequences
+        (MI300X, 4000, 0.050),   # 288 by latency; 286 fit, so capacity binds
         (L40S,   4000, 0.020),   # below the batch-1 floor: no batch qualifies
     ]
     table_header(
@@ -239,8 +239,8 @@ def shipping_table() -> None:
     fp8_kv = replace(QWEN3_8B, name="Qwen3-8B FP8 KV", kv_dtype_bytes=1)
     cases = [
         # model, accel, context_len, tpot_target, gpu_memory_utilization
-        (QWEN3_8B, L40S,    4000, 0.050, 0.9),   # section 4: latency binds, by 2x
-        (QWEN3_8B, MI300X,  4000, 0.050, 0.9),   # section 4: a tie, counted as latency
+        (QWEN3_8B, L40S,    4000, 0.050, 0.9),   # section 4: latency binds, by 1.8x
+        (QWEN3_8B, MI300X,  4000, 0.050, 0.9),   # section 4: capacity binds, by two seats
         (QWEN3_8B, MI300X, 32000, 0.050, 0.9),   # section 8: reasoning-length context
         (fp8_kv,   MI300X,  4000, 0.050, 0.9),   # section 6: the falsifiable ~573
     ]
@@ -250,8 +250,9 @@ def shipping_table() -> None:
         "capacity' is how many sequences' KV the card physically holds, 'by "
         "latency' how many it can re-read every single token and still land "
         "inside the TPOT target. max_num_seqs is the smaller of the two; 'gap' "
-        "is their ratio. On L40S latency binds at half the seats that fit "
-        "(1.96x), on MI300X the two coincide (1.00x, and a tie is latency-bound) -- a property of "
+        "is their ratio. On L40S latency binds at little over half the seats "
+        "that fit (1.80x), on MI300X capacity binds two seats short of latency "
+        "(1.01x) -- a property of "
         "the card and the target, never a rule about GPUs. The FP8 KV row "
         "doubles both limits and leaves the gap untouched. "
         "docs/SLO.md sections 4 and 6.",
@@ -281,7 +282,7 @@ def prefill_table() -> None:
         "The last column is the floor as a share of the 300 ms interactive "
         "budget of section 2 -- what is gone before a single token of queue or "
         "overhead is counted. 'ratio' shows prefill is compute-bound by prompt "
-        "length, not by nature: at 512 tokens it is 1.6x, nearly balanced, and "
+        "length, not by nature: at 512 tokens on L40S it is 1.7x, nearly balanced, and "
         "a short-prompt workload is a different machine. The bytes column "
         "includes the KV that prefill writes for decode to read. "
         "docs/SLO.md sections 4 and 8.",
@@ -301,9 +302,9 @@ def cost_table() -> None:
     """The same floors as money: a floor over a rate, so a lower bound."""
     cases = [
         # accel, batch, context_len, hourly_rate
-        (L40S,    23, 4000, L40S_HOURLY),     # what ships on L40S: its latency limit
+        (L40S,    25, 4000, L40S_HOURLY),     # what ships on L40S: its latency limit
         (L40S,     1, 4000, L40S_HOURLY),     # one user alone on the card
-        (MI300X, 286, 4000, MI300X_HOURLY),   # what ships on MI300X: both limits, tied
+        (MI300X, 286, 4000, MI300X_HOURLY),   # what ships on MI300X: capacity, two seats short of latency
         (MI300X,   1, 4000, MI300X_HOURLY),
     ]
     table_header(
@@ -335,6 +336,8 @@ def sweep_concurrency_table() -> None:
     """
     ctx, out = 4000, 200
     levels = (1, 4, 8, 16, 23, 24, 32, 45)
+    within = [b for b in levels if tpot_floor(QWEN3_8B, L40S, b, ctx).seconds <= TPOT_TARGET]
+    last_in, first_out = within[-1], levels[len(within)]
     seats = concurrency_ceiling(QWEN3_8B, L40S, ctx + out, GMU)
     seats_ignoring_output = concurrency_ceiling(QWEN3_8B, L40S, ctx, GMU)
 
@@ -343,9 +346,10 @@ def sweep_concurrency_table() -> None:
         f"L40S at {ctx} tokens of context: the seven levels runsheet step 4 "
         f"sends, plus the concurrency 4 that step 5 holds fixed while it moves "
         f"the prompt instead. "
-        f"'inside 50 ms' is the interactive TPOT target of section 2: the "
-        f"crossing sits between 23 and 24, one sequence wide, which is what "
-        f"makes the pair worth two levels of GPU time. 'KV seat' counts the "
+        f"'inside 50 ms' is the interactive TPOT target of section 2. The sheet "
+        f"chose 23 and 24 when the crossing sat between them; with the embedding "
+        f"table no longer counted as read it sits between {last_in} and "
+        f"{first_out} (docs/SLO.md section 9). 'KV seat' counts the "
         f"{ctx} input plus the {out} output tokens a seat actually holds, so "
         f"the pool seats {seats} sequences and not the "
         f"{seats_ignoring_output} of section 4 -- every level above {seats} "
@@ -493,14 +497,15 @@ def mi300x_sweep_table() -> None:
 def fleet_model(model: Model, replicas: int) -> Model:
     """The aggregate a card sees when `replicas` engines serve one model on it.
 
-    Only params_total moves -- each engine reads its own weights, a token's FLOPs
+    Only the weights move -- each engine holds and reads its own, a token's FLOPs
     and KV bytes do not -- so it holds for engines on ONE accelerator only.
     """
     if replicas < 1:
         raise ValueError("a fleet has at least one engine")
     return replace(model,
                    name=f"{model.name} x{replicas} on one card",
-                   params_total=model.params_total * replicas)
+                   params_total=model.params_total * replicas,
+                   weights=model.roles.times(replicas))
 
 
 def retained_room(ctx: int = 4200) -> float:
@@ -546,8 +551,9 @@ def fleet_router_table() -> None:
         f"tokens. Latency and time are printed at both droplets' fits, "
         f"eff_mem {fits[0].achieved_bandwidth} / {fits[1].achieved_bandwidth} "
         f"and mfu {fits[0].mfu} / {fits[1].mfu} (MI300X runs 1 and 2); "
-        f"capacity needs neither. A second engine reads and stores a second copy of "
-        f"the {QWEN3_8B.weights_bytes / 1e9:.1f} GB of weights, so the fleet "
+        f"capacity needs neither. A second engine stores a second copy of the "
+        f"{QWEN3_8B.weights_bytes / 1e9:.1f} GB of weights and reads "
+        f"{QWEN3_8B.weights_read_all_bytes / 1e9:.1f} GB of it a step, so the fleet "
         f"pays for them twice on both limits -- that is the bill below, and it "
         f"is charged whatever the routing policy is. What the policy decides is "
         f"the second half: round_robin puts every prefix on every engine, "
@@ -571,8 +577,9 @@ def fleet_router_table() -> None:
     lat_bill = " / ".join(str(one - two) for one, two in zip(lat_one, lat_fleet))
     print(f"  the bill: {bill} seats of capacity (a {ctx}-token seat) and "
           f"{lat_bill} of latency ({prompt} tokens of context) at the two fits, "
-          f"both of them the second {QWEN3_8B.weights_bytes / 1e9:.1f} GB "
-          f"divided by what a seat costs in that limit")
+          f"the second copy -- {QWEN3_8B.weights_bytes / 1e9:.1f} GB held, "
+          f"{QWEN3_8B.weights_read_all_bytes / 1e9:.1f} GB read -- divided by what "
+          f"a seat costs in that limit")
     # The same bill in block A's unit: unlike a seat count, this step difference
     # compares directly against a median ITL at matched total concurrency.
     for accel in fits:
@@ -891,7 +898,7 @@ def what_if_point(accelerator: str = "l40s-run1",
             "fit": {"slope_s_per_seat": slope, "intercept_s": intercept,
                     "provenance": provenance},
             "note": ("a floor, not an estimate: at h = 0.8 run 3 measured 37.8 "
-                     "seats against 24.3 predicted (docs/SLO.md section 6)"
+                     "seats against 23.5 predicted (docs/SLO.md section 6)"
                      if hit_rate > 0.5 else None),
         }
         if shipped > 0:

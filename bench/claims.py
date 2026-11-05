@@ -16,7 +16,7 @@ import pathlib
 from dataclasses import dataclass
 
 from passports import PASSPORTS
-from roofline import FLOPS_PER_MAC, MI300X, kv_bytes_per_token
+from roofline import FLOPS_PER_MAC, MI300X, kv_bytes_per_token, weights_of
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "claims.md"
@@ -28,15 +28,13 @@ VERDICTS = ("within ceiling", "over ceiling", "above floor", "below floor",
 
 
 def read_bytes(key: str) -> int:
-    """One decode step's weight read: every tensor but the embedding, which a lookup reads one row of."""
-    roles = FILES[key]["roles"]
-    return sum(r["bytes"] for name, r in roles.items() if name != "embedding") \
-        if "lm_head" in roles else sum(r["bytes"] for r in roles.values())
+    """One decode step's weight read: roofline.Weights.read, every role but the embedding table."""
+    return int(weights_of(FILES[key]["roles"]).read(1.0))
 
 
 def resident_bytes(key: str) -> int:
     """What the weights occupy: every tensor, the embedding included."""
-    return sum(r["bytes"] for r in FILES[key]["roles"].values())
+    return int(weights_of(FILES[key]["roles"]).resident)
 
 
 def kv_per_token(key: str, dtype_bytes: int) -> int:

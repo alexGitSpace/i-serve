@@ -50,7 +50,7 @@ window.TERMS = [
   { glossary: "`kind`", match: ["kind"],
     plain: "Kubernetes in Docker: the whole stack runs on a laptop with no GPU, against a stub that behaves like the engine but serves no model. It shows what the system does, never what the numbers are." },
   { glossary: "eff_mem", match: ["eff_mem"],
-    plain: "The share of the card's advertised memory bandwidth a decode step actually achieves — 0.83 measured on the L40S. The spec sheet is never reached." },
+    plain: "The share of the card's advertised memory bandwidth a decode step actually achieves — 0.78 measured on the L40S. The spec sheet is never reached." },
   { glossary: "MFU", match: ["mfu"],
     plain: "Model FLOPs Utilisation: the share of the card's advertised arithmetic speed that prefill actually achieves — 0.44 measured on the L40S." },
   { glossary: "Chunked prefill", match: ["chunked prefill"],

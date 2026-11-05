@@ -645,7 +645,7 @@ def test_seat_verdict_reports_an_interval_between_two_measured_levels():
 
 
 def test_dry_run_verdict_flips_with_the_slo_flags():
-    """The extended seat sweep runs above the 31 seats the decode step permits at
+    """The extended seat sweep runs above the 29 seats the decode step permits at
     50 ms, so every one of its levels is TPOT> against the interactive target
     and ok against the batch one. A dry run that printed the same column for
     both targets would be the old behaviour in a new column.
@@ -653,7 +653,7 @@ def test_dry_run_verdict_flips_with_the_slo_flags():
     levels = SCENARIOS["seats-cached-extended"]
     tight = dry_run_plan(levels, L40S_RUN1, SLOTargets(ttft=0.300, tpot=0.050))
     loose = dry_run_plan(levels, L40S_RUN1, SLOTargets(ttft=3.000, tpot=0.200))
-    assert tight["seats_by_latency"] == 31, tight["seats_by_latency"]
+    assert tight["seats_by_latency"] == 29, tight["seats_by_latency"]
     assert all(row["verdict"]["tpot_over"] for row in tight["levels"]), \
         [(r["name"], r["verdict"]) for r in tight["levels"]]
     assert not any(row["verdict"]["tpot_over"] for row in loose["levels"])
@@ -673,7 +673,7 @@ def test_dry_run_header_first_two_lines_are_the_ones_the_readme_quotes():
         dry_run(SCENARIOS["seats-cached"], L40S_RUN1, SLOTargets())
     lines = out.getvalue().splitlines()
     assert lines[0] == "accelerator: NVIDIA L40S (run 1 coefficients)", lines[0]
-    assert lines[1] == ("coefficients: eff_mem 0.83, mfu 0.439 -- measured "
+    assert lines[1] == ("coefficients: eff_mem 0.78, mfu 0.439 -- measured "
                         "(run 1, 2026-08-18); survived runs 2-3"), lines[1]
     assert lines[2].startswith("slo: TTFT p99 <= 300 ms, TPOT p99 <= 50 ms"), lines[2]
 

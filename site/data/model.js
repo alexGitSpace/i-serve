@@ -15,7 +15,7 @@ window.MODEL_DATA = {
    "provenance": "prior, unvalidated; the spec-sheet card, kept for contrast"
   },
   "l40s-run1": {
-   "achieved_bandwidth": 0.83,
+   "achieved_bandwidth": 0.78,
    "card": "l40s",
    "fitted_by": 1,
    "hourly_rate": 0.99,
@@ -40,10 +40,10 @@ window.MODEL_DATA = {
    "name": "AMD Instinct MI300X",
    "peak_bandwidth": 5300000000000.0,
    "peak_flops": 1307000000000000.0,
-   "provenance": "prior, unvalidated; MI300X run 1 measured 0.46 / 0.166 against it"
+   "provenance": "prior, unvalidated; MI300X run 1 measured 0.43 / 0.166 against it"
   },
   "mi300x-run1": {
-   "achieved_bandwidth": 0.46,
+   "achieved_bandwidth": 0.43,
    "card": "mi300x",
    "fitted_by": 1,
    "hourly_rate": 1.99,
@@ -57,7 +57,7 @@ window.MODEL_DATA = {
    "provenance": "measured (MI300X run 1, 2026-09-27); MI300X run 2, on another droplet, ran 21 % faster decode and 33 % faster prefill at the same server line"
   },
   "mi300x-run2": {
-   "achieved_bandwidth": 0.57,
+   "achieved_bandwidth": 0.53,
    "card": "mi300x",
    "fitted_by": 2,
    "hourly_rate": 1.99,
@@ -920,7 +920,13 @@ window.MODEL_DATA = {
    "provenance": "config.json and the model card; docs/model-anatomy.md",
    "served_by_this_stack": true,
    "state_bytes_per_sequence": 0,
-   "weight_dtype_bytes": 2
+   "weight_dtype_bytes": 2,
+   "weights": {
+    "decoder": 13892151296,
+    "embedding": 1244659712,
+    "lm_head": 1244659712,
+    "routed_experts": 0.0
+   }
   },
   "qwen3.5-9b": {
    "architecture": "dense; 8 of 32 layers full attention, the rest linear",
@@ -953,7 +959,13 @@ window.MODEL_DATA = {
    "provenance": "config.json and the safetensors headers at c202236; never served or measured here, docs/audience.md",
    "served_by_this_stack": false,
    "state_bytes_per_sequence": 51511296,
-   "weight_dtype_bytes": 2
+   "weight_dtype_bytes": 2,
+   "weights": {
+    "decoder": 13839131648,
+    "embedding": 2034237440,
+    "lm_head": 2034237440,
+    "routed_experts": 0.0
+   }
   },
   "qwen3.6-35b-a3b": {
    "architecture": "MoE, 8 of 256 experts per token; 10 of 40 layers full attention, the rest linear",
@@ -986,7 +998,13 @@ window.MODEL_DATA = {
    "provenance": "config.json and the safetensors headers at 995ad96; never served or measured here, docs/audience.md",
    "served_by_this_stack": false,
    "state_bytes_per_sequence": 64389120,
-   "weight_dtype_bytes": 2
+   "weight_dtype_bytes": 2,
+   "weights": {
+    "decoder": 2862474496,
+    "embedding": 1017118720,
+    "lm_head": 1017118720,
+    "routed_experts": 64424509440
+   }
   }
  },
  "runs": {
@@ -1072,7 +1090,7 @@ window.MODEL_DATA = {
    "card": "mi300x",
    "date": "2026-10-17",
    "fitted": null,
-   "found": "one hardware queue per process ends the asymmetry, and the 70B's decode step held to run 2's eff_mem at TP = 1",
+   "found": "one hardware queue per process ends the asymmetry; the 70B's decode step held to run 2's eff_mem at TP = 1 only under the old byte count, and crosses it at c = 16 under the current one",
    "label": "MI300X run 5",
    "number": 5,
    "predicted_with": "mi300x-run2",

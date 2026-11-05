@@ -271,7 +271,7 @@ def decode_table(data):
     print("DECODE STEP -- the median ITL against the floor at eff_mem 0.70")
     print("Only the rows where the median step is still a decode step.")
     print()
-    print(f"{'row':>12} {'ctx':>5} {'floor@0.70':>11} {'@0.46*':>8} {'median ITL':>11} "
+    print(f"{'row':>12} {'ctx':>5} {'floor@0.70':>11} {f'@{MI300X_RUN1.achieved_bandwidth}*':>8} {'median ITL':>11} "
           f"{'implied eff_mem':>16}")
     rule()
     for name in DECODE_ROWS:

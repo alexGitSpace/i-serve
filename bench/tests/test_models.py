@@ -79,6 +79,16 @@ def test_every_parameter_count_is_its_checkpoint_served_text_only():
             assert CHECKPOINTS[key]["revision"][:7] in m.provenance, key
 
 
+def test_every_role_is_its_checkpoint_at_bf16():
+    """Model.weights is checkpoints.json's served roles at two bytes each, exactly."""
+    for key, m in MODELS.items():
+        p = CHECKPOINTS[key]["parameters"]
+        w = m.weights
+        assert (w.decoder, w.lm_head, w.embedding, w.routed_experts) == \
+            (2 * p["decoder"], 2 * p["lm_head"], 2 * p["embedding"],
+             2 * p.get("routed_experts", 0)), key
+
+
 def test_the_routed_experts_weigh_what_config_json_says():
     """Three matrices of hidden x moe_intermediate per expert per layer: the header agrees exactly."""
     for key, m in MODELS.items():

@@ -153,8 +153,8 @@ def block_a():
     seats_unc = crossing(unc, "p99_tpot_ms", TPOT_TARGET_MS)
     seats_cached = crossing(cached, "p99_tpot_ms", TPOT_TARGET_MS)
     print(f"  seats at TPOT p99 <= {TPOT_TARGET_MS:.0f} ms: "
-          f"{seats_unc:.1f} at h=0 (predicted 13.5), "
-          f"{seats_cached:.1f} at h=0.8 (predicted 24.3)")
+          f"{seats_unc:.1f} at h=0 (predicted 13.4), "
+          f"{seats_cached:.1f} at h=0.8 (predicted 23.5)")
     print(f"  the feature is worth {seats_cached / seats_unc:.1f}x the seats, "
           f"where SLO.md section 6 said 1.8x")
 
@@ -170,7 +170,7 @@ def block_a():
         print(f"    {label}: {intercept:6.2f} + {slope:.4f} n   "
               f"-> implied context {slope / per_seat * SEAT_CONTEXT:6.0f} tok/seat")
     print(f"    model  : {step_model - per_seat:6.2f} + {per_seat:.4f} n   "
-          f"-> implied context {SEAT_CONTEXT:6.0f} tok/seat   (roofline, eff_mem 0.83)")
+          f"-> implied context {SEAT_CONTEXT:6.0f} tok/seat   (roofline, eff_mem {L40S_RUN1.achieved_bandwidth})")
     print("    A seat's unique content at h=0.8 is 800 prompt tokens plus <=200 of")
     print("    output. The cached slope sits between 'read per sequence' and 'read")
     print("    once per batch': the latency limit is NOT invariant to h, and no")
@@ -350,7 +350,7 @@ def ledger_points():
 if __name__ == "__main__":
     print(f"Run: {RUN}   raw evidence: docs/benchmarks/raw/{RUN}/")
     print("Argument and conclusions: docs/benchmarks/l40s-run3.md")
-    print("Coefficients: eff_mem 0.83, mfu 0.439 and I(n) from run 1, "
+    print(f"Coefficients: eff_mem {L40S_RUN1.achieved_bandwidth}, mfu {L40S_RUN1.mfu} and I(n) from run 1, "
           "NOT fitted to anything below.")
     checkpoint()
     block_a()

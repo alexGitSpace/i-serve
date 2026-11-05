@@ -62,15 +62,15 @@ SERVICE_KEYS = {
 # text, not recomputed: the point of the test is that the *rendering* did not
 # move, and a recomputation would follow any drift it was meant to catch.
 NINE_LINES = """\
-  coefficients          eff_mem 0.83, mfu 0.439 -- measured (run 1, 2026-08-18); survived runs 2-3
+  coefficients          eff_mem 0.78, mfu 0.439 -- measured (run 1, 2026-08-18); survived runs 2-3
   KV pool               0.18 M tokens
   seats by capacity     43
-  seats by latency      31
-  max_num_seqs          31   bound by latency, gap 1.39x
-  TPOT floor            49.64 ms at 31 seats   bound by memory, 18.3x   (99% of target)
-  TTFT floor            349.8 ms at 4,000 tokens   bound by compute, 14.8x   (117% of target)
-  aggregate             624 tok/s total, 20 tok/s per seat
-  cost                  $0.440 / 1M tokens at $0.99/h"""
+  seats by latency      29
+  max_num_seqs          29   bound by latency, gap 1.48x
+  TPOT floor            49.11 ms at 29 seats   bound by memory, 19.4x   (98% of target)
+  TTFT floor            349.8 ms at 4,000 tokens   bound by compute, 15.0x   (117% of target)
+  aggregate             590 tok/s total, 20 tok/s per seat
+  cost                  $0.466 / 1M tokens at $0.99/h"""
 
 
 def _printed(**kwargs) -> str:
@@ -159,10 +159,10 @@ def test_hit_rate_scales_only_the_interference_term():
     assert cold["service"]["seats_at_hit_rate"] < warm["service"]["seats_at_hit_rate"] \
         < full["service"]["seats_at_hit_rate"]
     # With nothing left to prefill, the interference is gone and the service
-    # limit is the continuous latency limit itself -- the unfloored 31.x that
-    # max_num_seqs_from_slo floors to 31.
+    # limit is the continuous latency limit itself -- the unfloored 29.x that
+    # max_num_seqs_from_slo floors to 29.
     assert math.floor(full["service"]["seats_at_hit_rate"]) == \
-        max_num_seqs_from_slo(QWEN3_8B, L40S_RUN1, 4200, 0.050) == 31
+        max_num_seqs_from_slo(QWEN3_8B, L40S_RUN1, 4200, 0.050) == 29
     assert cold["ttft_floor_uncached"]["seconds"] == cold["ttft_floor"]["seconds"]
     assert warm["ttft_floor_uncached"]["uncached_tokens"] == 800
     assert warm["service"]["note"] and cold["service"]["note"] is None

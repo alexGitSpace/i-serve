@@ -11,6 +11,7 @@ docs/benchmarks/mi300x-run5.md.
 
 import collections
 import contextlib
+import dataclasses
 import io
 import json
 import os
@@ -18,7 +19,7 @@ import re
 import runpy
 import statistics
 
-from roofline import ACCELERATORS, decode_step_bytes, kv_cache_tokens, tpot_floor
+from roofline import ACCELERATORS, decode_step_bytes, kv_cache_tokens, tpot_floor, weights_of
 
 RUN = "mi300x-2026-10-17"
 RAW = os.path.join(
@@ -30,6 +31,11 @@ with contextlib.redirect_stdout(io.StringIO()):
     CEILING = runpy.run_path(os.path.join(RAW, "ceiling.py"))
 MODEL, CONTEXT, GMU = CEILING["LLAMA_70B_FP8"], CEILING["CONTEXT"], CEILING["GMU"]
 FIT = ACCELERATORS["mi300x-run2"]
+# The ledger prices the served file by role: its roles sum to the registered total.
+FILE = "llama-3.3-70b-instruct-fp8-kv.amd"
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "models",
+                       "weight_files.json"), encoding="utf-8") as f:
+    BY_ROLE = dataclasses.replace(MODEL, weights=weights_of(json.load(f)[FILE]["roles"]))
 
 HOURLY = 1.99                       # the create page, 2026-10-17
 TAGS = ("plain", "masked", "q1")    # B0, B1, B2; each pair launched 8000 first
@@ -185,10 +191,10 @@ def block_c():
           f"{'long gaps':>11}{'of time':>9}{'preempt':>9}{'TTFT p50':>10}")
     for c in LEVELS:
         j = json.loads(read("results", "claim", f"c{c}.json"))
-        floor = tpot_floor(MODEL, FIT, c, CONTEXT).seconds * 1e3
+        floor = tpot_floor(BY_ROLE, FIT, c, CONTEXT).seconds * 1e3
         itl = j["median_itl_ms"]
         # eff_mem at which the memory side of the floor equals the measured step.
-        eff = decode_step_bytes(MODEL, c, CONTEXT) / (FIT.peak_bandwidth * itl / 1e3)
+        eff = decode_step_bytes(BY_ROLE, c, CONTEXT) / (FIT.peak_bandwidth * itl / 1e3)
         gaps = [g for r in j["itls"] for g in r]
         long = [g for g in gaps if g > LONG_GAP * itl / 1e3]
         print(f"{c:>4}{floor:>8.1f}{itl:>9.2f}{floor / itl - 1:>+8.1%}{eff:>9.3f}"
@@ -201,8 +207,8 @@ def block_c():
     # c = 64 seated only what the pool held: the engine log's running count, 55-59.
     itl = json.loads(read("results", "claim", "c64.json"))["median_itl_ms"]
     for running in (55, 59):
-        floor = tpot_floor(MODEL, FIT, running, CONTEXT).seconds * 1e3
-        eff = decode_step_bytes(MODEL, running, CONTEXT) / (FIT.peak_bandwidth * itl / 1e3)
+        floor = tpot_floor(BY_ROLE, FIT, running, CONTEXT).seconds * 1e3
+        eff = decode_step_bytes(BY_ROLE, running, CONTEXT) / (FIT.peak_bandwidth * itl / 1e3)
         print(f"  c = 64 at {running} running: floor {floor:.1f} ms, error {floor / itl - 1:+.1%}, "
               f"eff_mem {eff:.3f}")
     print()
@@ -238,7 +244,9 @@ def cost():
 # The ledger's view of this run (bench/ledger.py): block C, the 70B at TP = 1.
 LEDGER = {
     "run": "mi300x-5",
-    "model": MODEL,
+    "model": BY_ROLE,
+    "revision": "48ecf9e",
+    "bytes_from": "file",
     "engine": "vLLM",
     "engine_version": "0.27.1+rocm723",
     "regime": "in",

@@ -244,7 +244,7 @@ def faced(data):
           f"({MI300X_RUN1.achieved_bandwidth} / {MI300X_RUN1.mfu})")
     print()
     old = run1.rows()
-    print(f"{'row':>12} {'ctx':>5} {'step @0.46':>11} {'median ITL':>11} {'error':>7} "
+    print(f"{'row':>12} {'ctx':>5} {f'step @{MI300X_RUN1.achieved_bandwidth}':>11} {'median ITL':>11} {'error':>7} "
           f"{'implied eff_mem':>16} {'run 1 ITL':>10} {'change':>7}")
     rule()
     for name in DECODE_ROWS:
@@ -267,8 +267,8 @@ def faced(data):
         print(f"  {label}, batch 1, 2 100 -> 8 100 context: +{grow:.2f} ms for "
               f"+{extra_kv / 1e9:.3f} GB, {rate / 1e12:.1f} TB/s; at zero KV the step "
               f"would be {fixed:.2f} ms")
-    weights = QWEN3_8B.weights_bytes / MI300X.peak_bandwidth * 1000
-    print(f"  the weights alone at 100 % of peak: {weights:.2f} ms")
+    weights = QWEN3_8B.weights_read_all_bytes / MI300X.peak_bandwidth * 1000
+    print(f"  the weights read alone at 100 % of peak: {weights:.2f} ms")
     print()
     print(f"{'row':>12} {'TTFT @0.166':>12} {'TTFT p50':>10} {'error':>7} {'implied mfu':>12} "
           f"{'run 1 TTFT':>11}")

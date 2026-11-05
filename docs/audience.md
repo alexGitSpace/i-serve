@@ -66,12 +66,12 @@ about — and one operating point of your own with `--what-if`:
 The line worth watching is `max_num_seqs`, because it names which constraint you
 are actually against:
 
-      max_num_seqs          31   bound by latency, gap 1.39x
-      max_num_seqs          273  bound by latency, gap 1.00x
+      max_num_seqs          29   bound by latency, gap 1.48x
+      max_num_seqs          273   bound by capacity, gap 1.01x
 
 The first card runs out of *time* — it cannot re-read that much KV every token
-and still land inside the TPOT target — and on the second, time and *room* run
-out at the same seat: the gap is 1.00, a tie. That is a property of a card
+and still land inside the TPOT target — and on the second, *room* runs out two
+seats before time does: the gap is 1.01, all but a tie. That is a property of a card
 against a target, never a rule about GPUs, and it is the distinction
 [SLO.md](SLO.md) §4 and §6 exist to draw. Both lines are floors. Measured, the
 MI300X's latency limit bound as served at 8–32 seats, through prefill
@@ -265,11 +265,11 @@ Three kinds of number live here and they are never mixed:
   `docs/benchmarks/ledger.jsonl`: its share of ceiling, the host it was taken
   on, and the status of every prediction it faced. A condition a run did not
   record reads `not recorded` there, never a guess. On the accelerator side two entries carry measured
-  coefficients: `l40s-run1`, `eff_mem = 0.83` from twelve decode levels and
+  coefficients: `l40s-run1`, `eff_mem = 0.78` from twelve decode levels and
   `mfu = 0.439` from one uncontended prefill, faced by two later runs;
-  `mi300x-run1`, `eff_mem = 0.46` from five decode rows and `mfu = 0.166` from one
+  `mi300x-run1`, `eff_mem = 0.43` from five decode rows and `mfu = 0.166` from one
   uncontended prefill, faced by run 2 on another droplet and missed there; and
-  `mi300x-run2`, `eff_mem = 0.57` and `mfu = 0.247` from that droplet, faced by
+  `mi300x-run2`, `eff_mem = 0.53` and `mfu = 0.247` from that droplet, faced by
   none yet.
 - **Derived** — computed from architecture and vendor specifications. Every floor
   and ceiling in [SLO.md](SLO.md) is derived, and each is a prediction until a run

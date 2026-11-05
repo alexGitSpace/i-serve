@@ -34,7 +34,8 @@ one: vLLM's startup log settles it ([SLO.md](SLO.md) §9).
 
 | Symbol | Meaning | Where from |
 |---|---|---|
-| `P_total` | total parameter count — drives **memory**, since every weight is resident | model card |
+| `P_total` | total parameter count — every weight is resident | model card |
+| `W_role` | bytes one **tensor role** holds: `W_decoder`, `W_lm_head`, `W_embedding`, `W_experts`. The roles' sum is what memory holds; all but `W_embedding` is what a pass reads | the checkpoint's safetensors headers, or a weight file's (`bench/models/`) |
 | `P_compute` | non-embedding parameter count — drives **FLOPs**, since the input embedding is a lookup rather than a matrix multiply | model card |
 | `bytes_per_param` | bytes per stored weight: BF16 and FP16 = 2, FP8 = 1 | `config.json` → `torch_dtype` |
 | `L` | number of transformer layers — each keeps its own KV cache | `config.json` → `num_hidden_layers` |
@@ -65,7 +66,7 @@ one: vLLM's startup log settles it ([SLO.md](SLO.md) §9).
 
 | Symbol | Meaning |
 |---|---|
-| `eff_mem` | fraction of `BW_peak` actually achieved. Applies to the memory side only. 0.70 assumed everywhere; **0.83 measured on the L40S**, decode |
+| `eff_mem` | fraction of `BW_peak` actually achieved. Applies to the memory side only. 0.70 assumed everywhere; **0.78 measured on the L40S**, decode |
 | `mfu` | fraction of `FLOPS_dense` actually achieved. Applies to the compute side only. 0.45 assumed everywhere; **0.439 measured on the L40S**, prefill |
 
 Neither appears on a datasheet. They are the error bars of every estimate in this
@@ -75,14 +76,16 @@ belongs to one card **and** one phase and never transfers to another of either.
 ### Derived
 
 ```
-weights_bytes      = P_total × bytes_per_param
+weights_held       = W_decoder + W_lm_head + W_embedding + W_experts
+                     what capacity subtracts; P_total × bytes_per_param when
+                     every role shares one width
 
 kv_bytes_per_token = 2 × n_kv × head_dim × bytes_per_param × L
                      └ K and V are cached separately
 
 kv_bytes_total     = kv_bytes_per_token × batch × context_len
 
-bytes_moved        = weights_bytes + kv_bytes_total
+bytes_moved        = weights_read(B_tokens) + kv_bytes_total
                      device-memory traffic in one forward pass. Decode *reads*
                      the KV of every resident sequence; prefill *writes* the KV
                      of the prompt it is consuming — kv_bytes_per_token × B_tokens
@@ -96,7 +99,8 @@ state_tokens       = state_bytes / kv_bytes_per_token
 share_read(n)      = 1 − (1 − k / E)^n
                      the expected share of routed experts a pass over n tokens
                      reads, routing uniform
-weights_read(n)    = (P_total − P_experts × (1 − share_read(n))) × bytes_per_param
+weights_read(n)    = W_decoder + W_lm_head + W_experts × share_read(n)
+                     the embedding table is a gather: one row per token, not counted
 P_active           = P_compute − P_experts × (1 − k / E)
 
 t_mem_ideal        = bytes_moved / BW_peak
@@ -194,7 +198,7 @@ calling it the other is how a scheduling cost gets charged to the memory bus.
 
 **The median ITL is a decode step only while prefill occupies a minority of steps**,
 and that condition is a knob away from failing: at `max_num_batched_tokens` 512 with
-32 sequences the median reads 79.6 ms against a 49.8 ms step, because a small chunk
+32 sequences the median reads 79.6 ms against a 51.2 ms step, because a small chunk
 puts prefill into most steps and the median moves in with it. The tell is the ratio
 itself falling to 1 or below — which also means the ratio measures how *unevenly*
 prefill is spread, not how much of it there is
@@ -602,12 +606,19 @@ sets the width of the two vocabulary-sized matrices below.
 
 **Embedding table** — `vocab_size × hidden_size` weights turning token ids into
 vectors. Accessed by **gather** — the rows named by the input ids are looked up —
-so it costs no matrix multiply, which is why it is excluded from `P_compute`.
+so it costs no matrix multiply, which is why it is excluded from `P_compute`, and
+no full read, which is why it is held but not counted in `weights_read`.
 
 **`lm_head`** — the `hidden_size × vocab_size` matrix at the end of the stack,
 turning the final hidden state into logits over the vocabulary. Same size as the
 embedding table and, in models that do not tie the two, a separate tensor. Unlike
 the table it is a real matmul.
+
+**Tensor role** — the part of a model a weight tensor belongs to, which sets how
+a forward pass reads it: the decoder layers and `lm_head` in full, the embedding
+table one row per token, routed experts as tokens route. A tied table is read
+as the head. `Weights` in `bench/roofline.py` carries bytes per role, from a
+checkpoint or weight file snapshot.
 
 **Q / K / V / O projections** — the four weight matrices of an attention block:
 three producing queries, keys and values from the hidden state, one projecting the
@@ -747,7 +758,7 @@ which of the two it measured ⏳.
 **Prefill interference** — the amount by which a request's average decode step
 exceeds the step the hardware performs, because prefill chunks of *other*
 requests land in the same steps. Measured directly as TPOT minus median ITL, and
-the quantity that separates the 31 seats the decode step permits from the 12 an
+the quantity that separates the 30 seats the decode step permits from the 12 an
 L40S can promise ([benchmarks/l40s-baseline.md](benchmarks/l40s-baseline.md) §5).
 `max_num_batched_tokens` redistributes it; prefix caching removes it in
 proportion to `h`. The fitted line belongs to an engine, a chunk size, a card
@@ -1479,7 +1490,9 @@ real here*; both generated by `bench/runs.py` from the reports' front matter.
 
 **Ledger** — `docs/benchmarks/ledger.jsonl`, one line per decode step a run
 measured: the run and its host identity, the engine and its version, the model
-and the bytes its weights occupy, the regime and mode, the point (batch,
+and the bytes its weights occupy with where they came from (`bytes_from`:
+`config`, parameter counts at the dtype; `file`, a weight file snapshot's
+roles), the regime and mode, the point (batch,
 context), the ceiling at peak bandwidth, the measurement, its share of ceiling,
 every prediction the point faced with its status, and the sheet and raw path
 behind it; a point out of regime carries its ceiling, no share, and why. Generated by `bench/ledger.py` from the `measured_*.py` modules; the

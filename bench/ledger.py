@@ -99,8 +99,8 @@ def row(run: runs.Run, conditions: dict, point: dict) -> dict:
         "weights": {
             "bits_per_weight": 8 * model.weight_dtype_bytes,
             "bytes": int(model.weights_bytes),
-            # config.json and the checkpoint's parameter count, not a file on disk
-            "bytes_from": "config",
+            # GLOSSARY.md, *Ledger*
+            "bytes_from": conditions.get("bytes_from", "config"),
         },
         "regime": regime,
         "mode": conditions["mode"],

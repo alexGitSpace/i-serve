@@ -56,8 +56,8 @@ The runs so far, by card; every run, what it asked and what it found:
 <!-- runs:begin -->
 | Card | Runs | Coefficients in use | Latest run |
 |---|---|---|---|
-| NVIDIA L40S | [3](docs/benchmarks/README.md#nvidia-l40s) | eff_mem 0.83, mfu 0.439: run 1's fit, faced by runs 2–3 | [run 3](docs/benchmarks/l40s-run3.md), 2026-08-30: 3× the seats, 12–14 to 32–40, because the decode step itself fell where the derivation said it could not |
-| AMD Instinct MI300X | [5](docs/benchmarks/README.md#amd-instinct-mi300x) | eff_mem 0.57, mfu 0.247: run 2's fit, faced by runs 3–5 | [run 5](docs/benchmarks/mi300x-run5.md), 2026-10-17: one hardware queue per process ends the asymmetry, and the 70B's decode step held to run 2's eff_mem at TP = 1 |
+| NVIDIA L40S | [3](docs/benchmarks/README.md#nvidia-l40s) | eff_mem 0.78, mfu 0.439: run 1's fit, faced by runs 2–3 | [run 3](docs/benchmarks/l40s-run3.md), 2026-08-30: 3× the seats, 12–14 to 32–40, because the decode step itself fell where the derivation said it could not |
+| AMD Instinct MI300X | [5](docs/benchmarks/README.md#amd-instinct-mi300x) | eff_mem 0.53, mfu 0.247: run 2's fit, faced by runs 3–5 | [run 5](docs/benchmarks/mi300x-run5.md), 2026-10-17: one hardware queue per process ends the asymmetry; the 70B's decode step held to run 2's eff_mem at TP = 1 only under the old byte count, and crosses it at c = 16 under the current one |
 <!-- runs:end -->
 
 `kind` runs the stack against a stub and shows what the system *does*, never
@@ -72,7 +72,7 @@ cannot show, and what is fixture:
 Readers notice anything slower than about 50 ms per word. At that promise an
 L40S seats **12 people with a cold cache and 32 when 80 % of each prompt
 repeats** — measured, TPOT p99 ≤ 50 ms, 4 000-token prompts
-([docs/benchmarks/](docs/benchmarks/)). The arithmetic says 31 seats before
+([docs/benchmarks/](docs/benchmarks/)). The arithmetic says 29 seats before
 arriving prompts are priced in, and names the limit: *time* (the decode step
 grows per seat) or *room* (the KV pool holding every context fills). Pricing
 arriving prompts in lowers that row; run 3 beat it ([The proof](#the-proof)).
@@ -138,8 +138,8 @@ the map for the 75 nodes of the tree.
 
 One row per prediction naming a point or a range, not a bound. What a miss cost
 the drawing cannot show: run 3's seat count under prefix caching came out
-**56 % higher** than the §6 row predicts (the row pricing arriving prompts in;
-step 1's 31 does not) and 64 % above the midpoint of the 22–24 range the
+**61 % higher** than the §6 row predicts (the row pricing arriving prompts in;
+step 1's 29 does not) and 64 % above the midpoint of the 22–24 range the
 runsheet named; rewriting [docs/SLO.md](docs/SLO.md) §6 is the bill. Row by
 row, with each coefficient: §9 of every report in
 [docs/benchmarks/](docs/benchmarks/).
@@ -170,10 +170,10 @@ first:
 
 ```text
 accelerator: NVIDIA L40S (run 1 coefficients)
-coefficients: eff_mem 0.83, mfu 0.439 -- measured (run 1, 2026-08-18); survived runs 2-3
+coefficients: eff_mem 0.78, mfu 0.439 -- measured (run 1, 2026-08-18); survived runs 2-3
 
 accelerator: AMD Instinct MI300X
-coefficients: eff_mem 0.7, mfu 0.45 -- prior, unvalidated; MI300X run 1 measured 0.46 / 0.166 against it
+coefficients: eff_mem 0.7, mfu 0.45 -- prior, unvalidated; MI300X run 1 measured 0.43 / 0.166 against it
 ```
 
 One floor rests on coefficients a card produced and two later runs failed to
